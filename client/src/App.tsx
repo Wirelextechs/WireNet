@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "wouter";
+import { Router, Route } from "wouter";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import Storefront from "@/pages/Storefront";
@@ -23,20 +23,18 @@ function AppContent() {
   }
 
   return (
-    <Routes>
+    <Router>
       <Route path="/" component={Storefront} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
-    </Routes>
+    </Router>
   );
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <AppContent />
-      </Router>
+      <AppContent />
       <Toaster />
     </QueryClientProvider>
   );
