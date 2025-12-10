@@ -93,6 +93,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Proxy routes for DataGod and FastNet
+  // These will be added when the sub-applications are integrated
+  // For now, they return placeholder responses
+
+  app.get("/datagod*", (req, res) => {
+    res.status(503).json({
+      message: "DataGod service is not available. Please configure the proxy.",
+      hint: "Ensure DataGod is running on the configured port and proxy middleware is set up.",
+    });
+  });
+
+  app.get("/fastnet*", (req, res) => {
+    res.status(503).json({
+      message: "FastNet service is not available. Please configure the proxy.",
+      hint: "Ensure FastNet is running on the configured port and proxy middleware is set up.",
+    });
+  });
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
