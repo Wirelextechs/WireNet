@@ -1,4 +1,5 @@
 import express, { Express } from "express";
+import path from "path";
 import { createServer as createViteServer, ViteDevServer } from "vite";
 
 let vite: ViteDevServer;
@@ -39,10 +40,12 @@ export async function setupVite(app: Express, server: any) {
 }
 
 export function serveStatic(app: Express) {
-  app.use(express.static("dist/public"));
+  // Serve static files from dist/public
+  app.use(express.static(path.join(process.cwd(), "dist/public")));
 
+  // Serve index.html for all other routes (SPA)
   app.use("*", (req, res) => {
-    res.sendFile("dist/public/index.html", { root: process.cwd() });
+    res.sendFile(path.join(process.cwd(), "dist/public/index.html"));
   });
 }
 
