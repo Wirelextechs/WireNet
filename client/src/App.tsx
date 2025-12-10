@@ -1,0 +1,43 @@
+import { BrowserRouter as Router, Routes, Route } from "wouter";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import Storefront from "@/pages/Storefront";
+import AdminDashboard from "@/pages/AdminDashboard";
+import AdminLogin from "@/pages/AdminLogin";
+import { useAuth } from "@/hooks/useAuth";
+
+const queryClient = new QueryClient();
+
+function AppContent() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/" component={Storefront} />
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin" component={AdminDashboard} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <AppContent />
+      </Router>
+      <Toaster />
+    </QueryClientProvider>
+  );
+}
