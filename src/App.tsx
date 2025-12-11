@@ -4,6 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import Storefront from "@/pages/Storefront";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
+import DataGodPage from "@/pages/DataGodPage";
+import FastNetPage from "@/pages/FastNetPage";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,8 @@ function AppContent() {
       <Route path="/" component={Storefront} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/datagod" component={DataGodPage} />
+      <Route path="/fastnet" component={FastNetPage} />
     </Router>
   );
 }
