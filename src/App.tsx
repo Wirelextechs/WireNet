@@ -6,6 +6,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import DataGodPage from "@/pages/DataGodPage";
 import FastNetPage from "@/pages/FastNetPage";
+import DataGodAdmin from "@/pages/DataGodAdmin";
+import FastNetAdmin from "@/pages/FastNetAdmin";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,8 @@ function AppContent() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/datagod" component={DataGodPage} />
       <Route path="/fastnet" component={FastNetPage} />
+      <Route path="/admin/datagod" component={DataGodAdmin} />
+      <Route path="/admin/fastnet" component={FastNetAdmin} />
     </Router>
   );
 }

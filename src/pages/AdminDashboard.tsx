@@ -244,7 +244,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => navigate("/datagod")}
+                onClick={() => navigate("/admin/datagod")}
               >
                 Open DataGod
               </Button>
@@ -263,7 +263,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => navigate("/fastnet")}
+                onClick={() => navigate("/admin/fastnet")}
               >
                 Open FastNet
               </Button>
