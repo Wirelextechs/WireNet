@@ -17,6 +17,7 @@ export default function FastNetPage() {
   const [loading, setLoading] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
     fetchPackages();
@@ -48,11 +49,35 @@ export default function FastNetPage() {
       return;
     }
 
+    setPurchasing(true);
+
     try {
-      // TODO: Integrate with Paystack and database
-      alert(`Purchase initiated for ${selectedPackage.dataAmount} to ${phoneNumber}`);
+      const response = await fetch("/api/fastnet/purchase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber,
+          dataAmount: selectedPackage.dataAmount,
+          price: selectedPackage.price,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert(`✅ Purchase successful! ${result.message}`);
+        setPhoneNumber("");
+        setSelectedPackage(null);
+      } else {
+        alert(`❌ Purchase failed: ${result.message}`);
+      }
     } catch (error) {
       console.error("Purchase error:", error);
+      alert("❌ An error occurred while processing your request.");
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -110,13 +135,13 @@ export default function FastNetPage() {
             <h3>Complete Purchase</h3>
             <Button
               onClick={handlePurchase}
-              disabled={!phoneNumber || !selectedPackage}
+              disabled={!phoneNumber || !selectedPackage || purchasing}
               style={{
                 ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+                opacity: !phoneNumber || !selectedPackage || purchasing ? 0.5 : 1,
               }}
             >
-              Buy Now
+              {purchasing ? "Processing..." : "Buy Now"}
             </Button>
             <p style={styles.paymentNote}>Secure payment via Paystack</p>
           </div>
