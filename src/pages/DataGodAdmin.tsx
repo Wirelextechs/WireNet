@@ -67,7 +67,7 @@ export default function DataGodAdmin() {
     try {
       const saved = localStorage.getItem("datagodPackages");
       if (saved) {
-        setPackages(JSON.parse(saved));
+        setPackages(JSON.parse(saved).sort((a: any, b: any) => a.dataValueGB - b.dataValueGB));
       } else {
         const defaults = [
           { id: "1", packageName: "1GB", dataValueGB: 1, priceGHS: 2.5, isEnabled: true },
@@ -76,7 +76,7 @@ export default function DataGodAdmin() {
           { id: "4", packageName: "10GB", dataValueGB: 10, priceGHS: 18, isEnabled: true },
         ];
         localStorage.setItem("datagodPackages", JSON.stringify(defaults));
-        setPackages(defaults);
+        setPackages(defaults.sort((a, b) => a.dataValueGB - b.dataValueGB));
       }
     } catch (error) {
       console.error("Error loading packages:", error);
@@ -163,7 +163,7 @@ export default function DataGodAdmin() {
       isEnabled: true,
     };
 
-    const updated = [...packages, pkg];
+    const updated = [...packages, pkg].sort((a, b) => a.dataValueGB - b.dataValueGB);
     setPackages(updated);
     localStorage.setItem("datagodPackages", JSON.stringify(updated));
     setNewPackage({ name: "", gb: "", price: "" });

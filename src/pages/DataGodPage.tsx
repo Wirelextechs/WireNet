@@ -69,7 +69,7 @@ export default function DataGodPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         // Only show enabled packages
-        const enabledPackages = parsed.filter((p: Package) => p.isEnabled);
+        const enabledPackages = parsed.filter((p: Package) => p.isEnabled).sort((a: any, b: any) => a.dataValueGB - b.dataValueGB);
         setPackages(enabledPackages);
       } else {
         // Initialize with defaults
@@ -80,7 +80,7 @@ export default function DataGodPage() {
           { id: "4", packageName: "10GB", dataValueGB: 10, priceGHS: 18, isEnabled: true },
         ];
         localStorage.setItem("datagodPackages", JSON.stringify(defaults));
-        setPackages(defaults);
+        setPackages(defaults.sort((a, b) => a.dataValueGB - b.dataValueGB));
       }
       setLoading(false);
     } catch (error) {
