@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [settings, setSettings] = useState<Settings>({
     datagodEnabled: true,
     fastnetEnabled: true,
+    whatsappLink: "",
   });
   const [whatsappLink, setWhatsappLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,10 +34,10 @@ export default function AdminDashboard() {
     }
 
     setEmail(adminEmail);
-    fetchSettings();
+    loadSettings();
   }, [navigate]);
 
-  const fetchSettings = async () => {
+  const loadSettings = () => {
     try {
       // Load from localStorage
       const savedSettings = localStorage.getItem("wirenetSettings");
@@ -44,10 +45,41 @@ export default function AdminDashboard() {
         const parsed = JSON.parse(savedSettings);
         setSettings(parsed);
         setWhatsappLink(parsed.whatsappLink || "");
+      } else {
+        // Initialize with defaults
+        const defaultSettings = {
+          whatsappLink: "",
+          datagodEnabled: true,
+          fastnetEnabled: true,
+        };
+        localStorage.setItem("wirenetSettings", JSON.stringify(defaultSettings));
+        setSettings(defaultSettings);
       }
     } catch (error) {
-      console.error("Error fetching settings:", error);
+      console.error("Error loading settings:", error);
     }
+  };
+
+  const handleToggleDataGod = () => {
+    const newSettings = {
+      ...settings,
+      datagodEnabled: !settings.datagodEnabled,
+    };
+    setSettings(newSettings);
+    localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
+    setMessage("✅ DataGod toggle updated!");
+    setTimeout(() => setMessage(""), 2000);
+  };
+
+  const handleToggleFastNet = () => {
+    const newSettings = {
+      ...settings,
+      fastnetEnabled: !settings.fastnetEnabled,
+    };
+    setSettings(newSettings);
+    localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
+    setMessage("✅ FastNet toggle updated!");
+    setTimeout(() => setMessage(""), 2000);
   };
 
   const handleSaveSettings = async () => {
@@ -84,7 +116,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-width mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-primary">WireNet Admin</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Welcome, {email}</span>
@@ -97,7 +129,7 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-width mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {message && (
           <div className={`mb-6 p-4 rounded ${message.includes("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
             {message}
@@ -114,18 +146,17 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* DataGod Toggle */}
               <div className="flex items-center justify-between p-4 border rounded">
                 <div>
                   <h3 className="font-semibold">DataGod</h3>
                   <p className="text-sm text-gray-600">Cheap prices, 24hr delivery</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {settings.datagodEnabled ? "✅ Visible" : "❌ Hidden"}
+                  </p>
                 </div>
                 <button
-                  onClick={() =>
-                    setSettings({
-                      ...settings,
-                      datagodEnabled: !settings.datagodEnabled,
-                    })
-                  }
+                  onClick={handleToggleDataGod}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     settings.datagodEnabled ? "bg-green-500" : "bg-gray-300"
                   }`}
@@ -138,18 +169,17 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              {/* FastNet Toggle */}
               <div className="flex items-center justify-between p-4 border rounded">
                 <div>
                   <h3 className="font-semibold">FastNet</h3>
                   <p className="text-sm text-gray-600">Fast delivery (5-20 mins)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {settings.fastnetEnabled ? "✅ Visible" : "❌ Hidden"}
+                  </p>
                 </div>
                 <button
-                  onClick={() =>
-                    setSettings({
-                      ...settings,
-                      fastnetEnabled: !settings.fastnetEnabled,
-                    })
-                  }
+                  onClick={handleToggleFastNet}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     settings.fastnetEnabled ? "bg-green-500" : "bg-gray-300"
                   }`}
