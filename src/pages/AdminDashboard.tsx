@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
 import { LogOut, Settings } from "lucide-react";
 
 interface Settings {
@@ -13,8 +12,8 @@ interface Settings {
 }
 
 export default function AdminDashboard() {
-  const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const [email, setEmail] = useState("");
   const [settings, setSettings] = useState<Settings>({
     datagodEnabled: true,
     fastnetEnabled: true,
@@ -24,20 +23,27 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Check if user is logged in
+    const loggedIn = sessionStorage.getItem("adminLoggedIn");
+    const adminEmail = sessionStorage.getItem("adminEmail");
+
+    if (!loggedIn || !adminEmail) {
       navigate("/admin/login");
-    } else {
-      fetchSettings();
+      return;
     }
-  }, [isAuthenticated, navigate]);
+
+    setEmail(adminEmail);
+    fetchSettings();
+  }, [navigate]);
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch("/api/settings");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-        setWhatsappLink(data.whatsappLink || "");
+      // Load from localStorage
+      const savedSettings = localStorage.getItem("wirenetSettings");
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setSettings(parsed);
+        setWhatsappLink(parsed.whatsappLink || "");
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -49,51 +55,39 @@ export default function AdminDashboard() {
     setMessage("");
 
     try {
-      const response = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          whatsappLink,
-          datagodEnabled: settings.datagodEnabled,
-          fastnetEnabled: settings.fastnetEnabled,
-        }),
-      });
+      const updatedSettings = {
+        whatsappLink,
+        datagodEnabled: settings.datagodEnabled,
+        fastnetEnabled: settings.fastnetEnabled,
+      };
 
-      if (response.ok) {
-        setMessage("Settings saved successfully!");
-        setTimeout(() => setMessage(""), 3000);
-      } else {
-        setMessage("Failed to save settings");
-      }
+      // Save to localStorage
+      localStorage.setItem("wirenetSettings", JSON.stringify(updatedSettings));
+      setSettings(updatedSettings);
+      setMessage("✅ Settings saved successfully!");
+      setTimeout(() => setMessage(""), 3000);
     } catch (error) {
-      setMessage("An error occurred");
+      setMessage("❌ Failed to save settings");
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      navigate("/admin/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+  const handleLogout = () => {
+    sessionStorage.removeItem("adminLoggedIn");
+    sessionStorage.removeItem("adminEmail");
+    navigate("/admin/login");
   };
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div className="max-width mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-primary">WireNet Admin</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Welcome, {user?.username}</span>
+            <span className="text-sm text-gray-600">Welcome, {email}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut size={16} className="mr-2" />
               Logout
@@ -103,9 +97,9 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-width mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {message && (
-          <div className={`mb-6 p-4 rounded ${message.includes("success") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+          <div className={`mb-6 p-4 rounded ${message.includes("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
             {message}
           </div>
         )}
@@ -220,9 +214,9 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => window.location.href = "/datagod/admin"}
+                onClick={() => navigate("/datagod")}
               >
-                Open DataGod Admin
+                Open DataGod
               </Button>
             </CardContent>
           </Card>
@@ -239,9 +233,9 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => window.location.href = "/fastnet/admin"}
+                onClick={() => navigate("/fastnet")}
               >
-                Open FastNet Admin
+                Open FastNet
               </Button>
             </CardContent>
           </Card>

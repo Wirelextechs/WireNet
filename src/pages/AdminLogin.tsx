@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,19 +17,15 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.message || "Login failed");
-        return;
+      // Check credentials
+      if (email === "wirelexcare@gmail.com" && password === "Hydrogen5") {
+        // Store in session
+        sessionStorage.setItem("adminEmail", email);
+        sessionStorage.setItem("adminLoggedIn", "true");
+        navigate("/admin");
+      } else {
+        setError("Invalid email or password");
       }
-
-      navigate("/admin");
     } catch (err) {
       setError("An error occurred. Please try again.");
       console.error(err);
@@ -42,7 +38,7 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Admin Login</CardTitle>
+          <CardTitle>WireNet Admin Login</CardTitle>
           <CardDescription>
             Enter your credentials to access the admin dashboard
           </CardDescription>
@@ -56,12 +52,12 @@ export default function AdminLogin() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Username</label>
+              <label className="text-sm font-medium">Email</label>
               <Input
-                type="text"
-                placeholder="Enter username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -70,7 +66,7 @@ export default function AdminLogin() {
               <label className="text-sm font-medium">Password</label>
               <Input
                 type="password"
-                placeholder="Enter password"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
