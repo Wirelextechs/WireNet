@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, Menu, X } from "lucide-react";
 
 interface Settings {
   whatsappLink?: string;
@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [whatsappLink, setWhatsappLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -118,14 +119,37 @@ export default function AdminDashboard() {
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-primary">WireNet Admin</h1>
-          <div className="flex items-center gap-4">
+          
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center gap-4">
             <span className="text-sm text-gray-600">Welcome, {email}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut size={16} className="mr-2" />
               Logout
             </Button>
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <div className="md:hidden bg-white border-t p-4">
+            <div className="flex flex-col gap-4">
+              <span className="text-sm text-gray-600">Welcome, {email}</span>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="w-full justify-start">
+                <LogOut size={16} className="mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
@@ -136,20 +160,48 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Navigation Menu */}
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex flex-col items-center gap-2"
+            onClick={() => navigate("/admin")}
+          >
+            <Settings size={24} />
+            <span>Dashboard Home</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex flex-col items-center gap-2 bg-yellow-50 hover:bg-yellow-100 border-yellow-200"
+            onClick={() => navigate("/admin/datagod")}
+          >
+            <span className="text-2xl">💰</span>
+            <span>DataGod Admin</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex flex-col items-center gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
+            onClick={() => navigate("/admin/fastnet")}
+          >
+            <span className="text-2xl">⚡</span>
+            <span>FastNet Admin</span>
+          </Button>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-8">
           {/* Categories Toggle */}
           <Card>
             <CardHeader>
-              <CardTitle>Categories</CardTitle>
+              <CardTitle>Storefront Visibility</CardTitle>
               <CardDescription>
                 Toggle categories to show or hide them on the storefront
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* DataGod Toggle */}
-              <div className="flex items-center justify-between p-4 border rounded">
+              <div className="flex items-center justify-between p-4 border rounded bg-yellow-50/50">
                 <div>
-                  <h3 className="font-semibold">DataGod</h3>
+                  <h3 className="font-semibold text-yellow-700">DataGod</h3>
                   <p className="text-sm text-gray-600">Cheap prices, 24hr delivery</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Status: {settings.datagodEnabled ? "✅ Visible" : "❌ Hidden"}
@@ -170,9 +222,9 @@ export default function AdminDashboard() {
               </div>
 
               {/* FastNet Toggle */}
-              <div className="flex items-center justify-between p-4 border rounded">
+              <div className="flex items-center justify-between p-4 border rounded bg-blue-50/50">
                 <div>
-                  <h3 className="font-semibold">FastNet</h3>
+                  <h3 className="font-semibold text-blue-700">FastNet</h3>
                   <p className="text-sm text-gray-600">Fast delivery (5-20 mins)</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Status: {settings.fastnetEnabled ? "✅ Visible" : "❌ Hidden"}
@@ -225,47 +277,6 @@ export default function AdminDashboard() {
                 className="w-full"
               >
                 {loading ? "Saving..." : "Save Settings"}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Category Management */}
-        <div className="mt-8 grid md:grid-cols-2 gap-8">
-          {/* DataGod Admin */}
-          <Card>
-            <CardHeader>
-              <CardTitle>DataGod Admin</CardTitle>
-              <CardDescription>
-                Manage DataGod packages and orders
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate("/admin/datagod")}
-              >
-                Open DataGod
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* FastNet Admin */}
-          <Card>
-            <CardHeader>
-              <CardTitle>FastNet Admin</CardTitle>
-              <CardDescription>
-                Manage FastNet packages and orders
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate("/admin/fastnet")}
-              >
-                Open FastNet
               </Button>
             </CardContent>
           </Card>
