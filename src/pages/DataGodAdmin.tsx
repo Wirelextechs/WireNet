@@ -197,7 +197,7 @@ export default function DataGodAdmin() {
     const csv = [
       ["Order ID", "Phone", "Package", "Price", "Status", "Date"].join(","),
       ...selectedOrderObjects.map(o =>
-        [o.shortId, o.customerPhone, o.packageDetails, o.packagePrice, o.status, o.createdAt.toLocaleDateString()].join(",")
+        [o.shortId, o.customerPhone, o.packageDetails.replace("GB", ""), o.packagePrice, o.status, o.createdAt.toLocaleDateString()].join(",")
       ),
     ].join("\n");
 
