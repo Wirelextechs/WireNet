@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { MessageCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface Package {
@@ -12,9 +12,31 @@ interface Package {
   isEnabled: boolean;
 }
 
+interface Order {
+  id: string;
+  shortId: string;
+  customerPhone: string;
+  packageGB: number;
+  packagePrice: number;
+  packageDetails: string;
+  status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED";
+  createdAt: Date;
+}
+
+interface Settings {
+  whatsappLink?: string;
+  datagodEnabled: boolean;
+  fastnetEnabled: boolean;
+}
+
 export default function DataGodPage() {
   const [, navigate] = useLocation();
   const [packages, setPackages] = useState<Package[]>([]);
+  const [settings, setSettings] = useState<Settings>({
+    datagodEnabled: true,
+    fastnetEnabled: true,
+  });
+  const [whatsappLink, setWhatsappLink] = useState("");
   const [loading, setLoading] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
@@ -23,21 +45,43 @@ export default function DataGodPage() {
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
+    fetchSettings();
     fetchPackages();
   }, []);
 
-  const fetchPackages = async () => {
+  const fetchSettings = () => {
     try {
-      // Mock data - in production, fetch from Supabase
-      const mockPackages: Package[] = [
-        { id: "1", packageName: "1GB", dataValueGB: 1, priceGHS: 2.5, isEnabled: true },
-        { id: "2", packageName: "2GB", dataValueGB: 2, priceGHS: 4.5, isEnabled: true },
-        { id: "3", packageName: "5GB", dataValueGB: 5, priceGHS: 10, isEnabled: true },
-        { id: "4", packageName: "10GB", dataValueGB: 10, priceGHS: 18, isEnabled: true },
-        { id: "5", packageName: "20GB", dataValueGB: 20, priceGHS: 35, isEnabled: true },
-        { id: "6", packageName: "50GB", dataValueGB: 50, priceGHS: 80, isEnabled: true },
-      ];
-      setPackages(mockPackages.filter(p => p.isEnabled));
+      const saved = localStorage.getItem("wirenetSettings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setSettings(parsed);
+        setWhatsappLink(parsed.whatsappLink || "");
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    }
+  };
+
+  const fetchPackages = () => {
+    try {
+      // Use the SAME key as admin dashboard
+      const saved = localStorage.getItem("datagodPackages");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Only show enabled packages
+        const enabledPackages = parsed.filter((p: Package) => p.isEnabled);
+        setPackages(enabledPackages);
+      } else {
+        // Initialize with defaults
+        const defaults = [
+          { id: "1", packageName: "1GB", dataValueGB: 1, priceGHS: 2.5, isEnabled: true },
+          { id: "2", packageName: "2GB", dataValueGB: 2, priceGHS: 4.5, isEnabled: true },
+          { id: "3", packageName: "5GB", dataValueGB: 5, priceGHS: 10, isEnabled: true },
+          { id: "4", packageName: "10GB", dataValueGB: 10, priceGHS: 18, isEnabled: true },
+        ];
+        localStorage.setItem("datagodPackages", JSON.stringify(defaults));
+        setPackages(defaults);
+      }
       setLoading(false);
     } catch (error) {
       console.error("Error fetching packages:", error);
@@ -45,17 +89,9 @@ export default function DataGodPage() {
     }
   };
 
-  const handlePurchase = async () => {
-    if (!phoneNumber || !selectedPackage) {
-      alert("Please enter phone number and select a package");
-      return;
-    }
-
-    try {
-      // TODO: Integrate with Paystack and Supabase
-      alert(`Purchase initiated for ${selectedPackage.packageName} to ${phoneNumber}`);
-    } catch (error) {
-      console.error("Purchase error:", error);
+  const handleWhatsAppClick = () => {
+    if (settings.whatsappLink) {
+      window.open(settings.whatsappLink, "_blank");
     }
   };
 
@@ -67,13 +103,22 @@ export default function DataGodPage() {
 
     setStatusLoading(true);
     try {
-      // TODO: Fetch from Supabase
-      setStatusReport({
-        shortId: statusCheckId,
-        status: "PROCESSING",
-        packageDetails: "5GB Data",
-        createdAt: new Date().toLocaleDateString(),
-      });
+      const saved = localStorage.getItem("datagodOrders");
+      if (saved) {
+        const orders = JSON.parse(saved);
+        const order = orders.find((o: Order) => o.shortId === statusCheckId);
+        if (order) {
+          setStatusReport({
+            shortId: order.shortId,
+            status: order.status,
+            packageDetails: order.packageDetails,
+            createdAt: new Date(order.createdAt).toLocaleDateString(),
+          });
+        } else {
+          setStatusReport(null);
+          alert("Order not found");
+        }
+      }
     } catch (error) {
       console.error("Status check error:", error);
       setStatusReport(null);
@@ -82,11 +127,45 @@ export default function DataGodPage() {
     }
   };
 
+  const handlePurchase = async () => {
+    if (!phoneNumber || !selectedPackage) {
+      alert("Please enter phone number and select a package");
+      return;
+    }
+
+    try {
+      // Create new order
+      const order: Order = {
+        id: Date.now().toString(),
+        shortId: `DG${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        customerPhone: phoneNumber,
+        packageGB: selectedPackage.dataValueGB,
+        packagePrice: selectedPackage.priceGHS,
+        packageDetails: selectedPackage.packageName,
+        status: "PAID",
+        createdAt: new Date(),
+      };
+
+      // Save to localStorage
+      const saved = localStorage.getItem("datagodOrders") || "[]";
+      const orders = JSON.parse(saved);
+      orders.push(order);
+      localStorage.setItem("datagodOrders", JSON.stringify(orders));
+
+      alert(`✅ Order created! Order ID: ${order.shortId}\n\nPayment processing...`);
+      setPhoneNumber("");
+      setSelectedPackage(null);
+    } catch (error) {
+      console.error("Purchase error:", error);
+      alert("❌ Error creating order");
+    }
+  };
+
   return (
     <div style={styles.body}>
       {/* Header */}
-      <div style={styles.container}>
-        <div style={styles.header}>
+      <div style={styles.header}>
+        <div style={styles.headerTop}>
           <Button
             variant="ghost"
             size="sm"
@@ -96,15 +175,18 @@ export default function DataGodPage() {
             <ArrowLeft size={18} style={{ marginRight: "8px" }} />
             Back to WireNet
           </Button>
-          <h1 style={styles.h1}>DataGod Vending Platform</h1>
-          <p style={styles.subtitle}>Cheapest Data Prices • 24hr Delivery</p>
         </div>
+        <h1 style={styles.h1}>DataGod Vending Platform</h1>
+        <p style={styles.subtitle}>Cheapest Data Prices • 24hr Delivery</p>
+      </div>
 
-        <div style={styles.contactBar}>
-          📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
-          💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
-        </div>
+      <div style={styles.contactBar}>
+        📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
+        💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
+      </div>
 
+      {/* Main Content */}
+      <main style={styles.main}>
         {/* Status Checker */}
         <div style={styles.statusChecker}>
           <h2 style={styles.statusCheckerH2}>Check Order Status</h2>
@@ -179,6 +261,8 @@ export default function DataGodPage() {
         <h2 style={styles.sectionTitle}>Available Packages</h2>
         {loading ? (
           <p style={styles.loading}>Loading packages...</p>
+        ) : packages.length === 0 ? (
+          <p style={styles.loading}>No packages available</p>
         ) : (
           <div style={styles.packagesGrid}>
             {packages.map((pkg) => (
@@ -196,7 +280,18 @@ export default function DataGodPage() {
             ))}
           </div>
         )}
-      </div>
+      </main>
+
+      {/* WhatsApp Floating Button */}
+      {settings.whatsappLink && (
+        <button
+          onClick={handleWhatsAppClick}
+          style={styles.whatsappButton}
+          title="Chat on WhatsApp"
+        >
+          <MessageCircle size={24} />
+        </button>
+      )}
     </div>
   );
 }
@@ -209,18 +304,15 @@ const styles: any = {
     backgroundColor: "#f4f4f9",
     color: "#333",
   },
-  container: {
-    maxWidth: "1200px",
-    margin: "20px auto",
-    padding: "20px",
-    backgroundColor: "white",
-    borderRadius: "10px",
-    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-  },
   header: {
+    backgroundColor: "white",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    padding: "20px",
     textAlign: "center" as const,
-    paddingBottom: "20px",
     borderBottom: "3px solid #ffcc00",
+  },
+  headerTop: {
+    textAlign: "left" as const,
   },
   h1: {
     color: "#1a1a1a",
@@ -237,12 +329,17 @@ const styles: any = {
     padding: "10px",
     textAlign: "center" as const,
     borderRadius: "5px",
-    marginBottom: "20px",
+    margin: "20px",
   },
   contactLink: {
     color: "#ffcc00",
     textDecoration: "none",
     fontWeight: "bold",
+  },
+  main: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    padding: "20px",
   },
   statusChecker: {
     backgroundColor: "#e9ecef",
@@ -363,5 +460,22 @@ const styles: any = {
     fontSize: "1.2em",
     fontWeight: "bold",
     color: "#1a1a1a",
+  },
+  whatsappButton: {
+    position: "fixed" as const,
+    bottom: "24px",
+    right: "24px",
+    backgroundColor: "#25D366",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "56px",
+    height: "56px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    zIndex: 50,
   },
 };
