@@ -8,19 +8,23 @@ interface Settings {
   whatsappLink?: string;
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
+  afaEnabled: boolean;
+  afaLink?: string;
 }
 
 export default function Storefront() {
   const [settings, setSettings] = useState<Settings>({
     datagodEnabled: true,
     fastnetEnabled: true,
+    afaEnabled: true,
+    whatsappLink: "",
+    afaLink: "",
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [, navigate] = useLocation();
 
   useEffect(() => {
     fetchSettings();
-    // Refresh settings every time the page is viewed
     const handleFocus = () => fetchSettings();
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
@@ -41,6 +45,14 @@ export default function Storefront() {
   const handleWhatsAppClick = () => {
     if (settings.whatsappLink) {
       window.open(settings.whatsappLink, "_blank");
+    }
+  };
+
+  const handleAfaClick = () => {
+    if (settings.afaLink) {
+      window.open(settings.afaLink, "_blank");
+    } else {
+      alert("Registration link not configured yet.");
     }
   };
 
@@ -143,10 +155,33 @@ export default function Storefront() {
               </CardContent>
             </Card>
           )}
+
+          {/* MTN AFA Registration Category */}
+          {settings.afaEnabled && (
+            <Card style={styles.categoryCard}>
+              <CardHeader>
+                <CardTitle style={{...styles.categoryTitle, color: "#6b21a8"}}>📞 MTN AFA Registration</CardTitle>
+                <CardDescription>
+                  Cheaper calls & free network calls
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p style={styles.categoryDescription}>
+                  Registration and verification takes 12-72 hours. Get access to cheaper call minutes and free calls to other registered numbers. Register yourself and loved ones today!
+                </p>
+                <Button
+                  style={{...styles.shopButton, backgroundColor: "#6b21a8"}}
+                  onClick={handleAfaClick}
+                >
+                  Register Now
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Empty State */}
-        {!settings.datagodEnabled && !settings.fastnetEnabled && (
+        {!settings.datagodEnabled && !settings.fastnetEnabled && !settings.afaEnabled && (
           <Card style={styles.emptyStateCard}>
             <CardContent style={styles.emptyStateContent}>
               <p style={styles.emptyStateText}>
@@ -252,6 +287,9 @@ const styles: any = {
     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
     transition: "box-shadow 0.3s",
     cursor: "pointer",
+    display: "flex",
+    flexDirection: "column" as const,
+    height: "100%",
   },
   categoryTitle: {
     fontSize: "1.5em",
@@ -259,6 +297,7 @@ const styles: any = {
   categoryDescription: {
     color: "#666",
     marginBottom: "16px",
+    flexGrow: 1,
   },
   shopButton: {
     width: "100%",
