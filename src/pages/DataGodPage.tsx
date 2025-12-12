@@ -64,15 +64,12 @@ export default function DataGodPage() {
 
   const fetchPackages = () => {
     try {
-      // Use the SAME key as admin dashboard
       const saved = localStorage.getItem("datagodPackages");
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Only show enabled packages
         const enabledPackages = parsed.filter((p: Package) => p.isEnabled).sort((a: any, b: any) => a.dataValueGB - b.dataValueGB);
         setPackages(enabledPackages);
       } else {
-        // Initialize with defaults
         const defaults = [
           { id: "1", packageName: "1GB", dataValueGB: 1, priceGHS: 2.5, isEnabled: true },
           { id: "2", packageName: "2GB", dataValueGB: 2, priceGHS: 4.5, isEnabled: true },
@@ -134,7 +131,6 @@ export default function DataGodPage() {
     }
 
     try {
-      // Create new order
       const order: Order = {
         id: Date.now().toString(),
         shortId: `DG${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
@@ -146,7 +142,6 @@ export default function DataGodPage() {
         createdAt: new Date(),
       };
 
-      // Save to localStorage
       const saved = localStorage.getItem("datagodOrders") || "[]";
       const orders = JSON.parse(saved);
       orders.push(order);
@@ -163,7 +158,6 @@ export default function DataGodPage() {
 
   return (
     <div style={styles.body}>
-      {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerTop}>
           <Button
@@ -185,7 +179,6 @@ export default function DataGodPage() {
         💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
       </div>
 
-      {/* Main Content */}
       <main style={styles.main}>
         {/* Status Checker */}
         <div style={styles.statusChecker}>
@@ -216,48 +209,7 @@ export default function DataGodPage() {
           )}
         </div>
 
-        {/* Purchase Section */}
-        <h2 style={styles.sectionTitle}>Purchase Data</h2>
-        <div style={styles.purchaseSection}>
-          <div style={styles.purchaseCard}>
-            <h3>Phone Number</h3>
-            <Input
-              type="tel"
-              placeholder="Enter MTN number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.purchaseCard}>
-            <h3>Selected Package</h3>
-            {selectedPackage ? (
-              <div style={styles.selectedPackageInfo}>
-                <p style={styles.packageName}>{selectedPackage.packageName}</p>
-                <p style={styles.packagePrice}>GH₵{selectedPackage.priceGHS}</p>
-              </div>
-            ) : (
-              <p style={styles.noSelection}>Select a package below</p>
-            )}
-          </div>
-
-          <div style={styles.purchaseCard}>
-            <h3>Complete Purchase</h3>
-            <Button
-              onClick={handlePurchase}
-              disabled={!phoneNumber || !selectedPackage}
-              style={{
-                ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
-              }}
-            >
-              Buy Now
-            </Button>
-          </div>
-        </div>
-
-        {/* Packages Grid */}
+        {/* Packages Grid (Moved Up) */}
         <h2 style={styles.sectionTitle}>Available Packages</h2>
         {loading ? (
           <p style={styles.loading}>Loading packages...</p>
@@ -280,9 +232,49 @@ export default function DataGodPage() {
             ))}
           </div>
         )}
+
+        {/* Purchase Section (Moved Down) */}
+        <h2 style={styles.sectionTitle}>Purchase Data</h2>
+        <div style={styles.purchaseSection}>
+          <div style={styles.purchaseCard}>
+            <h3>Phone Number</h3>
+            <Input
+              type="tel"
+              placeholder="Enter MTN number"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.purchaseCard}>
+            <h3>Selected Package</h3>
+            {selectedPackage ? (
+              <div style={styles.selectedPackageInfo}>
+                <p style={styles.packageName}>{selectedPackage.packageName}</p>
+                <p style={styles.packagePrice}>GH₵{selectedPackage.priceGHS}</p>
+              </div>
+            ) : (
+              <p style={styles.noSelection}>Select a package above</p>
+            )}
+          </div>
+
+          <div style={styles.purchaseCard}>
+            <h3>Complete Purchase</h3>
+            <Button
+              onClick={handlePurchase}
+              disabled={!phoneNumber || !selectedPackage}
+              style={{
+                ...styles.buyButton,
+                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+              }}
+            >
+              Buy Now
+            </Button>
+          </div>
+        </div>
       </main>
 
-      {/* WhatsApp Floating Button */}
       {settings.whatsappLink && (
         <button
           onClick={handleWhatsAppClick}
