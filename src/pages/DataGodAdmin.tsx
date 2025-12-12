@@ -373,7 +373,7 @@ export default function DataGodAdmin() {
                     <tbody>
                       {filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: \"center\", padding: \"20px\", color: \"#999\" }}>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
                             No orders found
                           </td>
                         </tr>
@@ -382,7 +382,7 @@ export default function DataGodAdmin() {
                           <tr key={order.id} style={styles.tableRow}>
                             <td style={styles.tableCell}>
                               <input
-                                type=\"checkbox\"
+                                type="checkbox"
                                 checked={selectedOrders.has(order.id)}
                                 onChange={() => handleToggleOrderSelect(order.id)}
                               />
@@ -397,19 +397,19 @@ export default function DataGodAdmin() {
                                 onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                                 style={{
                                   ...styles.statusSelect,
-                                  backgroundColor: order.status === \"FULFILLED\" ? \"#28a745\" : order.status === \"PROCESSING\" ? \"#ffc107\" : order.status === \"PAID\" ? \"#007bff\" : \"#dc3545\",
+                                  backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "PAID" ? "#007bff" : "#dc3545",
                                 }}
                               >
-                                <option value=\"PAID\">Paid</option>
-                                <option value=\"PROCESSING\">Processing</option>
-                                <option value=\"FULFILLED\">Fulfilled</option>
-                                <option value=\"CANCELLED\">Cancelled</option>
+                                <option value="PAID">Paid</option>
+                                <option value="PROCESSING">Processing</option>
+                                <option value="FULFILLED">Fulfilled</option>
+                                <option value="CANCELLED">Cancelled</option>
                               </select>
                             </td>
                             <td style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</td>
                             <td style={styles.tableCell}>
                               <button
-                                onClick={() => handleUpdateOrderStatus(order.id, \"FULFILLED\")}
+                                onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")}
                                 style={styles.actionButton}
                               >
                                 ✓
@@ -427,7 +427,7 @@ export default function DataGodAdmin() {
         )}
 
         {/* Packages Tab */}
-        {activeTab === \"packages\" && (
+        {activeTab === "packages" && (
           <div>
             <Card style={styles.card}>
               <CardHeader>
@@ -438,7 +438,7 @@ export default function DataGodAdmin() {
                   <div>
                     <label style={styles.label}>Package Name</label>
                     <Input
-                      placeholder=\"e.g., 1GB\"
+                      placeholder="e.g., 1GB"
                       value={newPackage.name}
                       onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
                     />
@@ -446,8 +446,8 @@ export default function DataGodAdmin() {
                   <div>
                     <label style={styles.label}>Data (GB)</label>
                     <Input
-                      type=\"number\"
-                      placeholder=\"e.g., 1\"
+                      type="number"
+                      placeholder="e.g., 1"
                       value={newPackage.gb}
                       onChange={(e) => setNewPackage({ ...newPackage, gb: e.target.value })}
                     />
@@ -455,15 +455,15 @@ export default function DataGodAdmin() {
                   <div>
                     <label style={styles.label}>Price (GH₵)</label>
                     <Input
-                      type=\"number\"
-                      placeholder=\"e.g., 2.5\"
+                      type="number"
+                      placeholder="e.g., 2.5"
                       value={newPackage.price}
                       onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
                     />
                   </div>
                 </div>
                 <Button onClick={handleAddPackage} style={styles.addButton}>
-                  <Plus size={18} style={{ marginRight: \"8px\" }} />
+                  <Plus size={18} style={{ marginRight: "8px" }} />
                   Add Package
                 </Button>
               </CardContent>
@@ -496,10 +496,10 @@ export default function DataGodAdmin() {
                               onClick={() => handleTogglePackage(pkg.id)}
                               style={{
                                 ...styles.statusButton,
-                                backgroundColor: pkg.isEnabled ? \"#28a745\" : \"#dc3545\",
+                                backgroundColor: pkg.isEnabled ? "#28a745" : "#dc3545",
                               }}
                             >
-                              {pkg.isEnabled ? \"✅ Enabled\" : \"❌ Disabled\"}
+                              {pkg.isEnabled ? "✅ Enabled" : "❌ Disabled"}
                             </button>
                           </td>
                           <td style={styles.tableCell}>
@@ -521,7 +521,7 @@ export default function DataGodAdmin() {
         )}
 
         {/* Settings Tab */}
-        {activeTab === \"settings\" && (
+        {activeTab === "settings" && (
           <Card style={styles.card}>
             <CardHeader>
               <CardTitle>Platform Settings</CardTitle>
@@ -531,8 +531,8 @@ export default function DataGodAdmin() {
                 <div>
                   <label style={styles.label}>WhatsApp Link</label>
                   <Input
-                    type=\"url\"
-                    placeholder=\"https://wa.link/...\"
+                    type="url"
+                    placeholder="https://wa.link/..."
                     value={settings.whatsAppLink}
                     onChange={(e) => setSettings({ ...settings, whatsAppLink: e.target.value })}
                   />
@@ -540,8 +540,8 @@ export default function DataGodAdmin() {
                 <div>
                   <label style={styles.label}>Transaction Charge (%)</label>
                   <Input
-                    type=\"number\"
-                    placeholder=\"1.3\"
+                    type="number"
+                    placeholder="1.3"
                     value={settings.transactionCharge}
                     onChange={(e) => setSettings({ ...settings, transactionCharge: e.target.value })}
                   />
@@ -582,166 +582,166 @@ export default function DataGodAdmin() {
 
 const styles: any = {
   body: {
-    fontFamily: \"'Segoe UI', Tahoma, Geneva, Verdana, sans-serif\",
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     margin: 0,
     padding: 0,
-    backgroundColor: \"#f4f4f9\",
-    color: \"#333\",
+    backgroundColor: "#f4f4f9",
+    color: "#333",
   },
   header: {
-    backgroundColor: \"white\",
-    boxShadow: \"0 1px 3px rgba(0, 0, 0, 0.1)\",
-    position: \"sticky\",
+    backgroundColor: "white",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+    position: "sticky",
     top: 0,
     zIndex: 40,
   },
   headerContent: {
-    maxWidth: \"1400px\",
-    margin: \"0 auto\",
-    padding: \"16px 20px\",
-    display: \"flex\",
-    alignItems: \"center\",
+    maxWidth: "1400px",
+    margin: "0 auto",
+    padding: "16px 20px",
+    display: "flex",
+    alignItems: "center",
   },
   h1: {
-    fontSize: \"1.5em\",
-    fontWeight: \"bold\",
-    color: \"#ffcc00\",
+    fontSize: "1.5em",
+    fontWeight: "bold",
+    color: "#ffcc00",
     margin: 0,
   },
   main: {
-    maxWidth: \"1400px\",
-    margin: \"0 auto\",
-    padding: \"32px 20px\",
+    maxWidth: "1400px",
+    margin: "0 auto",
+    padding: "32px 20px",
   },
   message: {
-    padding: \"16px\",
-    borderRadius: \"8px\",
-    marginBottom: \"20px\",
-    fontWeight: \"bold\",
+    padding: "16px",
+    borderRadius: "8px",
+    marginBottom: "20px",
+    fontWeight: "bold",
   },
   tabs: {
-    display: \"flex\",
-    gap: \"20px\",
-    marginBottom: \"24px\",
-    borderBottom: \"2px solid #ddd\",
+    display: "flex",
+    gap: "20px",
+    marginBottom: "24px",
+    borderBottom: "2px solid #ddd",
   },
   tab: {
-    padding: \"12px 20px\",
-    backgroundColor: \"transparent\",
-    border: \"none\",
-    cursor: \"pointer\",
-    fontSize: \"1em\",
-    color: \"#666\",
-    transition: \"all 0.3s\",
+    padding: "12px 20px",
+    backgroundColor: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "1em",
+    color: "#666",
+    transition: "all 0.3s",
   },
   card: {
-    marginBottom: \"24px\",
-    borderRadius: \"8px\",
-    boxShadow: \"0 1px 3px rgba(0, 0, 0, 0.1)\",
+    marginBottom: "24px",
+    borderRadius: "8px",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
   },
   filterSection: {
-    display: \"grid\",
-    gridTemplateColumns: \"repeat(auto-fit, minmax(200px, 1fr))\",
-    gap: \"16px\",
-    alignItems: \"flex-end\",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "16px",
+    alignItems: "flex-end",
   },
   filterGroup: {
-    display: \"flex\",
-    flexDirection: \"column\" as const,
+    display: "flex",
+    flexDirection: "column" as const,
   },
   label: {
-    fontSize: \"0.875em\",
-    fontWeight: \"bold\",
-    marginBottom: \"8px\",
+    fontSize: "0.875em",
+    fontWeight: "bold",
+    marginBottom: "8px",
   },
   select: {
-    padding: \"8px\",
-    border: \"1px solid #ddd\",
-    borderRadius: \"4px\",
-    fontSize: \"0.9em\",
+    padding: "8px",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    fontSize: "0.9em",
   },
   bulkButton: {
-    backgroundColor: \"#ffcc00\",
-    color: \"#1a1a1a\",
-    fontWeight: \"bold\",
+    backgroundColor: "#ffcc00",
+    color: "#1a1a1a",
+    fontWeight: "bold",
   },
   exportButton: {
-    backgroundColor: \"#007bff\",
-    color: \"white\",
-    fontWeight: \"bold\",
+    backgroundColor: "#007bff",
+    color: "white",
+    fontWeight: "bold",
   },
   tableWrapper: {
-    overflowX: \"auto\" as const,
+    overflowX: "auto" as const,
   },
   table: {
-    width: \"100%\",
-    borderCollapse: \"collapse\" as const,
+    width: "100%",
+    borderCollapse: "collapse" as const,
   },
   tableHeader: {
-    backgroundColor: \"#f9f9f9\",
-    borderBottom: \"2px solid #ddd\",
+    backgroundColor: "#f9f9f9",
+    borderBottom: "2px solid #ddd",
   },
   tableRow: {
-    borderBottom: \"1px solid #ddd\",
+    borderBottom: "1px solid #ddd",
   },
   tableCell: {
-    padding: \"12px\",
-    textAlign: \"left\" as const,
+    padding: "12px",
+    textAlign: "left" as const,
   },
   statusSelect: {
-    padding: \"6px 12px\",
-    color: \"white\",
-    border: \"none\",
-    borderRadius: \"4px\",
-    cursor: \"pointer\",
-    fontSize: \"0.875em\",
-    fontWeight: \"bold\",
+    padding: "6px 12px",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "0.875em",
+    fontWeight: "bold",
   },
   statusButton: {
-    padding: \"6px 12px\",
-    color: \"white\",
-    border: \"none\",
-    borderRadius: \"4px\",
-    cursor: \"pointer\",
-    fontSize: \"0.875em\",
-    fontWeight: \"bold\",
+    padding: "6px 12px",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "0.875em",
+    fontWeight: "bold",
   },
   deleteButton: {
-    padding: \"6px 12px\",
-    backgroundColor: \"#dc3545\",
-    color: \"white\",
-    border: \"none\",
-    borderRadius: \"4px\",
-    cursor: \"pointer\",
+    padding: "6px 12px",
+    backgroundColor: "#dc3545",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
   },
   actionButton: {
-    padding: \"6px 12px\",
-    backgroundColor: \"#28a745\",
-    color: \"white\",
-    border: \"none\",
-    borderRadius: \"4px\",
-    cursor: \"pointer\",
+    padding: "6px 12px",
+    backgroundColor: "#28a745",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
   },
   formGrid: {
-    display: \"grid\",
-    gridTemplateColumns: \"repeat(auto-fit, minmax(150px, 1fr))\",
-    gap: \"16px\",
-    marginBottom: \"16px\",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "16px",
+    marginBottom: "16px",
   },
   addButton: {
-    backgroundColor: \"#ffcc00\",
-    color: \"#1a1a1a\",
-    fontWeight: \"bold\",
+    backgroundColor: "#ffcc00",
+    color: "#1a1a1a",
+    fontWeight: "bold",
   },
   settingsForm: {
-    display: \"flex\",
-    flexDirection: \"column\" as const,
-    gap: \"16px\",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "16px",
   },
   saveButton: {
-    backgroundColor: \"#ffcc00\",
-    color: \"#1a1a1a\",
-    fontWeight: \"bold\",
-    width: \"fit-content\",
+    backgroundColor: "#ffcc00",
+    color: "#1a1a1a",
+    fontWeight: "bold",
+    width: "fit-content",
   },
 };
