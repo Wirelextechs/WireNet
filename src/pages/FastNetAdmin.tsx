@@ -25,6 +25,11 @@ interface Package {
 
 type Supplier = "dataxpress" | "hubnet" | "dakazina";
 
+interface WalletBalance {
+  balance: string;
+  currency: string;
+}
+
 export default function FastNetAdmin() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "packages" | "settings">("dashboard");
@@ -36,19 +41,47 @@ export default function FastNetAdmin() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
   const [activeSupplier, setActiveSupplier] = useState<Supplier>("dataxpress");
-
-  // Mock Wallet Balances
-  const walletBalances = {
-    dataxpress: { balance: 150.00, currency: "GH₵" },
-    hubnet: { balance: 45.50, currency: "GH₵" },
-    dakazina: { balance: 320.00, currency: "GH₵" },
-  };
+  const [walletBalances, setWalletBalances] = useState<{
+    dataxpress: WalletBalance;
+    hubnet: WalletBalance;
+    dakazina: WalletBalance;
+  }>({
+    dataxpress: { balance: "...", currency: "" },
+    hubnet: { balance: "...", currency: "" },
+    dakazina: { balance: "...", currency: "" },
+  });
 
   useEffect(() => {
     loadOrders();
     loadPackages();
     loadSettings();
+    fetchWalletBalances();
   }, []);
+
+  const fetchWalletBalances = async () => {
+    try {
+      const response = await fetch("/api/fastnet/balances");
+      if (response.ok) {
+        const data = await response.json();
+        setWalletBalances({
+          dataxpress: { 
+            balance: data.dataxpress.success ? data.dataxpress.balance : "Error", 
+            currency: data.dataxpress.currency || "GH₵" 
+          },
+          hubnet: { 
+            balance: data.hubnet.success ? data.hubnet.balance : "Error", 
+            currency: data.hubnet.currency || "GH₵" 
+          },
+          dakazina: { 
+            balance: data.dakazina.success ? data.dakazina.balance : "Error", 
+            currency: data.dakazina.currency || "GH₵" 
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching wallet balances:", error);
+    }
+  };
 
   const loadOrders = () => {
     try {
@@ -108,7 +141,6 @@ export default function FastNetAdmin() {
     const currentSettings = JSON.parse(localStorage.getItem("fastnetSettings") || "{}");
     localStorage.setItem("fastnetSettings", JSON.stringify({ ...currentSettings, activeSupplier: supplier }));
     
-    // Also update backend via API
     fetch("/api/fastnet/supplier", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -431,7 +463,7 @@ export default function FastNetAdmin() {
                       <div style={styles.balanceInfo}>
                         <span>Balance:</span>
                         <span style={styles.balanceValue}>
-                          {walletBalances[supplier as Supplier].currency} {walletBalances[supplier as Supplier].balance.toFixed(2)}
+                          {walletBalances[supplier as Supplier].currency} {Number(walletBalances[supplier as Supplier].balance).toFixed(2)}
                         </span>
                       </div>
                     </div>
