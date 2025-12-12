@@ -9,6 +9,8 @@ interface Settings {
   whatsappLink?: string;
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
+  afaEnabled: boolean;
+  afaLink?: string;
 }
 
 export default function AdminDashboard() {
@@ -17,9 +19,12 @@ export default function AdminDashboard() {
   const [settings, setSettings] = useState<Settings>({
     datagodEnabled: true,
     fastnetEnabled: true,
+    afaEnabled: true,
     whatsappLink: "",
+    afaLink: "",
   });
   const [whatsappLink, setWhatsappLink] = useState("");
+  const [afaLink, setAfaLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,12 +51,15 @@ export default function AdminDashboard() {
         const parsed = JSON.parse(savedSettings);
         setSettings(parsed);
         setWhatsappLink(parsed.whatsappLink || "");
+        setAfaLink(parsed.afaLink || "");
       } else {
         // Initialize with defaults
         const defaultSettings = {
           whatsappLink: "",
+          afaLink: "",
           datagodEnabled: true,
           fastnetEnabled: true,
+          afaEnabled: true,
         };
         localStorage.setItem("wirenetSettings", JSON.stringify(defaultSettings));
         setSettings(defaultSettings);
@@ -62,10 +70,7 @@ export default function AdminDashboard() {
   };
 
   const handleToggleDataGod = () => {
-    const newSettings = {
-      ...settings,
-      datagodEnabled: !settings.datagodEnabled,
-    };
+    const newSettings = { ...settings, datagodEnabled: !settings.datagodEnabled };
     setSettings(newSettings);
     localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
     setMessage("✅ DataGod toggle updated!");
@@ -73,13 +78,18 @@ export default function AdminDashboard() {
   };
 
   const handleToggleFastNet = () => {
-    const newSettings = {
-      ...settings,
-      fastnetEnabled: !settings.fastnetEnabled,
-    };
+    const newSettings = { ...settings, fastnetEnabled: !settings.fastnetEnabled };
     setSettings(newSettings);
     localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
     setMessage("✅ FastNet toggle updated!");
+    setTimeout(() => setMessage(""), 2000);
+  };
+
+  const handleToggleAfa = () => {
+    const newSettings = { ...settings, afaEnabled: !settings.afaEnabled };
+    setSettings(newSettings);
+    localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
+    setMessage("✅ AFA toggle updated!");
     setTimeout(() => setMessage(""), 2000);
   };
 
@@ -90,8 +100,10 @@ export default function AdminDashboard() {
     try {
       const updatedSettings = {
         whatsappLink,
+        afaLink,
         datagodEnabled: settings.datagodEnabled,
         fastnetEnabled: settings.fastnetEnabled,
+        afaEnabled: settings.afaEnabled,
       };
 
       // Save to localStorage
@@ -243,18 +255,41 @@ export default function AdminDashboard() {
                   />
                 </button>
               </div>
+
+              {/* AFA Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded bg-purple-50/50">
+                <div>
+                  <h3 className="font-semibold text-purple-700">MTN AFA Registration</h3>
+                  <p className="text-sm text-gray-600">Cheaper calls, free network calls</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {settings.afaEnabled ? "✅ Visible" : "❌ Hidden"}
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleAfa}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    settings.afaEnabled ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      settings.afaEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
             </CardContent>
           </Card>
 
-          {/* WhatsApp Setup */}
+          {/* Settings Setup */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings size={20} />
-                WhatsApp Setup
+                Platform Settings
               </CardTitle>
               <CardDescription>
-                Configure WhatsApp link for the floating button
+                Configure external links and integrations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -262,12 +297,25 @@ export default function AdminDashboard() {
                 <label className="text-sm font-medium">WhatsApp Link</label>
                 <Input
                   type="url"
-                  placeholder="https://wa.link/... or WhatsApp group/channel link"
+                  placeholder="https://wa.link/..."
                   value={whatsappLink}
                   onChange={(e) => setWhatsappLink(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  Paste your wa.link, WhatsApp group, or channel link here
+                  Link for the floating WhatsApp button
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">MTN AFA Registration Link</label>
+                <Input
+                  type="url"
+                  placeholder="https://forms.google.com/..."
+                  value={afaLink}
+                  onChange={(e) => setAfaLink(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  External link for AFA registration form
                 </p>
               </div>
 
