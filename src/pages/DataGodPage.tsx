@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, ArrowLeft } from "lucide-react";
+import { MessageCircle, ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
@@ -10,6 +10,12 @@ interface Package {
   dataValueGB: number;
   priceGHS: number;
   isEnabled: boolean;
+}
+
+interface CartItem {
+  id: string;
+  pkg: Package;
+  phoneNumber: string;
 }
 
 interface Order {
@@ -40,6 +46,7 @@ export default function DataGodPage() {
   const [loading, setLoading] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [statusCheckId, setStatusCheckId] = useState("");
   const [statusReport, setStatusReport] = useState<any>(null);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -141,9 +148,30 @@ export default function DataGodPage() {
     }
   };
 
-  const handlePurchase = async () => {
+  const addToCart = () => {
     if (!phoneNumber || !selectedPackage) {
       alert("Please enter phone number and select a package");
+      return;
+    }
+
+    const newItem: CartItem = {
+      id: Date.now().toString(),
+      pkg: selectedPackage,
+      phoneNumber: phoneNumber,
+    };
+
+    setCart([...cart, newItem]);
+    setPhoneNumber(""); // Clear phone number for next entry
+    setSelectedPackage(null); // Clear selection
+  };
+
+  const removeFromCart = (id: string) => {
+    setCart(cart.filter(item => item.id !== id));
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      alert("Cart is empty");
       return;
     }
 
@@ -155,10 +183,10 @@ export default function DataGodPage() {
 
     setPurchasing(true);
 
-    // Calculate total with charge
-    const amount = selectedPackage.priceGHS;
-    const charge = amount * (transactionCharge / 100);
-    const totalAmount = amount + charge;
+    // Calculate total
+    const subtotal = cart.reduce((sum, item) => sum + item.pkg.priceGHS, 0);
+    const charge = subtotal * (transactionCharge / 100);
+    const totalAmount = subtotal + charge;
 
     // Initialize Paystack V1
     const handler = (window as any).PaystackPop.setup({
@@ -166,23 +194,18 @@ export default function DataGodPage() {
       email: "customer@wirenet.com",
       amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
       currency: "GHS",
-      ref: `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      ref: `DG-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       metadata: {
         custom_fields: [
           {
-            display_name: "Phone Number",
-            variable_name: "phone_number",
-            value: phoneNumber,
-          },
-          {
-            display_name: "Package",
-            variable_name: "package",
-            value: selectedPackage.packageName,
+            display_name: "Items Count",
+            variable_name: "items_count",
+            value: cart.length.toString(),
           },
         ],
       },
       callback: (response: any) => {
-        completeOrder(response.reference);
+        completeBulkOrder(response.reference);
       },
       onClose: () => {
         alert("Transaction cancelled");
@@ -193,38 +216,43 @@ export default function DataGodPage() {
     handler.openIframe();
   };
 
-  const completeOrder = async (reference: string) => {
-    if (!selectedPackage) return;
-
+  const completeBulkOrder = async (reference: string) => {
     try {
-      // Create new order
-      const order: Order = {
-        id: Date.now().toString(),
-        shortId: reference, // Use Paystack reference as shortId
-        customerPhone: phoneNumber,
-        packageGB: selectedPackage.dataValueGB,
-        packagePrice: selectedPackage.priceGHS,
-        packageDetails: selectedPackage.packageName,
-        status: "PAID",
-        createdAt: new Date(),
-      };
-
-      // Save to localStorage
       const saved = localStorage.getItem("datagodOrders") || "[]";
-      const orders = JSON.parse(saved);
-      orders.push(order);
-      localStorage.setItem("datagodOrders", JSON.stringify(orders));
+      const existingOrders = JSON.parse(saved);
+      const newOrders: Order[] = [];
 
-      alert(`✅ Order created! Order ID: ${order.shortId}\n\nPayment successful!`);
-      setPhoneNumber("");
-      setSelectedPackage(null);
+      // Create an order for each item in cart
+      cart.forEach((item, index) => {
+        const order: Order = {
+          id: `${Date.now()}-${index}`,
+          shortId: `${reference}-${index + 1}`,
+          customerPhone: item.phoneNumber,
+          packageGB: item.pkg.dataValueGB,
+          packagePrice: item.pkg.priceGHS,
+          packageDetails: item.pkg.packageName,
+          status: "PAID",
+          createdAt: new Date(),
+        };
+        newOrders.push(order);
+      });
+
+      localStorage.setItem("datagodOrders", JSON.stringify([...existingOrders, ...newOrders]));
+
+      alert(`✅ Payment successful! ${cart.length} orders created.`);
+      setCart([]);
     } catch (error) {
       console.error("Purchase error:", error);
-      alert("❌ Error creating order");
+      alert("❌ Error creating orders");
     } finally {
       setPurchasing(false);
     }
   };
+
+  // Calculate totals for display
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.priceGHS, 0);
+  const cartCharge = cartSubtotal * (transactionCharge / 100);
+  const cartTotal = cartSubtotal + cartCharge;
 
   return (
     <div style={styles.body}>
@@ -279,7 +307,7 @@ export default function DataGodPage() {
           )}
         </div>
 
-        {/* Packages Grid (Moved Up) */}
+        {/* Packages Grid */}
         <h2 style={styles.sectionTitle}>Available Packages</h2>
         {loading ? (
           <p style={styles.loading}>Loading packages...</p>
@@ -303,7 +331,7 @@ export default function DataGodPage() {
           </div>
         )}
 
-        {/* Purchase Section (Moved Down) */}
+        {/* Purchase Section */}
         <h2 style={styles.sectionTitle}>Purchase Data</h2>
         <div style={styles.purchaseSection}>
           <div style={styles.purchaseCard}>
@@ -323,12 +351,6 @@ export default function DataGodPage() {
               <div style={styles.selectedPackageInfo}>
                 <p style={styles.packageName}>{selectedPackage.packageName}</p>
                 <p style={styles.packagePrice}>GH₵{selectedPackage.priceGHS}</p>
-                <p style={{ fontSize: "0.9em", color: "#666", marginTop: "5px" }}>
-                  + {transactionCharge}% fee: GH₵{(selectedPackage.priceGHS * (transactionCharge / 100)).toFixed(2)}
-                </p>
-                <p style={{ fontWeight: "bold", marginTop: "5px" }}>
-                  Total: GH₵{(selectedPackage.priceGHS * (1 + transactionCharge / 100)).toFixed(2)}
-                </p>
               </div>
             ) : (
               <p style={styles.noSelection}>Select a package above</p>
@@ -336,20 +358,65 @@ export default function DataGodPage() {
           </div>
 
           <div style={styles.purchaseCard}>
-            <h3>Complete Purchase</h3>
+            <h3>Add to Cart</h3>
             <Button
-              onClick={handlePurchase}
-              disabled={!phoneNumber || !selectedPackage || purchasing}
+              onClick={addToCart}
+              disabled={!phoneNumber || !selectedPackage}
               style={{
                 ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage || purchasing ? 0.5 : 1,
+                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
               }}
             >
-              {purchasing ? "Processing..." : "Pay with Paystack"}
+              Add More +
             </Button>
-            <p style={styles.paymentNote}>Secure payment via Paystack</p>
           </div>
         </div>
+
+        {/* Cart Section */}
+        {cart.length > 0 && (
+          <div style={styles.cartSection}>
+            <h2 style={styles.sectionTitle}>
+              <ShoppingCart size={24} style={{ marginRight: "10px", verticalAlign: "middle" }} />
+              Your Cart ({cart.length})
+            </h2>
+            <div style={styles.cartList}>
+              {cart.map((item) => (
+                <div key={item.id} style={styles.cartItem}>
+                  <div>
+                    <p style={styles.cartItemPhone}>{item.phoneNumber}</p>
+                    <p style={styles.cartItemPkg}>{item.pkg.packageName} - GH₵{item.pkg.priceGHS}</p>
+                  </div>
+                  <button onClick={() => removeFromCart(item.id)} style={styles.removeButton}>
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            <div style={styles.cartSummary}>
+              <div style={styles.summaryRow}>
+                <span>Subtotal:</span>
+                <span>GH₵{cartSubtotal.toFixed(2)}</span>
+              </div>
+              <div style={styles.summaryRow}>
+                <span>Fee ({transactionCharge}%):</span>
+                <span>GH₵{cartCharge.toFixed(2)}</span>
+              </div>
+              <div style={styles.summaryTotal}>
+                <span>Total:</span>
+                <span>GH₵{cartTotal.toFixed(2)}</span>
+              </div>
+              
+              <Button
+                onClick={handleCheckout}
+                disabled={purchasing}
+                style={styles.checkoutButton}
+              >
+                {purchasing ? "Processing..." : `Pay GH₵${cartTotal.toFixed(2)}`}
+              </Button>
+            </div>
+          </div>
+        )}
       </main>
 
       {settings.whatsappLink && (
@@ -546,5 +613,67 @@ const styles: any = {
     cursor: "pointer",
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
     zIndex: 50,
+  },
+  cartSection: {
+    backgroundColor: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    marginTop: "30px",
+  },
+  cartList: {
+    marginBottom: "20px",
+  },
+  cartItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px",
+    borderBottom: "1px solid #eee",
+  },
+  cartItemPhone: {
+    fontWeight: "bold",
+    margin: 0,
+  },
+  cartItemPkg: {
+    color: "#666",
+    margin: 0,
+    fontSize: "0.9em",
+  },
+  removeButton: {
+    background: "none",
+    border: "none",
+    color: "#dc3545",
+    cursor: "pointer",
+  },
+  cartSummary: {
+    borderTop: "2px solid #eee",
+    paddingTop: "15px",
+  },
+  summaryRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "5px",
+    color: "#666",
+  },
+  summaryTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "10px",
+    marginBottom: "20px",
+    fontSize: "1.2em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  checkoutButton: {
+    width: "100%",
+    padding: "15px",
+    backgroundColor: "#28a745",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "1.2em",
   },
 };

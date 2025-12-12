@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface Package {
@@ -9,6 +9,12 @@ interface Package {
   dataAmount: string;
   price: number;
   deliveryTime: string;
+}
+
+interface CartItem {
+  id: string;
+  pkg: Package;
+  phoneNumber: string;
 }
 
 export default function FastNetPage() {
@@ -19,6 +25,7 @@ export default function FastNetPage() {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [transactionCharge, setTransactionCharge] = useState(1.3);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   useEffect(() => {
     fetchPackages();
@@ -64,60 +71,154 @@ export default function FastNetPage() {
     }
   };
 
-  const handlePurchase = async () => {
+  const addToCart = () => {
     if (!phoneNumber || !selectedPackage) {
       alert("Please enter phone number and select a package");
       return;
     }
 
+    const newItem: CartItem = {
+      id: Date.now().toString(),
+      pkg: selectedPackage,
+      phoneNumber: phoneNumber,
+    };
+
+    setCart([...cart, newItem]);
+    setPhoneNumber("");
+    setSelectedPackage(null);
+  };
+
+  const removeFromCart = (id: string) => {
+    setCart(cart.filter(item => item.id !== id));
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      alert("Cart is empty");
+      return;
+    }
+
+    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      alert("Paystack public key not found.");
+      return;
+    }
+
     setPurchasing(true);
 
-    // Calculate total with charge
+    const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+    const charge = subtotal * (transactionCharge / 100);
+    const totalAmount = subtotal + charge;
+
+    try {
+      // Ensure Paystack is loaded
+      if (!(window as any).PaystackPop) {
+        alert("Paystack failed to load. Please refresh the page.");
+        setPurchasing(false);
+        return;
+      }
+
+      const handler = (window as any).PaystackPop.setup({
+        key: publicKey,
+        email: "customer@wirenet.com",
+        amount: Math.ceil(totalAmount * 100),
+        currency: "GHS",
+        ref: `FN-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Items Count",
+              variable_name: "items_count",
+              value: cart.length.toString(),
+            },
+          ],
+        },
+        callback: (response: any) => {
+          completeBulkOrder(response.reference);
+        },
+        onClose: () => {
+          alert("Transaction cancelled");
+          setPurchasing(false);
+        },
+      });
+
+      handler.openIframe();
+    } catch (error) {
+      console.error("Paystack error:", error);
+      alert("Failed to initialize payment. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
+  const handleSinglePurchase = async () => {
+    if (!phoneNumber || !selectedPackage) {
+      alert("Please enter phone number and select a package");
+      return;
+    }
+
+    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      alert("Paystack public key not found.");
+      return;
+    }
+
+    setPurchasing(true);
+
     const amount = selectedPackage.price;
     const charge = amount * (transactionCharge / 100);
     const totalAmount = amount + charge;
 
-    // Initialize Paystack
-    const paystack = new (window as any).PaystackPop();
-    paystack.newTransaction({
-      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-      email: "customer@wirenet.com",
-      amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
-      currency: "GHS",
-      ref: `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      metadata: {
-        custom_fields: [
-          {
-            display_name: "Phone Number",
-            variable_name: "phone_number",
-            value: phoneNumber,
-          },
-          {
-            display_name: "Package",
-            variable_name: "package",
-            value: selectedPackage.dataAmount,
-          },
-        ],
-      },
-      onSuccess: (transaction: any) => {
-        completeOrder(transaction.reference);
-      },
-      onCancel: () => {
-        alert("Transaction cancelled");
+    try {
+      if (!(window as any).PaystackPop) {
+        alert("Paystack failed to load. Please refresh the page.");
         setPurchasing(false);
-      },
-    });
+        return;
+      }
+
+      const handler = (window as any).PaystackPop.setup({
+        key: publicKey,
+        email: "customer@wirenet.com",
+        amount: Math.ceil(totalAmount * 100),
+        currency: "GHS",
+        ref: `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Phone Number",
+              variable_name: "phone_number",
+              value: phoneNumber,
+            },
+            {
+              display_name: "Package",
+              variable_name: "package",
+              value: selectedPackage.dataAmount,
+            },
+          ],
+        },
+        callback: (response: any) => {
+          completeSingleOrder(response.reference);
+        },
+        onClose: () => {
+          alert("Transaction cancelled");
+          setPurchasing(false);
+        },
+      });
+
+      handler.openIframe();
+    } catch (error) {
+      console.error("Paystack error:", error);
+      alert("Failed to initialize payment. Please try again.");
+      setPurchasing(false);
+    }
   };
 
-  const completeOrder = async (reference: string) => {
+  const completeSingleOrder = async (reference: string) => {
     if (!selectedPackage) return;
 
     try {
       const response = await fetch("/api/fastnet/purchase", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phoneNumber,
           dataAmount: selectedPackage.dataAmount,
@@ -133,15 +234,51 @@ export default function FastNetPage() {
         setPhoneNumber("");
         setSelectedPackage(null);
       } else {
-        alert(`❌ Order fulfillment failed: ${result.message}\nPlease contact support with reference: ${reference}`);
+        alert(`❌ Order fulfillment failed: ${result.message}`);
       }
     } catch (error) {
       console.error("Order completion error:", error);
-      alert(`❌ An error occurred. Reference: ${reference}`);
+      alert("❌ Error processing order");
     } finally {
       setPurchasing(false);
     }
   };
+
+  const completeBulkOrder = async (reference: string) => {
+    try {
+      let successCount = 0;
+      
+      for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        const itemRef = `${reference}-${i + 1}`;
+        
+        const response = await fetch("/api/fastnet/purchase", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phoneNumber: item.phoneNumber,
+            dataAmount: item.pkg.dataAmount,
+            price: item.pkg.price,
+            reference: itemRef,
+          }),
+        });
+
+        if (response.ok) successCount++;
+      }
+
+      alert(`✅ Payment successful! ${successCount}/${cart.length} orders processed.`);
+      setCart([]);
+    } catch (error) {
+      console.error("Order completion error:", error);
+      alert("❌ Error processing orders");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+  const cartCharge = cartSubtotal * (transactionCharge / 100);
+  const cartTotal = cartSubtotal + cartCharge;
 
   return (
     <div style={styles.body}>
@@ -220,9 +357,23 @@ export default function FastNetPage() {
           </div>
 
           <div style={styles.purchaseCard}>
+            <h3>Add to Cart</h3>
+            <Button
+              onClick={addToCart}
+              disabled={!phoneNumber || !selectedPackage}
+              style={{
+                ...styles.buyButton,
+                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+                marginBottom: "10px",
+                backgroundColor: "#6c757d",
+              }}
+            >
+              Add More +
+            </Button>
+            
             <h3>Complete Purchase</h3>
             <Button
-              onClick={handlePurchase}
+              onClick={handleSinglePurchase}
               disabled={!phoneNumber || !selectedPackage || purchasing}
               style={{
                 ...styles.buyButton,
@@ -234,6 +385,51 @@ export default function FastNetPage() {
             <p style={styles.paymentNote}>Secure payment via Paystack</p>
           </div>
         </div>
+
+        {cart.length > 0 && (
+          <div style={styles.cartSection}>
+            <h2 style={styles.sectionTitle}>
+              <ShoppingCart size={24} style={{ marginRight: "10px", verticalAlign: "middle" }} />
+              Your Cart ({cart.length})
+            </h2>
+            <div style={styles.cartList}>
+              {cart.map((item) => (
+                <div key={item.id} style={styles.cartItem}>
+                  <div>
+                    <p style={styles.cartItemPhone}>{item.phoneNumber}</p>
+                    <p style={styles.cartItemPkg}>{item.pkg.dataAmount} - GH₵{item.pkg.price}</p>
+                  </div>
+                  <button onClick={() => removeFromCart(item.id)} style={styles.removeButton}>
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            <div style={styles.cartSummary}>
+              <div style={styles.summaryRow}>
+                <span>Subtotal:</span>
+                <span>GH₵{cartSubtotal.toFixed(2)}</span>
+              </div>
+              <div style={styles.summaryRow}>
+                <span>Fee ({transactionCharge}%):</span>
+                <span>GH₵{cartCharge.toFixed(2)}</span>
+              </div>
+              <div style={styles.summaryTotal}>
+                <span>Total:</span>
+                <span>GH₵{cartTotal.toFixed(2)}</span>
+              </div>
+              
+              <Button
+                onClick={handleCheckout}
+                disabled={purchasing}
+                style={styles.checkoutButton}
+              >
+                {purchasing ? "Processing..." : `Pay GH₵${cartTotal.toFixed(2)}`}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div style={styles.featuresSection}>
           <h2 style={styles.sectionTitle}>Why Choose FastNet?</h2>
@@ -418,5 +614,67 @@ const styles: any = {
     borderRadius: "8px",
     border: "1px solid #007bff",
     textAlign: "center" as const,
+  },
+  cartSection: {
+    backgroundColor: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    marginTop: "30px",
+  },
+  cartList: {
+    marginBottom: "20px",
+  },
+  cartItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px",
+    borderBottom: "1px solid #eee",
+  },
+  cartItemPhone: {
+    fontWeight: "bold",
+    margin: 0,
+  },
+  cartItemPkg: {
+    color: "#666",
+    margin: 0,
+    fontSize: "0.9em",
+  },
+  removeButton: {
+    background: "none",
+    border: "none",
+    color: "#dc3545",
+    cursor: "pointer",
+  },
+  cartSummary: {
+    borderTop: "2px solid #eee",
+    paddingTop: "15px",
+  },
+  summaryRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "5px",
+    color: "#666",
+  },
+  summaryTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "10px",
+    marginBottom: "20px",
+    fontSize: "1.2em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  checkoutButton: {
+    width: "100%",
+    padding: "15px",
+    backgroundColor: "#28a745",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "1.2em",
   },
 };
