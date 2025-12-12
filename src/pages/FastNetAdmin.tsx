@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Download, ShoppingCart, Package as PackageIcon, Wallet, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ShoppingCart, Package as PackageIcon, Clock, CheckCircle2, Settings as SettingsIcon } from "lucide-react";
 
 interface Order {
   id: string;
@@ -23,6 +23,8 @@ interface Package {
   isEnabled: boolean;
 }
 
+type Supplier = "dataxpress" | "hubnet" | "dakazina";
+
 export default function FastNetAdmin() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "packages" | "settings">("dashboard");
@@ -33,6 +35,7 @@ export default function FastNetAdmin() {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
+  const [activeSupplier, setActiveSupplier] = useState<Supplier>("dataxpress");
 
   // Mock Wallet Balances
   const walletBalances = {
@@ -44,18 +47,16 @@ export default function FastNetAdmin() {
   useEffect(() => {
     loadOrders();
     loadPackages();
+    loadSettings();
   }, []);
 
   const loadOrders = () => {
     try {
-      // In a real app, this would fetch from the FastNet database
-      // For now, we'll use a separate localStorage key or mock data
       const saved = localStorage.getItem("fastnetOrders");
       if (saved) {
         const parsed = JSON.parse(saved);
         setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })));
       } else {
-        // Mock orders for demonstration
         const mockOrders: Order[] = [
           { id: "1", shortId: "FN123", customerPhone: "0244123456", packageDetails: "1GB", packagePrice: 5, status: "FULFILLED", createdAt: new Date() },
           { id: "2", shortId: "FN124", customerPhone: "0544123456", packageDetails: "5GB", packagePrice: 20, status: "PROCESSING", createdAt: new Date() },
@@ -88,6 +89,34 @@ export default function FastNetAdmin() {
     } catch (error) {
       console.error("Error loading packages:", error);
     }
+  };
+
+  const loadSettings = () => {
+    try {
+      const saved = localStorage.getItem("fastnetSettings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setActiveSupplier(parsed.activeSupplier || "dataxpress");
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
+
+  const handleSupplierChange = (supplier: Supplier) => {
+    setActiveSupplier(supplier);
+    const currentSettings = JSON.parse(localStorage.getItem("fastnetSettings") || "{}");
+    localStorage.setItem("fastnetSettings", JSON.stringify({ ...currentSettings, activeSupplier: supplier }));
+    
+    // Also update backend via API
+    fetch("/api/fastnet/supplier", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplier }),
+    }).catch(console.error);
+
+    setMessage(`✅ Active supplier changed to ${supplier.toUpperCase()}`);
+    setTimeout(() => setMessage(""), 3000);
   };
 
   // --- Dashboard Stats ---
@@ -177,6 +206,9 @@ export default function FastNetAdmin() {
             <ArrowLeft size={18} style={{ marginRight: "8px" }} /> Back
           </Button>
           <h1 style={styles.h1}>FastNet Admin Dashboard</h1>
+          <div style={styles.activeSupplierBadge}>
+            Active: {activeSupplier.toUpperCase()}
+          </div>
         </div>
       </header>
 
@@ -371,22 +403,39 @@ export default function FastNetAdmin() {
 
         {activeTab === "settings" && (
           <div style={styles.dashboardGrid}>
-            <Card style={styles.statCard}>
-              <CardHeader><CardTitle>Wallet Balances</CardTitle></CardHeader>
+            {/* Supplier Management */}
+            <Card style={styles.card}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <SettingsIcon size={20} />
+                  Supplier Management
+                </CardTitle>
+                <CardDescription>Select active supplier for order fulfillment</CardDescription>
+              </CardHeader>
               <CardContent>
-                <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-                  <div style={styles.walletItem}>
-                    <span>DataXpress</span>
-                    <span style={styles.walletValue}>{walletBalances.dataxpress.currency} {walletBalances.dataxpress.balance.toFixed(2)}</span>
-                  </div>
-                  <div style={styles.walletItem}>
-                    <span>Hubnet</span>
-                    <span style={styles.walletValue}>{walletBalances.hubnet.currency} {walletBalances.hubnet.balance.toFixed(2)}</span>
-                  </div>
-                  <div style={styles.walletItem}>
-                    <span>DataKazina</span>
-                    <span style={styles.walletValue}>{walletBalances.dakazina.currency} {walletBalances.dakazina.balance.toFixed(2)}</span>
-                  </div>
+                <div style={styles.supplierGrid}>
+                  {["dataxpress", "hubnet", "dakazina"].map((supplier) => (
+                    <div 
+                      key={supplier}
+                      onClick={() => handleSupplierChange(supplier as Supplier)}
+                      style={{
+                        ...styles.supplierCard,
+                        borderColor: activeSupplier === supplier ? "#007bff" : "#ddd",
+                        backgroundColor: activeSupplier === supplier ? "#f0f7ff" : "white",
+                      }}
+                    >
+                      <div style={styles.supplierHeader}>
+                        <span style={styles.supplierName}>{supplier.charAt(0).toUpperCase() + supplier.slice(1)}</span>
+                        {activeSupplier === supplier && <span style={styles.activeBadge}>ACTIVE</span>}
+                      </div>
+                      <div style={styles.balanceInfo}>
+                        <span>Balance:</span>
+                        <span style={styles.balanceValue}>
+                          {walletBalances[supplier as Supplier].currency} {walletBalances[supplier as Supplier].balance.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -400,8 +449,9 @@ export default function FastNetAdmin() {
 const styles: any = {
   body: { fontFamily: "'Segoe UI', sans-serif", backgroundColor: "#f0f4f8", minHeight: "100vh", color: "#333" },
   header: { backgroundColor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 40 },
-  headerContent: { maxWidth: "1400px", margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center" },
+  headerContent: { maxWidth: "1400px", margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" },
   h1: { fontSize: "1.5em", fontWeight: "bold", color: "#007bff", margin: 0 },
+  activeSupplierBadge: { backgroundColor: "#e6f7ff", color: "#007bff", padding: "4px 12px", borderRadius: "20px", fontSize: "0.85em", fontWeight: "bold", border: "1px solid #b3e0ff" },
   main: { maxWidth: "1400px", margin: "0 auto", padding: "32px 20px" },
   message: { padding: "16px", borderRadius: "8px", marginBottom: "20px", fontWeight: "bold" },
   tabs: { display: "flex", gap: "20px", marginBottom: "24px", borderBottom: "2px solid #ddd" },
@@ -428,6 +478,11 @@ const styles: any = {
   actionButton: { padding: "6px 12px", backgroundColor: "#28a745", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" },
   formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "16px", marginBottom: "16px" },
   addButton: { backgroundColor: "#007bff", color: "white", fontWeight: "bold" },
-  walletItem: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #eee" },
-  walletValue: { fontWeight: "bold", color: "#28a745" },
+  supplierGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" },
+  supplierCard: { padding: "20px", borderRadius: "8px", border: "2px solid #ddd", cursor: "pointer", transition: "all 0.2s" },
+  supplierHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" },
+  supplierName: { fontSize: "1.2em", fontWeight: "bold", color: "#333" },
+  activeBadge: { backgroundColor: "#28a745", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "0.75em", fontWeight: "bold" },
+  balanceInfo: { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#666" },
+  balanceValue: { fontWeight: "bold", color: "#333", fontSize: "1.1em" },
 };
