@@ -63,18 +63,26 @@ export default function FastNetAdmin() {
       const response = await fetch("/api/fastnet/balances");
       if (response.ok) {
         const data = await response.json();
+        
+        // Helper to safely format balance
+        const formatBalance = (supplierData: any) => {
+          if (!supplierData || !supplierData.success) return "Error";
+          const balance = parseFloat(supplierData.balance);
+          return isNaN(balance) ? "0.00" : balance.toFixed(2);
+        };
+
         setWalletBalances({
           dataxpress: { 
-            balance: data.dataxpress.success ? data.dataxpress.balance : "Error", 
-            currency: data.dataxpress.currency || "GH₵" 
+            balance: formatBalance(data.dataxpress), 
+            currency: data.dataxpress?.currency || "GH₵" 
           },
           hubnet: { 
-            balance: data.hubnet.success ? data.hubnet.balance : "Error", 
-            currency: data.hubnet.currency || "GH₵" 
+            balance: formatBalance(data.hubnet), 
+            currency: data.hubnet?.currency || "GH₵" 
           },
           dakazina: { 
-            balance: data.dakazina.success ? data.dakazina.balance : "Error", 
-            currency: data.dakazina.currency || "GH₵" 
+            balance: formatBalance(data.dakazina), 
+            currency: data.dakazina?.currency || "GH₵" 
           },
         });
       }
@@ -463,7 +471,7 @@ export default function FastNetAdmin() {
                       <div style={styles.balanceInfo}>
                         <span>Balance:</span>
                         <span style={styles.balanceValue}>
-                          {walletBalances[supplier as Supplier].currency} {Number(walletBalances[supplier as Supplier].balance).toFixed(2)}
+                          {walletBalances[supplier as Supplier].currency} {walletBalances[supplier as Supplier].balance}
                         </span>
                       </div>
                     </div>
