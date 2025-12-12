@@ -50,6 +50,7 @@ export default function FastNetAdmin() {
     hubnet: { balance: "...", currency: "" },
     dakazina: { balance: "...", currency: "" },
   });
+  const [settings, setSettings] = useState({ transactionCharge: "1.3" });
 
   useEffect(() => {
     loadOrders();
@@ -64,7 +65,6 @@ export default function FastNetAdmin() {
       if (response.ok) {
         const data = await response.json();
         
-        // Helper to safely format balance
         const formatBalance = (supplierData: any) => {
           if (!supplierData || !supplierData.success) return "Error";
           const balance = parseFloat(supplierData.balance);
@@ -138,6 +138,7 @@ export default function FastNetAdmin() {
       if (saved) {
         const parsed = JSON.parse(saved);
         setActiveSupplier(parsed.activeSupplier || "dataxpress");
+        setSettings({ transactionCharge: parsed.transactionCharge || "1.3" });
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -157,6 +158,16 @@ export default function FastNetAdmin() {
 
     setMessage(`✅ Active supplier changed to ${supplier.toUpperCase()}`);
     setTimeout(() => setMessage(""), 3000);
+  };
+
+  const handleSaveSettings = () => {
+    const currentSettings = JSON.parse(localStorage.getItem("fastnetSettings") || "{}");
+    localStorage.setItem("fastnetSettings", JSON.stringify({
+      ...currentSettings,
+      transactionCharge: settings.transactionCharge,
+    }));
+    setMessage("✅ Settings saved");
+    setTimeout(() => setMessage(""), 2000);
   };
 
   // --- Dashboard Stats ---
@@ -479,6 +490,32 @@ export default function FastNetAdmin() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Transaction Charge Settings */}
+            <Card style={styles.card}>
+              <CardHeader>
+                <CardTitle>Transaction Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div style={styles.settingsForm}>
+                  <div>
+                    <label style={styles.label}>Transaction Charge (%)</label>
+                    <Input
+                      type="number"
+                      placeholder="1.3"
+                      value={settings.transactionCharge}
+                      onChange={(e) => setSettings({ ...settings, transactionCharge: e.target.value })}
+                    />
+                    <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>
+                      Percentage charge added to each transaction
+                    </p>
+                  </div>
+                  <Button onClick={handleSaveSettings} style={styles.saveButton}>
+                    Save Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </main>
@@ -525,4 +562,6 @@ const styles: any = {
   activeBadge: { backgroundColor: "#28a745", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "0.75em", fontWeight: "bold" },
   balanceInfo: { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#666" },
   balanceValue: { fontWeight: "bold", color: "#333", fontSize: "1.1em" },
+  settingsForm: { display: "flex", flexDirection: "column", gap: "16px" },
+  saveButton: { backgroundColor: "#007bff", color: "white", fontWeight: "bold", width: "fit-content" },
 };
