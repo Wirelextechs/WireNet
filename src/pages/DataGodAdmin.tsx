@@ -56,7 +56,7 @@ export default function DataGodAdmin() {
       const saved = localStorage.getItem("datagodOrders");
       if (saved) {
         const parsed = JSON.parse(saved);
-        setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })));
+        setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })).sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()));
       }
     } catch (error) {
       console.error("Error loading orders:", error);

@@ -96,7 +96,7 @@ export default function FastNetAdmin() {
       const saved = localStorage.getItem("fastnetOrders");
       if (saved) {
         const parsed = JSON.parse(saved);
-        setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })));
+        setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })).sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()));
       } else {
         const mockOrders: Order[] = [
           { id: "1", shortId: "FN123", customerPhone: "0244123456", packageDetails: "1GB", packagePrice: 5, status: "FULFILLED", createdAt: new Date() },
