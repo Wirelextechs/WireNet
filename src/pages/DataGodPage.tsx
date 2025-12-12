@@ -147,6 +147,12 @@ export default function DataGodPage() {
       return;
     }
 
+    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      alert("Paystack public key not found. Please check Vercel environment variables (VITE_PAYSTACK_PUBLIC_KEY).");
+      return;
+    }
+
     setPurchasing(true);
 
     // Calculate total with charge
@@ -154,10 +160,9 @@ export default function DataGodPage() {
     const charge = amount * (transactionCharge / 100);
     const totalAmount = amount + charge;
 
-    // Initialize Paystack
-    const paystack = new (window as any).PaystackPop();
-    paystack.newTransaction({
-      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+    // Initialize Paystack V1
+    const handler = (window as any).PaystackPop.setup({
+      key: publicKey,
       email: "customer@wirenet.com",
       amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
       currency: "GHS",
@@ -176,14 +181,16 @@ export default function DataGodPage() {
           },
         ],
       },
-      onSuccess: (transaction: any) => {
-        completeOrder(transaction.reference);
+      callback: (response: any) => {
+        completeOrder(response.reference);
       },
-      onCancel: () => {
+      onClose: () => {
         alert("Transaction cancelled");
         setPurchasing(false);
       },
     });
+
+    handler.openIframe();
   };
 
   const completeOrder = async (reference: string) => {
@@ -487,12 +494,6 @@ const styles: any = {
     cursor: "pointer",
     fontWeight: "bold",
     fontSize: "1.1em",
-  },
-  paymentNote: {
-    fontSize: "0.8em",
-    color: "#999",
-    textAlign: "center" as const,
-    marginTop: "10px",
   },
   loading: {
     textAlign: "center" as const,
