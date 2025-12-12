@@ -18,24 +18,45 @@ export default function FastNetPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [purchasing, setPurchasing] = useState(false);
+  const [transactionCharge, setTransactionCharge] = useState(1.3);
 
   useEffect(() => {
     fetchPackages();
+    loadSettings();
   }, []);
+
+  const loadSettings = () => {
+    try {
+      const saved = localStorage.getItem("fastnetSettings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.transactionCharge) {
+          setTransactionCharge(parseFloat(parsed.transactionCharge));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+  };
 
   const fetchPackages = async () => {
     try {
-      // Mock data - in production, fetch from database
-      const mockPackages: Package[] = [
-        { id: "1", dataAmount: "1GB", price: 5, deliveryTime: "5-10 mins" },
-        { id: "2", dataAmount: "2GB", price: 9, deliveryTime: "5-10 mins" },
-        { id: "3", dataAmount: "5GB", price: 20, deliveryTime: "10-15 mins" },
-        { id: "4", dataAmount: "10GB", price: 35, deliveryTime: "15-20 mins" },
-        { id: "5", dataAmount: "20GB", price: 65, deliveryTime: "20 mins" },
-        { id: "6", dataAmount: "50GB", price: 150, deliveryTime: "20 mins" },
-        { id: "7", dataAmount: "100GB", price: 280, deliveryTime: "20 mins" },
-      ];
-      setPackages(mockPackages);
+      const saved = localStorage.getItem("fastnetPackages");
+      if (saved) {
+        setPackages(JSON.parse(saved).sort((a: any, b: any) => parseFloat(a.dataAmount) - parseFloat(b.dataAmount)));
+      } else {
+        const defaults = [
+          { id: "1", dataAmount: "1GB", price: 5, deliveryTime: "5-10 mins" },
+          { id: "2", dataAmount: "2GB", price: 9, deliveryTime: "5-10 mins" },
+          { id: "3", dataAmount: "5GB", price: 20, deliveryTime: "10-15 mins" },
+          { id: "4", dataAmount: "10GB", price: 35, deliveryTime: "15-20 mins" },
+          { id: "5", dataAmount: "20GB", price: 65, deliveryTime: "20 mins" },
+          { id: "6", dataAmount: "50GB", price: 150, deliveryTime: "20 mins" },
+          { id: "7", dataAmount: "100GB", price: 280, deliveryTime: "20 mins" },
+        ];
+        localStorage.setItem("fastnetPackages", JSON.stringify(defaults));
+        setPackages(defaults);
+      }
       setLoading(false);
     } catch (error) {
       console.error("Error fetching packages:", error);
@@ -51,6 +72,46 @@ export default function FastNetPage() {
 
     setPurchasing(true);
 
+    // Calculate total with charge
+    const amount = selectedPackage.price;
+    const charge = amount * (transactionCharge / 100);
+    const totalAmount = amount + charge;
+
+    // Initialize Paystack
+    const paystack = new (window as any).PaystackPop();
+    paystack.newTransaction({
+      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+      email: "customer@wirenet.com",
+      amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
+      currency: "GHS",
+      ref: `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      metadata: {
+        custom_fields: [
+          {
+            display_name: "Phone Number",
+            variable_name: "phone_number",
+            value: phoneNumber,
+          },
+          {
+            display_name: "Package",
+            variable_name: "package",
+            value: selectedPackage.dataAmount,
+          },
+        ],
+      },
+      onSuccess: (transaction: any) => {
+        completeOrder(transaction.reference);
+      },
+      onCancel: () => {
+        alert("Transaction cancelled");
+        setPurchasing(false);
+      },
+    });
+  };
+
+  const completeOrder = async (reference: string) => {
+    if (!selectedPackage) return;
+
     try {
       const response = await fetch("/api/fastnet/purchase", {
         method: "POST",
@@ -61,6 +122,7 @@ export default function FastNetPage() {
           phoneNumber,
           dataAmount: selectedPackage.dataAmount,
           price: selectedPackage.price,
+          reference,
         }),
       });
 
@@ -71,11 +133,11 @@ export default function FastNetPage() {
         setPhoneNumber("");
         setSelectedPackage(null);
       } else {
-        alert(`❌ Purchase failed: ${result.message}`);
+        alert(`❌ Order fulfillment failed: ${result.message}\nPlease contact support with reference: ${reference}`);
       }
     } catch (error) {
-      console.error("Purchase error:", error);
-      alert("❌ An error occurred while processing your request.");
+      console.error("Order completion error:", error);
+      alert(`❌ An error occurred. Reference: ${reference}`);
     } finally {
       setPurchasing(false);
     }
@@ -83,7 +145,6 @@ export default function FastNetPage() {
 
   return (
     <div style={styles.body}>
-      {/* Header */}
       <div style={styles.container}>
         <div style={styles.header}>
           <Button
@@ -104,50 +165,6 @@ export default function FastNetPage() {
           💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
         </div>
 
-        {/* Purchase Section */}
-        <h2 style={styles.sectionTitle}>Purchase Data</h2>
-        <div style={styles.purchaseSection}>
-          <div style={styles.purchaseCard}>
-            <h3>Phone Number</h3>
-            <Input
-              type="tel"
-              placeholder="Enter MTN number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.purchaseCard}>
-            <h3>Selected Package</h3>
-            {selectedPackage ? (
-              <div style={styles.selectedPackageInfo}>
-                <p style={styles.packageName}>{selectedPackage.dataAmount}</p>
-                <p style={styles.packagePrice}>GH₵{selectedPackage.price}</p>
-                <p style={styles.deliveryTime}>⏱️ {selectedPackage.deliveryTime}</p>
-              </div>
-            ) : (
-              <p style={styles.noSelection}>Select a package below</p>
-            )}
-          </div>
-
-          <div style={styles.purchaseCard}>
-            <h3>Complete Purchase</h3>
-            <Button
-              onClick={handlePurchase}
-              disabled={!phoneNumber || !selectedPackage || purchasing}
-              style={{
-                ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage || purchasing ? 0.5 : 1,
-              }}
-            >
-              {purchasing ? "Processing..." : "Buy Now"}
-            </Button>
-            <p style={styles.paymentNote}>Secure payment via Paystack</p>
-          </div>
-        </div>
-
-        {/* Packages Grid */}
         <h2 style={styles.sectionTitle}>Available Packages</h2>
         {loading ? (
           <p style={styles.loading}>Loading packages...</p>
@@ -170,7 +187,54 @@ export default function FastNetPage() {
           </div>
         )}
 
-        {/* Features Section */}
+        <h2 style={styles.sectionTitle}>Purchase Data</h2>
+        <div style={styles.purchaseSection}>
+          <div style={styles.purchaseCard}>
+            <h3>Phone Number</h3>
+            <Input
+              type="tel"
+              placeholder="Enter MTN number"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.purchaseCard}>
+            <h3>Selected Package</h3>
+            {selectedPackage ? (
+              <div style={styles.selectedPackageInfo}>
+                <p style={styles.packageName}>{selectedPackage.dataAmount}</p>
+                <p style={styles.packagePrice}>GH₵{selectedPackage.price}</p>
+                <p style={styles.deliveryTime}>⏱️ {selectedPackage.deliveryTime}</p>
+                <p style={{ fontSize: "0.9em", color: "#666", marginTop: "5px" }}>
+                  + {transactionCharge}% fee: GH₵{(selectedPackage.price * (transactionCharge / 100)).toFixed(2)}
+                </p>
+                <p style={{ fontWeight: "bold", marginTop: "5px" }}>
+                  Total: GH₵{(selectedPackage.price * (1 + transactionCharge / 100)).toFixed(2)}
+                </p>
+              </div>
+            ) : (
+              <p style={styles.noSelection}>Select a package above</p>
+            )}
+          </div>
+
+          <div style={styles.purchaseCard}>
+            <h3>Complete Purchase</h3>
+            <Button
+              onClick={handlePurchase}
+              disabled={!phoneNumber || !selectedPackage || purchasing}
+              style={{
+                ...styles.buyButton,
+                opacity: !phoneNumber || !selectedPackage || purchasing ? 0.5 : 1,
+              }}
+            >
+              {purchasing ? "Processing..." : "Pay with Paystack"}
+            </Button>
+            <p style={styles.paymentNote}>Secure payment via Paystack</p>
+          </div>
+        </div>
+
         <div style={styles.featuresSection}>
           <h2 style={styles.sectionTitle}>Why Choose FastNet?</h2>
           <div style={styles.featuresGrid}>

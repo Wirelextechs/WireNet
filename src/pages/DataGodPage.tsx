@@ -43,10 +43,13 @@ export default function DataGodPage() {
   const [statusCheckId, setStatusCheckId] = useState("");
   const [statusReport, setStatusReport] = useState<any>(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [transactionCharge, setTransactionCharge] = useState(1.3);
 
   useEffect(() => {
     fetchSettings();
     fetchPackages();
+    loadTransactionSettings();
   }, []);
 
   const fetchSettings = () => {
@@ -59,6 +62,20 @@ export default function DataGodPage() {
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
+    }
+  };
+
+  const loadTransactionSettings = () => {
+    try {
+      const saved = localStorage.getItem("datagodSettings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.transactionCharge) {
+          setTransactionCharge(parseFloat(parsed.transactionCharge));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading transaction settings:", error);
     }
   };
 
@@ -130,10 +147,53 @@ export default function DataGodPage() {
       return;
     }
 
+    setPurchasing(true);
+
+    // Calculate total with charge
+    const amount = selectedPackage.priceGHS;
+    const charge = amount * (transactionCharge / 100);
+    const totalAmount = amount + charge;
+
+    // Initialize Paystack
+    const paystack = new (window as any).PaystackPop();
+    paystack.newTransaction({
+      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+      email: "customer@wirenet.com",
+      amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
+      currency: "GHS",
+      ref: `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      metadata: {
+        custom_fields: [
+          {
+            display_name: "Phone Number",
+            variable_name: "phone_number",
+            value: phoneNumber,
+          },
+          {
+            display_name: "Package",
+            variable_name: "package",
+            value: selectedPackage.packageName,
+          },
+        ],
+      },
+      onSuccess: (transaction: any) => {
+        completeOrder(transaction.reference);
+      },
+      onCancel: () => {
+        alert("Transaction cancelled");
+        setPurchasing(false);
+      },
+    });
+  };
+
+  const completeOrder = async (reference: string) => {
+    if (!selectedPackage) return;
+
     try {
+      // Create new order
       const order: Order = {
         id: Date.now().toString(),
-        shortId: `DG${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        shortId: reference, // Use Paystack reference as shortId
         customerPhone: phoneNumber,
         packageGB: selectedPackage.dataValueGB,
         packagePrice: selectedPackage.priceGHS,
@@ -142,17 +202,20 @@ export default function DataGodPage() {
         createdAt: new Date(),
       };
 
+      // Save to localStorage
       const saved = localStorage.getItem("datagodOrders") || "[]";
       const orders = JSON.parse(saved);
       orders.push(order);
       localStorage.setItem("datagodOrders", JSON.stringify(orders));
 
-      alert(`✅ Order created! Order ID: ${order.shortId}\n\nPayment processing...`);
+      alert(`✅ Order created! Order ID: ${order.shortId}\n\nPayment successful!`);
       setPhoneNumber("");
       setSelectedPackage(null);
     } catch (error) {
       console.error("Purchase error:", error);
       alert("❌ Error creating order");
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -253,6 +316,12 @@ export default function DataGodPage() {
               <div style={styles.selectedPackageInfo}>
                 <p style={styles.packageName}>{selectedPackage.packageName}</p>
                 <p style={styles.packagePrice}>GH₵{selectedPackage.priceGHS}</p>
+                <p style={{ fontSize: "0.9em", color: "#666", marginTop: "5px" }}>
+                  + {transactionCharge}% fee: GH₵{(selectedPackage.priceGHS * (transactionCharge / 100)).toFixed(2)}
+                </p>
+                <p style={{ fontWeight: "bold", marginTop: "5px" }}>
+                  Total: GH₵{(selectedPackage.priceGHS * (1 + transactionCharge / 100)).toFixed(2)}
+                </p>
               </div>
             ) : (
               <p style={styles.noSelection}>Select a package above</p>
@@ -263,14 +332,15 @@ export default function DataGodPage() {
             <h3>Complete Purchase</h3>
             <Button
               onClick={handlePurchase}
-              disabled={!phoneNumber || !selectedPackage}
+              disabled={!phoneNumber || !selectedPackage || purchasing}
               style={{
                 ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+                opacity: !phoneNumber || !selectedPackage || purchasing ? 0.5 : 1,
               }}
             >
-              Buy Now
+              {purchasing ? "Processing..." : "Pay with Paystack"}
             </Button>
+            <p style={styles.paymentNote}>Secure payment via Paystack</p>
           </div>
         </div>
       </main>
@@ -417,6 +487,12 @@ const styles: any = {
     cursor: "pointer",
     fontWeight: "bold",
     fontSize: "1.1em",
+  },
+  paymentNote: {
+    fontSize: "0.8em",
+    color: "#999",
+    textAlign: "center" as const,
+    marginTop: "10px",
   },
   loading: {
     textAlign: "center" as const,
