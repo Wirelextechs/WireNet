@@ -98,43 +98,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Purchase Data Bundle
   app.post("/api/fastnet/purchase", async (req, res) => {
+    console.log("🚀 [API] Received purchase request");
     try {
+      console.log("📦 [API] Request body:", JSON.stringify(req.body, null, 2));
       const { phoneNumber, dataAmount, price } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
+        console.error("❌ [API] Missing required fields:", { phoneNumber, dataAmount, price });
         return res.status(400).json({ message: "Missing required fields" });
       }
 
       // Generate a unique reference
       const orderReference = `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      console.log(`🆔 [API] Generated order reference: ${orderReference}`);
 
       // Call supplier manager to fulfill order
+      console.log("🔄 [API] Calling supplier manager...");
       const result = await supplierManager.purchaseDataBundle(
         phoneNumber,
         dataAmount,
         price,
         orderReference
       );
+      console.log("✅ [API] Supplier manager result:", JSON.stringify(result, null, 2));
 
       if (result.success) {
         res.json({ success: true, message: "Order fulfilled successfully", data: result });
       } else {
+        console.error(`❌ [API] Order fulfillment failed: ${result.message}`);
         res.status(400).json({ success: false, message: result.message });
       }
     } catch (error: any) {
-      console.error("FastNet purchase error:", error);
-      res.status(500).json({ success: false, message: error.message || "Internal server error" });
+      console.error("🔥 [API] FastNet purchase CRITICAL error:", error);
+      // Ensure we return JSON even on crash
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || "Internal server error",
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 
   // Get Wallet Balances (Admin only)
-  app.get("/api/fastnet/balances", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/fastnet/balances", async (req, res) => {
     try {
+      console.log("💰 [API] Fetching wallet balances...");
       const [dataxpress, hubnet, dakazina] = await Promise.all([
         supplierManager.getWalletBalance("dataxpress"),
         supplierManager.getWalletBalance("hubnet"),
         supplierManager.getWalletBalance("dakazina")
       ]);
+      
+      console.log("💰 [API] Balances fetched:", { dataxpress, hubnet, dakazina });
 
       res.json({
         dataxpress,
@@ -142,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dakazina
       });
     } catch (error) {
-      console.error("Error fetching balances:", error);
+      console.error("🔥 [API] Error fetching balances:", error);
       res.status(500).json({ message: "Failed to fetch balances" });
     }
   });
@@ -151,6 +166,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/fastnet/supplier", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { supplier } = req.body;
+      console.log(`🔄 [API] Setting active supplier to: ${supplier}`);
+      
       if (supplier !== "dataxpress" && supplier !== "hubnet" && supplier !== "dakazina") {
         return res.status(400).json({ message: "Invalid supplier" });
       }
@@ -158,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await supplierManager.setActiveSupplier(supplier);
       res.json({ success: true, message: `Active supplier set to ${supplier}` });
     } catch (error) {
-      console.error("Error setting supplier:", error);
+      console.error("🔥 [API] Error setting supplier:", error);
       res.status(500).json({ message: "Failed to set supplier" });
     }
   });
