@@ -3,13 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { ordersAPI, packagesAPI, settingsAPI } from "@/lib/supabase";
 
 interface Package {
   id: string;
   dataAmount: string;
   price: number;
   deliveryTime: string;
+  isEnabled?: boolean;
 }
 
 interface CartItem {
@@ -17,6 +17,15 @@ interface CartItem {
   pkg: Package;
   phoneNumber: string;
 }
+
+const DEFAULT_PACKAGES: Package[] = [
+  { id: "1", dataAmount: "1", price: 5, deliveryTime: "5-10 mins", isEnabled: true },
+  { id: "2", dataAmount: "2", price: 9, deliveryTime: "5-10 mins", isEnabled: true },
+  { id: "3", dataAmount: "5", price: 20, deliveryTime: "10-15 mins", isEnabled: true },
+  { id: "4", dataAmount: "10", price: 35, deliveryTime: "15-20 mins", isEnabled: true },
+  { id: "5", dataAmount: "20", price: 65, deliveryTime: "20 mins", isEnabled: true },
+  { id: "6", dataAmount: "50", price: 150, deliveryTime: "20 mins", isEnabled: true },
+];
 
 export default function FastNetPage() {
   const [, navigate] = useLocation();
@@ -30,30 +39,41 @@ export default function FastNetPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetchPackages();
+    loadPackages();
     loadSettings();
   }, []);
 
-  const loadSettings = async () => {
+  const loadSettings = () => {
     try {
-      const charge = await settingsAPI.get("fastnet", "transactionCharge");
-      if (charge) {
-        setTransactionCharge(parseFloat(charge));
+      const saved = localStorage.getItem("fastnetSettings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.transactionCharge) {
+          setTransactionCharge(parseFloat(parsed.transactionCharge));
+        }
       }
     } catch (error) {
       console.error("Error loading settings:", error);
     }
   };
 
-  const fetchPackages = async () => {
+  const loadPackages = () => {
     try {
       setLoading(true);
-      const data = await packagesAPI.getByCategory("fastnet");
-      setPackages(data || []);
+      const saved = localStorage.getItem("fastnetPackages");
+      if (saved) {
+        const allPackages = JSON.parse(saved) as Package[];
+        const enabledPackages = allPackages
+          .filter((pkg) => pkg.isEnabled !== false)
+          .sort((a, b) => parseFloat(a.dataAmount) - parseFloat(b.dataAmount));
+        setPackages(enabledPackages);
+      } else {
+        localStorage.setItem("fastnetPackages", JSON.stringify(DEFAULT_PACKAGES));
+        setPackages(DEFAULT_PACKAGES);
+      }
     } catch (error) {
-      console.error("Error fetching packages:", error);
-      setMessage("❌ Failed to load packages");
-      setTimeout(() => setMessage(""), 3000);
+      console.error("Error loading packages:", error);
+      setPackages(DEFAULT_PACKAGES);
     } finally {
       setLoading(false);
     }
@@ -119,16 +139,21 @@ export default function FastNetPage() {
             let successCount = 0;
             for (const item of itemsToProcess) {
               try {
-                await ordersAPI.create({
-                  phone: item.phoneNumber,
-                  price: item.pkg.price,
-                  package_price: item.pkg.price,
-                  amount: calculateTotal(item.pkg.price),
-                  status: "PENDING",
-                  category: "fastnet",
-                  supplier: "hubnet",
+                const orderResponse = await fetch("/api/fastnet/purchase", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    phoneNumber: item.phoneNumber,
+                    dataAmount: `${item.pkg.dataAmount}GB`,
+                    price: item.pkg.price,
+                    reference: response.reference,
+                  }),
                 });
-                successCount++;
+                if (orderResponse.ok) {
+                  successCount++;
+                } else {
+                  console.error("Order creation failed:", await orderResponse.text());
+                }
               } catch (error) {
                 console.error("Error creating order:", error);
               }
@@ -166,7 +191,7 @@ export default function FastNetPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-4 flex items-center justify-center">
         <div className="text-center">
           <div className="text-2xl font-bold text-blue-900 mb-4">Loading...</div>
-          <div className="text-blue-600">Fetching packages from database...</div>
+          <div className="text-blue-600">Loading packages...</div>
         </div>
       </div>
     );
