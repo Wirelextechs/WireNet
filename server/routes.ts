@@ -3,17 +3,27 @@ import { createServer, Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated, isAdmin, login } from "./auth";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import pgSession from "connect-pg-simple";
+import { Pool } from "pg";
 import * as supplierManager from "./supplier-manager";
 
-const MemoryStoreSession = MemoryStore(session);
+const PgStore = pgSession(session);
+
+const sessionPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Session middleware
+  // Trust proxy for Vercel/production environments
+  app.set("trust proxy", 1);
+
+  // Session middleware with PostgreSQL store
   app.use(
     session({
-      store: new MemoryStoreSession({
-        checkPeriod: 86400000,
+      store: new PgStore({
+        pool: sessionPool,
+        tableName: "session",
+        createTableIfMissing: true,
       }),
       secret: process.env.SESSION_SECRET || "your-secret-key",
       resave: false,
@@ -22,6 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       },
     })
   );
