@@ -91,22 +91,30 @@ export default function FastNetAdmin() {
     }
   };
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
     try {
-      const saved = localStorage.getItem("fastnetOrders");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })).sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()));
+      const response = await fetch("/api/fastnet/orders");
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.map((o: any) => ({ 
+          ...o, 
+          id: String(o.id),
+          shortId: o.shortId || o.short_id,
+          customerPhone: o.customerPhone || o.customer_phone,
+          packageDetails: o.packageDetails || o.package_details,
+          packagePrice: o.packagePrice || o.package_price,
+          createdAt: new Date(o.createdAt || o.created_at) 
+        })));
+      } else if (response.status === 401) {
+        console.log("Not authenticated - orders will be empty until login");
+        setOrders([]);
       } else {
-        const mockOrders: Order[] = [
-          { id: "1", shortId: "FN123", customerPhone: "0244123456", packageDetails: "1GB", packagePrice: 5, status: "FULFILLED", createdAt: new Date() },
-          { id: "2", shortId: "FN124", customerPhone: "0544123456", packageDetails: "5GB", packagePrice: 20, status: "PROCESSING", createdAt: new Date() },
-        ];
-        setOrders(mockOrders);
-        localStorage.setItem("fastnetOrders", JSON.stringify(mockOrders));
+        console.error("Failed to load orders from API");
+        setOrders([]);
       }
     } catch (error) {
       console.error("Error loading orders:", error);
+      setOrders([]);
     }
   };
 
@@ -171,7 +179,7 @@ export default function FastNetAdmin() {
   };
 
   // --- Dashboard Stats ---
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.price || o.amount || 0), 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.packagePrice || 0), 0);
   const pendingCount = orders.filter(o => o.status === "PROCESSING" || o.status === "PAID").length;
   const completedCount = orders.filter(o => o.status === "FULFILLED").length;
 
@@ -193,23 +201,54 @@ export default function FastNetAdmin() {
     else setSelectedOrders(new Set());
   };
 
-  const handleBulkStatusChange = () => {
+  const handleBulkStatusChange = async () => {
     if (selectedOrders.size === 0 || !bulkStatus) return;
-    const updated = orders.map(o => selectedOrders.has(o.id) ? { ...o, status: bulkStatus as any } : o);
-    setOrders(updated);
-    localStorage.setItem("fastnetOrders", JSON.stringify(updated));
-    setSelectedOrders(new Set());
-    setBulkStatus("");
-    setMessage(`✅ ${selectedOrders.size} orders updated`);
-    setTimeout(() => setMessage(""), 3000);
+    
+    try {
+      const updatePromises = Array.from(selectedOrders).map(orderId =>
+        fetch(`/api/fastnet/orders/${orderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: bulkStatus }),
+        })
+      );
+      
+      await Promise.all(updatePromises);
+      
+      const updated = orders.map(o => selectedOrders.has(o.id) ? { ...o, status: bulkStatus as any } : o);
+      setOrders(updated);
+      setSelectedOrders(new Set());
+      setBulkStatus("");
+      setMessage(`✅ ${selectedOrders.size} orders updated`);
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      console.error("Error updating orders:", error);
+      setMessage("❌ Failed to update orders");
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
-    const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o);
-    setOrders(updated);
-    localStorage.setItem("fastnetOrders", JSON.stringify(updated));
-    setMessage("✅ Order status updated");
-    setTimeout(() => setMessage(""), 2000);
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/fastnet/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (response.ok) {
+        const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o);
+        setOrders(updated);
+        setMessage("✅ Order status updated");
+      } else {
+        setMessage("❌ Failed to update order");
+      }
+      setTimeout(() => setMessage(""), 2000);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      setMessage("❌ Failed to update order");
+      setTimeout(() => setMessage(""), 2000);
+    }
   };
 
   // --- Package Management ---

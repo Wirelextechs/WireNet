@@ -96,31 +96,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- FastNet Order Fulfillment Routes ---
 
+  // Get all FastNet orders (Admin only)
+  app.get("/api/fastnet/orders", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const orders = await storage.getFastnetOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Update order status (Admin only)
+  app.patch("/api/fastnet/orders/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const updated = await storage.updateFastnetOrderStatus(id, status);
+      if (!updated) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
   // Purchase Data Bundle
   app.post("/api/fastnet/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price } = req.body;
+      const { phoneNumber, dataAmount, price, reference } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // Generate a unique reference
-      const orderReference = `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate a unique reference if not provided
+      const orderReference = reference || `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      // Call supplier manager to fulfill order
-      const result = await supplierManager.purchaseDataBundle(
-        phoneNumber,
-        dataAmount,
-        price,
-        orderReference
-      );
+      // Create order record in database FIRST with status PAID
+      const order = await storage.createFastnetOrder({
+        shortId: orderReference,
+        customerPhone: phoneNumber,
+        packageDetails: dataAmount,
+        packagePrice: typeof price === 'string' ? parseInt(price) : price,
+        status: "PAID",
+        paymentReference: reference || null,
+      });
 
-      if (result.success) {
-        res.json({ success: true, message: "Order fulfilled successfully", data: result });
-      } else {
-        res.status(400).json({ success: false, message: result.message });
+      console.log(`📝 Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      // Try to fulfill with supplier
+      let fulfillmentResult;
+      try {
+        fulfillmentResult = await supplierManager.purchaseDataBundle(
+          phoneNumber,
+          dataAmount,
+          price,
+          orderReference
+        );
+
+        // Update order with fulfillment result
+        if (fulfillmentResult.success) {
+          await storage.updateFastnetOrderStatus(
+            order.id, 
+            "FULFILLED", 
+            fulfillmentResult.supplier,
+            JSON.stringify(fulfillmentResult.data || {})
+          );
+        } else {
+          await storage.updateFastnetOrderStatus(
+            order.id, 
+            "PROCESSING",
+            fulfillmentResult.supplier,
+            fulfillmentResult.message
+          );
+        }
+      } catch (fulfillError: any) {
+        console.error("Fulfillment error (order still created):", fulfillError);
+        await storage.updateFastnetOrderStatus(
+          order.id, 
+          "PROCESSING",
+          undefined,
+          fulfillError.message
+        );
+        fulfillmentResult = { success: false, message: fulfillError.message };
       }
+
+      // Always return success since order was created (payment was successful)
+      res.json({ 
+        success: true, 
+        message: fulfillmentResult.success ? "Order fulfilled successfully" : "Order created, fulfillment pending",
+        orderId: order.shortId,
+        fulfilled: fulfillmentResult.success,
+        data: fulfillmentResult 
+      });
     } catch (error: any) {
       console.error("FastNet purchase error:", error);
       res.status(500).json({ success: false, message: error.message || "Internal server error" });
