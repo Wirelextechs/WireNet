@@ -226,64 +226,48 @@ export default function DataGodAdmin() {
   const filteredOrders = getFilteredOrders();
 
   return (
-    <div style={styles.body}>
+    <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
       {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-5 py-4 flex items-center">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/admin")}
-            style={{ marginRight: "16px" }}
+            className="mr-4"
           >
-            <ArrowLeft size={18} style={{ marginRight: "8px" }} />
+            <ArrowLeft size={18} className="mr-2" />
             Back
           </Button>
-          <h1 style={styles.h1}>DataGod Admin Dashboard</h1>
+          <h1 className="text-xl font-bold text-yellow-400">DataGod Admin Dashboard</h1>
         </div>
       </header>
 
       {/* Main Content */}
-      <main style={styles.main}>
+      <main className="max-w-7xl mx-auto px-5 py-8">
         {message && (
-          <div style={{
-            ...styles.message,
-            backgroundColor: message.includes("✅") ? "#d4edda" : "#f8d7da",
-            color: message.includes("✅") ? "#155724" : "#721c24",
-          }}>
+          <div className={`p-4 rounded-lg mb-5 font-bold ${message.includes("✅") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
             {message}
           </div>
         )}
 
         {/* Tabs */}
-        <div style={styles.tabs}>
+        <div className="flex gap-5 mb-6 border-b-2 border-gray-200">
           <button
             onClick={() => setActiveTab("orders")}
-            style={{
-              ...styles.tab,
-              borderBottom: activeTab === "orders" ? "3px solid #ffcc00" : "none",
-              fontWeight: activeTab === "orders" ? "bold" : "normal",
-            }}
+            className={`py-3 px-5 bg-transparent border-none cursor-pointer text-base transition-all ${activeTab === "orders" ? "border-b-4 border-yellow-400 font-bold text-yellow-500" : "text-gray-600"}`}
           >
             Orders
           </button>
           <button
             onClick={() => setActiveTab("packages")}
-            style={{
-              ...styles.tab,
-              borderBottom: activeTab === "packages" ? "3px solid #ffcc00" : "none",
-              fontWeight: activeTab === "packages" ? "bold" : "normal",
-            }}
+            className={`py-3 px-5 bg-transparent border-none cursor-pointer text-base transition-all ${activeTab === "packages" ? "border-b-4 border-yellow-400 font-bold text-yellow-500" : "text-gray-600"}`}
           >
             Packages
           </button>
           <button
             onClick={() => setActiveTab("settings")}
-            style={{
-              ...styles.tab,
-              borderBottom: activeTab === "settings" ? "3px solid #ffcc00" : "none",
-              fontWeight: activeTab === "settings" ? "bold" : "normal",
-            }}
+            className={`py-3 px-5 bg-transparent border-none cursor-pointer text-base transition-all ${activeTab === "settings" ? "border-b-4 border-yellow-400 font-bold text-yellow-500" : "text-gray-600"}`}
           >
             Settings
           </button>
@@ -293,18 +277,18 @@ export default function DataGodAdmin() {
         {activeTab === "orders" && (
           <div>
             {/* Filter and Bulk Actions */}
-            <Card style={styles.card}>
+            <Card className="mb-6 rounded-lg shadow-sm">
               <CardHeader>
                 <CardTitle>Order Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div style={styles.filterSection}>
-                  <div style={styles.filterGroup}>
-                    <label style={styles.label}>Filter by Status:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                  <div className="flex flex-col">
+                    <label className="text-sm font-bold mb-2">Filter by Status:</label>
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      style={styles.select}
+                      className="p-2 border border-gray-300 rounded text-sm"
                     >
                       <option value="ALL">All Orders</option>
                       <option value="PAID">Paid</option>
@@ -314,12 +298,12 @@ export default function DataGodAdmin() {
                     </select>
                   </div>
 
-                  <div style={styles.filterGroup}>
-                    <label style={styles.label}>Bulk Status Change:</label>
+                  <div className="flex flex-col">
+                    <label className="text-sm font-bold mb-2">Bulk Status Change:</label>
                     <select
                       value={bulkStatus}
                       onChange={(e) => setBulkStatus(e.target.value)}
-                      style={styles.select}
+                      className="p-2 border border-gray-300 rounded text-sm"
                     >
                       <option value="">Select Status</option>
                       <option value="PAID">Paid</option>
@@ -331,16 +315,16 @@ export default function DataGodAdmin() {
 
                   <Button
                     onClick={handleBulkStatusChange}
-                    style={styles.bulkButton}
+                    className="bg-yellow-400 text-gray-900 font-bold hover:bg-yellow-500"
                   >
                     Update ({selectedOrders.size})
                   </Button>
 
                   <Button
                     onClick={exportOrdersToCSV}
-                    style={styles.exportButton}
+                    className="bg-blue-600 text-white font-bold hover:bg-blue-700"
                   >
-                    <Download size={16} style={{ marginRight: "8px" }} />
+                    <Download size={16} className="mr-2" />
                     Export CSV
                   </Button>
                 </div>
@@ -348,57 +332,54 @@ export default function DataGodAdmin() {
             </Card>
 
             {/* Orders Table */}
-            <Card style={styles.card}>
-              <CardContent style={{ padding: "20px" }}>
-                <div style={styles.tableWrapper}>
-                  <table style={styles.table}>
+            <Card className="mb-6 rounded-lg shadow-sm">
+              <CardContent className="p-5">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
                     <thead>
-                      <tr style={styles.tableHeader}>
-                        <th style={styles.tableCell}>
+                      <tr className="bg-gray-50 border-b-2 border-gray-200">
+                        <th className="p-3 text-left">
                           <input
                             type="checkbox"
                             checked={selectedOrders.size === filteredOrders.length && filteredOrders.length > 0}
                             onChange={(e) => handleSelectAll(e.target.checked)}
                           />
                         </th>
-                        <th style={styles.tableCell}>Order ID</th>
-                        <th style={styles.tableCell}>Phone</th>
-                        <th style={styles.tableCell}>Package</th>
-                        <th style={styles.tableCell}>Price</th>
-                        <th style={styles.tableCell}>Status</th>
-                        <th style={styles.tableCell}>Date</th>
-                        <th style={styles.tableCell}>Action</th>
+                        <th className="p-3 text-left">Order ID</th>
+                        <th className="p-3 text-left">Phone</th>
+                        <th className="p-3 text-left">Package</th>
+                        <th className="p-3 text-left">Price</th>
+                        <th className="p-3 text-left">Status</th>
+                        <th className="p-3 text-left">Date</th>
+                        <th className="p-3 text-left">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                          <td colSpan={8} className="text-center p-5 text-gray-400">
                             No orders found
                           </td>
                         </tr>
                       ) : (
                         filteredOrders.map((order) => (
-                          <tr key={order.id} style={styles.tableRow}>
-                            <td style={styles.tableCell}>
+                          <tr key={order.id} className="border-b border-gray-200">
+                            <td className="p-3 text-left">
                               <input
                                 type="checkbox"
                                 checked={selectedOrders.has(order.id)}
                                 onChange={() => handleToggleOrderSelect(order.id)}
                               />
                             </td>
-                            <td style={styles.tableCell}>{order.shortId}</td>
-                            <td style={styles.tableCell}>{order.customerPhone}</td>
-                            <td style={styles.tableCell}>{order.packageDetails}</td>
-                            <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
-                            <td style={styles.tableCell}>
+                            <td className="p-3 text-left">{order.shortId}</td>
+                            <td className="p-3 text-left">{order.customerPhone}</td>
+                            <td className="p-3 text-left">{order.packageDetails}</td>
+                            <td className="p-3 text-left">GH₵{order.packagePrice}</td>
+                            <td className="p-3 text-left">
                               <select
                                 value={order.status}
                                 onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                                style={{
-                                  ...styles.statusSelect,
-                                  backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "PAID" ? "#007bff" : "#dc3545",
-                                }}
+                                className={`py-1.5 px-3 text-white border-none rounded cursor-pointer text-sm font-bold ${order.status === "FULFILLED" ? "bg-green-600" : order.status === "PROCESSING" ? "bg-yellow-500" : order.status === "PAID" ? "bg-blue-600" : "bg-red-600"}`}
                               >
                                 <option value="PAID">Paid</option>
                                 <option value="PROCESSING">Processing</option>
@@ -406,11 +387,11 @@ export default function DataGodAdmin() {
                                 <option value="CANCELLED">Cancelled</option>
                               </select>
                             </td>
-                            <td style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</td>
-                            <td style={styles.tableCell}>
+                            <td className="p-3 text-left">{order.createdAt.toLocaleDateString()}</td>
+                            <td className="p-3 text-left">
                               <button
                                 onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")}
-                                style={styles.actionButton}
+                                className="py-1.5 px-3 bg-green-600 text-white border-none rounded cursor-pointer"
                               >
                                 ✓
                               </button>
@@ -429,14 +410,14 @@ export default function DataGodAdmin() {
         {/* Packages Tab */}
         {activeTab === "packages" && (
           <div>
-            <Card style={styles.card}>
+            <Card className="mb-6 rounded-lg shadow-sm">
               <CardHeader>
                 <CardTitle>Add New Package</CardTitle>
               </CardHeader>
               <CardContent>
-                <div style={styles.formGrid}>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   <div>
-                    <label style={styles.label}>Package Name</label>
+                    <label className="text-sm font-bold mb-2 block">Package Name</label>
                     <Input
                       placeholder="e.g., 1GB"
                       value={newPackage.name}
@@ -444,7 +425,7 @@ export default function DataGodAdmin() {
                     />
                   </div>
                   <div>
-                    <label style={styles.label}>Data (GB)</label>
+                    <label className="text-sm font-bold mb-2 block">Data (GB)</label>
                     <Input
                       type="number"
                       placeholder="e.g., 1"
@@ -453,7 +434,7 @@ export default function DataGodAdmin() {
                     />
                   </div>
                   <div>
-                    <label style={styles.label}>Price (GH₵)</label>
+                    <label className="text-sm font-bold mb-2 block">Price (GH₵)</label>
                     <Input
                       type="number"
                       placeholder="e.g., 2.5"
@@ -462,50 +443,47 @@ export default function DataGodAdmin() {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage} style={styles.addButton}>
-                  <Plus size={18} style={{ marginRight: "8px" }} />
+                <Button onClick={handleAddPackage} className="bg-yellow-400 text-gray-900 font-bold hover:bg-yellow-500">
+                  <Plus size={18} className="mr-2" />
                   Add Package
                 </Button>
               </CardContent>
             </Card>
 
-            <Card style={styles.card}>
+            <Card className="mb-6 rounded-lg shadow-sm">
               <CardHeader>
                 <CardTitle>Manage Packages</CardTitle>
               </CardHeader>
               <CardContent>
-                <div style={styles.tableWrapper}>
-                  <table style={styles.table}>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
                     <thead>
-                      <tr style={styles.tableHeader}>
-                        <th style={styles.tableCell}>Package</th>
-                        <th style={styles.tableCell}>Data (GB)</th>
-                        <th style={styles.tableCell}>Price (GH₵)</th>
-                        <th style={styles.tableCell}>Status</th>
-                        <th style={styles.tableCell}>Action</th>
+                      <tr className="bg-gray-50 border-b-2 border-gray-200">
+                        <th className="p-3 text-left">Package</th>
+                        <th className="p-3 text-left">Data (GB)</th>
+                        <th className="p-3 text-left">Price (GH₵)</th>
+                        <th className="p-3 text-left">Status</th>
+                        <th className="p-3 text-left">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {packages.map((pkg) => (
-                        <tr key={pkg.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{pkg.packageName}</td>
-                          <td style={styles.tableCell}>{pkg.dataValueGB}</td>
-                          <td style={styles.tableCell}>{pkg.priceGHS}</td>
-                          <td style={styles.tableCell}>
+                        <tr key={pkg.id} className="border-b border-gray-200">
+                          <td className="p-3 text-left">{pkg.packageName}</td>
+                          <td className="p-3 text-left">{pkg.dataValueGB}</td>
+                          <td className="p-3 text-left">{pkg.priceGHS}</td>
+                          <td className="p-3 text-left">
                             <button
                               onClick={() => handleTogglePackage(pkg.id)}
-                              style={{
-                                ...styles.statusButton,
-                                backgroundColor: pkg.isEnabled ? "#28a745" : "#dc3545",
-                              }}
+                              className={`py-1.5 px-3 text-white border-none rounded cursor-pointer text-sm font-bold ${pkg.isEnabled ? "bg-green-600" : "bg-red-600"}`}
                             >
                               {pkg.isEnabled ? "✅ Enabled" : "❌ Disabled"}
                             </button>
                           </td>
-                          <td style={styles.tableCell}>
+                          <td className="p-3 text-left">
                             <button
                               onClick={() => handleDeletePackage(pkg.id)}
-                              style={styles.deleteButton}
+                              className="p-1.5 px-3 bg-red-500 text-white border-none rounded cursor-pointer"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -522,14 +500,14 @@ export default function DataGodAdmin() {
 
         {/* Settings Tab */}
         {activeTab === "settings" && (
-          <Card style={styles.card}>
+          <Card className="mb-6 rounded-lg shadow-sm">
             <CardHeader>
               <CardTitle>Platform Settings</CardTitle>
             </CardHeader>
             <CardContent>
-              <div style={styles.settingsForm}>
+              <div className="flex flex-col gap-4">
                 <div>
-                  <label style={styles.label}>WhatsApp Link</label>
+                  <label className="text-sm font-bold mb-2 block">WhatsApp Link</label>
                   <Input
                     type="url"
                     placeholder="https://wa.link/..."
@@ -538,28 +516,26 @@ export default function DataGodAdmin() {
                   />
                 </div>
                 <div>
-                  <label style={styles.label}>Transaction Charge (%)</label>
+                  <label className="text-sm font-bold mb-2 block">Transaction Charge (%)</label>
                   <Input
                     type="number"
                     placeholder="1.3"
                     value={settings.transactionCharge}
                     onChange={(e) => setSettings({ ...settings, transactionCharge: e.target.value })}
                   />
-                  <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>
+                  <p className="text-xs text-gray-500 mt-1">
                     Percentage charge added to each transaction
                   </p>
                 </div>
                 <Button
                   onClick={() => {
                     const updated = { ...settings };
-                    // Save WhatsApp link to global settings
                     const currentWirenet = JSON.parse(localStorage.getItem("wirenetSettings") || "{}");
                     localStorage.setItem("wirenetSettings", JSON.stringify({
                       ...currentWirenet,
                       whatsappLink: updated.whatsAppLink,
                     }));
                     
-                    // Save transaction charge to DataGod settings
                     localStorage.setItem("datagodSettings", JSON.stringify({
                       transactionCharge: updated.transactionCharge,
                     }));
@@ -567,7 +543,7 @@ export default function DataGodAdmin() {
                     setMessage("✅ Settings saved");
                     setTimeout(() => setMessage(""), 2000);
                   }}
-                  style={styles.saveButton}
+                  className="bg-yellow-400 text-gray-900 font-bold hover:bg-yellow-500 w-fit"
                 >
                   Save Settings
                 </Button>
@@ -579,169 +555,3 @@ export default function DataGodAdmin() {
     </div>
   );
 }
-
-const styles: any = {
-  body: {
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    margin: 0,
-    padding: 0,
-    backgroundColor: "#f4f4f9",
-    color: "#333",
-  },
-  header: {
-    backgroundColor: "white",
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-    position: "sticky",
-    top: 0,
-    zIndex: 40,
-  },
-  headerContent: {
-    maxWidth: "1400px",
-    margin: "0 auto",
-    padding: "16px 20px",
-    display: "flex",
-    alignItems: "center",
-  },
-  h1: {
-    fontSize: "1.5em",
-    fontWeight: "bold",
-    color: "#ffcc00",
-    margin: 0,
-  },
-  main: {
-    maxWidth: "1400px",
-    margin: "0 auto",
-    padding: "32px 20px",
-  },
-  message: {
-    padding: "16px",
-    borderRadius: "8px",
-    marginBottom: "20px",
-    fontWeight: "bold",
-  },
-  tabs: {
-    display: "flex",
-    gap: "20px",
-    marginBottom: "24px",
-    borderBottom: "2px solid #ddd",
-  },
-  tab: {
-    padding: "12px 20px",
-    backgroundColor: "transparent",
-    border: "none",
-    cursor: "pointer",
-    fontSize: "1em",
-    color: "#666",
-    transition: "all 0.3s",
-  },
-  card: {
-    marginBottom: "24px",
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-  },
-  filterSection: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "16px",
-    alignItems: "flex-end",
-  },
-  filterGroup: {
-    display: "flex",
-    flexDirection: "column" as const,
-  },
-  label: {
-    fontSize: "0.875em",
-    fontWeight: "bold",
-    marginBottom: "8px",
-  },
-  select: {
-    padding: "8px",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    fontSize: "0.9em",
-  },
-  bulkButton: {
-    backgroundColor: "#ffcc00",
-    color: "#1a1a1a",
-    fontWeight: "bold",
-  },
-  exportButton: {
-    backgroundColor: "#007bff",
-    color: "white",
-    fontWeight: "bold",
-  },
-  tableWrapper: {
-    overflowX: "auto" as const,
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse" as const,
-  },
-  tableHeader: {
-    backgroundColor: "#f9f9f9",
-    borderBottom: "2px solid #ddd",
-  },
-  tableRow: {
-    borderBottom: "1px solid #ddd",
-  },
-  tableCell: {
-    padding: "12px",
-    textAlign: "left" as const,
-  },
-  statusSelect: {
-    padding: "6px 12px",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "0.875em",
-    fontWeight: "bold",
-  },
-  statusButton: {
-    padding: "6px 12px",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "0.875em",
-    fontWeight: "bold",
-  },
-  deleteButton: {
-    padding: "6px 12px",
-    backgroundColor: "#dc3545",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-  },
-  actionButton: {
-    padding: "6px 12px",
-    backgroundColor: "#28a745",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-  },
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: "16px",
-    marginBottom: "16px",
-  },
-  addButton: {
-    backgroundColor: "#ffcc00",
-    color: "#1a1a1a",
-    fontWeight: "bold",
-  },
-  settingsForm: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "16px",
-  },
-  saveButton: {
-    backgroundColor: "#ffcc00",
-    color: "#1a1a1a",
-    fontWeight: "bold",
-    width: "fit-content",
-  },
-};

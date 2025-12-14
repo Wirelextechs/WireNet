@@ -57,14 +57,14 @@ export default function Storefront() {
   };
 
   return (
-    <div style={styles.body}>
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.h1}>WireNet</h1>
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-5 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">WireNet</h1>
           
           {/* Desktop Menu */}
-          <div style={styles.desktopMenu}>
+          <div className="hidden md:flex gap-4">
             <Button variant="ghost" onClick={() => navigate("/admin/login")}>
               Admin
             </Button>
@@ -72,7 +72,7 @@ export default function Storefront() {
 
           {/* Mobile Menu Button */}
           <button
-            style={styles.mobileMenuButton}
+            className="md:hidden bg-transparent border-none cursor-pointer p-2"
             onClick={() => setMenuOpen(!menuOpen)}
           >
             {menuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -81,10 +81,10 @@ export default function Storefront() {
 
         {/* Mobile Menu */}
         {menuOpen && (
-          <div style={styles.mobileMenu}>
+          <div className="md:hidden bg-white border-t border-gray-200 px-4 py-2">
             <Button
               variant="ghost"
-              style={styles.mobileMenuButton}
+              className="w-full justify-start"
               onClick={() => {
                 navigate("/admin/login");
                 setMenuOpen(false);
@@ -97,34 +97,34 @@ export default function Storefront() {
       </header>
 
       {/* Main Content */}
-      <main style={styles.main}>
+      <main className="max-w-6xl mx-auto px-5 py-12">
         {/* Hero Section */}
-        <div style={styles.heroSection}>
-          <h2 style={styles.heroTitle}>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             All-in-One Data & Internet Solutions
           </h2>
-          <p style={styles.heroSubtitle}>
+          <p className="text-lg text-gray-600">
             Choose from our premium categories for the best deals and fastest service
           </p>
         </div>
 
         {/* Categories Grid */}
-        <div style={styles.categoriesGrid}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {/* DataGod Category */}
           {settings.datagodEnabled && (
-            <Card style={styles.categoryCard}>
+            <Card className="rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full">
               <CardHeader>
-                <CardTitle style={styles.categoryTitle}>💰 DataGod</CardTitle>
+                <CardTitle className="text-2xl">💰 DataGod</CardTitle>
                 <CardDescription>
                   Very cheaper or dealership prices
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p style={styles.categoryDescription}>
+              <CardContent className="flex flex-col flex-grow">
+                <p className="text-gray-600 mb-4 flex-grow">
                   Get the best wholesale prices with 24-hour delivery. Perfect for bulk purchases and resellers.
                 </p>
                 <Button
-                  style={styles.shopButton}
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3"
                   onClick={() => navigate("/datagod")}
                 >
                   Shop DataGod
@@ -135,19 +135,19 @@ export default function Storefront() {
 
           {/* FastNet Category */}
           {settings.fastnetEnabled && (
-            <Card style={styles.categoryCard}>
+            <Card className="rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full">
               <CardHeader>
-                <CardTitle style={styles.categoryTitle}>⚡ FastNet</CardTitle>
+                <CardTitle className="text-2xl">⚡ FastNet</CardTitle>
                 <CardDescription>
                   Nice or normal prices with super fast delivery
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p style={styles.categoryDescription}>
+              <CardContent className="flex flex-col flex-grow">
+                <p className="text-gray-600 mb-4 flex-grow">
                   Get your data in 5-20 minutes! Premium service with competitive pricing for instant needs.
                 </p>
                 <Button
-                  style={styles.shopButton}
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3"
                   onClick={() => navigate("/fastnet")}
                 >
                   Shop FastNet
@@ -156,21 +156,21 @@ export default function Storefront() {
             </Card>
           )}
 
-          {/* MTN AFA Registration Category */}
+          {/* AFA Registration Category */}
           {settings.afaEnabled && (
-            <Card style={styles.categoryCard}>
+            <Card className="rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full">
               <CardHeader>
-                <CardTitle style={{...styles.categoryTitle, color: "#6b21a8"}}>📞 MTN AFA Registration</CardTitle>
+                <CardTitle className="text-2xl text-purple-600">📞 MTN AFA Registration</CardTitle>
                 <CardDescription>
                   Cheaper calls & free network calls
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p style={styles.categoryDescription}>
+              <CardContent className="flex flex-col flex-grow">
+                <p className="text-gray-600 mb-4 flex-grow">
                   Registration and verification takes 12-72 hours. Get access to cheaper call minutes and free calls to other registered numbers. Register yourself and loved ones today!
                 </p>
                 <Button
-                  style={{...styles.shopButton, backgroundColor: "#6b21a8"}}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3"
                   onClick={handleAfaClick}
                 >
                   Register Now
@@ -182,9 +182,9 @@ export default function Storefront() {
 
         {/* Empty State */}
         {!settings.datagodEnabled && !settings.fastnetEnabled && !settings.afaEnabled && (
-          <Card style={styles.emptyStateCard}>
-            <CardContent style={styles.emptyStateContent}>
-              <p style={styles.emptyStateText}>
+          <Card className="text-center p-12">
+            <CardContent>
+              <p className="text-gray-600">
                 No categories are currently available. Please check back soon!
               </p>
             </CardContent>
@@ -196,7 +196,7 @@ export default function Storefront() {
       {settings.whatsappLink && (
         <button
           onClick={handleWhatsAppClick}
-          style={styles.whatsappButton}
+          className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white border-none rounded-full w-14 h-14 flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform z-50"
           title="Chat on WhatsApp"
         >
           <MessageCircle size={24} />
@@ -205,136 +205,3 @@ export default function Storefront() {
     </div>
   );
 }
-
-const styles: any = {
-  body: {
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    margin: 0,
-    padding: 0,
-    backgroundColor: "#f4f4f9",
-    color: "#333",
-  },
-  header: {
-    backgroundColor: "white",
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-    position: "sticky",
-    top: 0,
-    zIndex: 40,
-  },
-  headerContent: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "16px 20px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  h1: {
-    fontSize: "1.5em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-    margin: 0,
-  },
-  desktopMenu: {
-    display: "flex",
-    gap: "16px",
-  },
-  mobileMenuButton: {
-    display: "none",
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    "@media (max-width: 768px)": {
-      display: "block",
-    },
-  },
-  mobileMenu: {
-    display: "none",
-    backgroundColor: "white",
-    borderTop: "1px solid #ddd",
-    padding: "8px 16px",
-    "@media (max-width: 768px)": {
-      display: "block",
-    },
-  },
-  main: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "48px 20px",
-  },
-  heroSection: {
-    textAlign: "center" as const,
-    marginBottom: "48px",
-  },
-  heroTitle: {
-    fontSize: "2.25em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-    marginBottom: "16px",
-  },
-  heroSubtitle: {
-    fontSize: "1.125em",
-    color: "#666",
-  },
-  categoriesGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "32px",
-    marginBottom: "48px",
-  },
-  categoryCard: {
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-    transition: "box-shadow 0.3s",
-    cursor: "pointer",
-    display: "flex",
-    flexDirection: "column" as const,
-    height: "100%",
-  },
-  categoryTitle: {
-    fontSize: "1.5em",
-  },
-  categoryDescription: {
-    color: "#666",
-    marginBottom: "16px",
-    flexGrow: 1,
-  },
-  shopButton: {
-    width: "100%",
-    padding: "12px",
-    backgroundColor: "#007bff",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  emptyStateCard: {
-    textAlign: "center" as const,
-    padding: "48px 20px",
-  },
-  emptyStateContent: {
-    padding: "20px",
-  },
-  emptyStateText: {
-    color: "#666",
-  },
-  whatsappButton: {
-    position: "fixed" as const,
-    bottom: "24px",
-    right: "24px",
-    backgroundColor: "#25D366",
-    color: "white",
-    border: "none",
-    borderRadius: "50%",
-    width: "56px",
-    height: "56px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-    transition: "transform 0.3s",
-    zIndex: 50,
-  },
-};

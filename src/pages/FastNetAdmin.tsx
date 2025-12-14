@@ -157,7 +157,7 @@ export default function FastNetAdmin() {
       body: JSON.stringify({ supplier }),
     }).catch(console.error);
 
-    setMessage(`✅ Active supplier changed to ${supplier.toUpperCase()}`);
+    setMessage(`Active supplier changed to ${supplier.toUpperCase()}`);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -167,16 +167,14 @@ export default function FastNetAdmin() {
       ...currentSettings,
       transactionCharge: settings.transactionCharge,
     }));
-    setMessage("✅ Settings saved");
+    setMessage("Settings saved");
     setTimeout(() => setMessage(""), 2000);
   };
 
-  // --- Dashboard Stats ---
   const totalRevenue = orders.reduce((sum, o) => sum + (o.packagePrice || 0), 0);
   const pendingCount = orders.filter(o => o.status === "PROCESSING" || o.status === "PAID").length;
   const completedCount = orders.filter(o => o.status === "FULFILLED").length;
 
-  // --- Order Management ---
   const getFilteredOrders = () => {
     if (filterStatus === "ALL") return orders;
     return orders.filter(o => o.status === filterStatus);
@@ -212,11 +210,11 @@ export default function FastNetAdmin() {
       setOrders(updated);
       setSelectedOrders(new Set());
       setBulkStatus("");
-      setMessage(`✅ ${selectedOrders.size} orders updated`);
+      setMessage(`${selectedOrders.size} orders updated`);
       setTimeout(() => setMessage(""), 3000);
     } catch (error) {
       console.error("Error updating orders:", error);
-      setMessage("❌ Failed to update orders");
+      setMessage("Failed to update orders");
       setTimeout(() => setMessage(""), 3000);
     }
   };
@@ -232,22 +230,21 @@ export default function FastNetAdmin() {
       if (response.ok) {
         const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o);
         setOrders(updated);
-        setMessage("✅ Order status updated");
+        setMessage("Order status updated");
       } else {
-        setMessage("❌ Failed to update order");
+        setMessage("Failed to update order");
       }
       setTimeout(() => setMessage(""), 2000);
     } catch (error) {
       console.error("Error updating order:", error);
-      setMessage("❌ Failed to update order");
+      setMessage("Failed to update order");
       setTimeout(() => setMessage(""), 2000);
     }
   };
 
-  // --- Package Management ---
   const handleAddPackage = async () => {
     if (!newPackage.amount || !newPackage.price || !newPackage.delivery) {
-      setMessage("❌ Please fill all fields");
+      setMessage("Please fill all fields");
       return;
     }
     try {
@@ -261,11 +258,11 @@ export default function FastNetAdmin() {
       });
       await loadPackages();
       setNewPackage({ amount: "", price: "", delivery: "" });
-      setMessage("✅ Package added");
+      setMessage("Package added");
       setTimeout(() => setMessage(""), 2000);
     } catch (error) {
       console.error("Error adding package:", error);
-      setMessage("❌ Failed to add package");
+      setMessage("Failed to add package");
       setTimeout(() => setMessage(""), 2000);
     }
   };
@@ -274,11 +271,11 @@ export default function FastNetAdmin() {
     try {
       await packagesAPI.delete(id);
       await loadPackages();
-      setMessage("✅ Package deleted");
+      setMessage("Package deleted");
       setTimeout(() => setMessage(""), 2000);
     } catch (error) {
       console.error("Error deleting package:", error);
-      setMessage("❌ Failed to delete package");
+      setMessage("Failed to delete package");
       setTimeout(() => setMessage(""), 2000);
     }
   };
@@ -292,7 +289,7 @@ export default function FastNetAdmin() {
       }
     } catch (error) {
       console.error("Error toggling package:", error);
-      setMessage("❌ Failed to update package");
+      setMessage("Failed to update package");
       setTimeout(() => setMessage(""), 2000);
     }
   };
@@ -300,37 +297,36 @@ export default function FastNetAdmin() {
   const filteredOrders = getFilteredOrders();
 
   return (
-    <div style={styles.body}>
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} style={{ marginRight: "16px" }}>
-            <ArrowLeft size={18} style={{ marginRight: "8px" }} /> Back
+    <div className="min-h-screen bg-gray-100 font-sans text-gray-800">
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="mr-4">
+            <ArrowLeft size={18} className="mr-2" /> Back
           </Button>
-          <h1 style={styles.h1}>FastNet Admin Dashboard</h1>
-          <div style={styles.activeSupplierBadge}>
+          <h1 className="text-xl font-bold text-blue-600">FastNet Admin Dashboard</h1>
+          <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-bold border border-blue-200">
             Active: {activeSupplier.toUpperCase()}
           </div>
         </div>
       </header>
 
-      <main style={styles.main}>
+      <main className="max-w-7xl mx-auto px-5 py-8">
         {message && (
-          <div style={{ ...styles.message, backgroundColor: message.includes("✅") ? "#d4edda" : "#f8d7da", color: message.includes("✅") ? "#155724" : "#721c24" }}>
+          <div className={`p-4 rounded-lg mb-5 font-bold ${message.includes("Failed") || message.includes("Please") ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
             {message}
           </div>
         )}
 
-        <div style={styles.tabs}>
+        <div className="flex gap-5 mb-6 border-b-2 border-gray-200">
           {["dashboard", "orders", "packages", "settings"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              style={{
-                ...styles.tab,
-                borderBottom: activeTab === tab ? "3px solid #007bff" : "none",
-                fontWeight: activeTab === tab ? "bold" : "normal",
-                color: activeTab === tab ? "#007bff" : "#666",
-              }}
+              className={`px-5 py-3 bg-transparent border-none cursor-pointer transition-all ${
+                activeTab === tab 
+                  ? "border-b-4 border-blue-500 font-bold text-blue-500" 
+                  : "text-gray-600"
+              }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -338,41 +334,41 @@ export default function FastNetAdmin() {
         </div>
 
         {activeTab === "dashboard" && (
-          <div style={styles.dashboardGrid}>
-            <Card style={styles.statCard}>
-              <CardContent style={styles.statContent}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <Card className="rounded-lg shadow-sm">
+              <CardContent className="flex justify-between items-center p-5">
                 <div>
-                  <p style={styles.statLabel}>Total Orders</p>
-                  <p style={styles.statValue}>{orders.length}</p>
+                  <p className="text-gray-600 text-sm">Total Orders</p>
+                  <p className="text-3xl font-bold text-gray-800">{orders.length}</p>
                 </div>
-                <ShoppingCart size={24} color="#007bff" />
+                <ShoppingCart size={24} className="text-blue-500" />
               </CardContent>
             </Card>
-            <Card style={styles.statCard}>
-              <CardContent style={styles.statContent}>
+            <Card className="rounded-lg shadow-sm">
+              <CardContent className="flex justify-between items-center p-5">
                 <div>
-                  <p style={styles.statLabel}>Total Revenue</p>
-                  <p style={styles.statValue}>GH₵{totalRevenue.toFixed(2)}</p>
+                  <p className="text-gray-600 text-sm">Total Revenue</p>
+                  <p className="text-3xl font-bold text-gray-800">GH₵{totalRevenue.toFixed(2)}</p>
                 </div>
-                <PackageIcon size={24} color="#28a745" />
+                <PackageIcon size={24} className="text-green-500" />
               </CardContent>
             </Card>
-            <Card style={styles.statCard}>
-              <CardContent style={styles.statContent}>
+            <Card className="rounded-lg shadow-sm">
+              <CardContent className="flex justify-between items-center p-5">
                 <div>
-                  <p style={styles.statLabel}>Pending</p>
-                  <p style={styles.statValue}>{pendingCount}</p>
+                  <p className="text-gray-600 text-sm">Pending</p>
+                  <p className="text-3xl font-bold text-gray-800">{pendingCount}</p>
                 </div>
-                <Clock size={24} color="#ffc107" />
+                <Clock size={24} className="text-yellow-500" />
               </CardContent>
             </Card>
-            <Card style={styles.statCard}>
-              <CardContent style={styles.statContent}>
+            <Card className="rounded-lg shadow-sm">
+              <CardContent className="flex justify-between items-center p-5">
                 <div>
-                  <p style={styles.statLabel}>Completed</p>
-                  <p style={styles.statValue}>{completedCount}</p>
+                  <p className="text-gray-600 text-sm">Completed</p>
+                  <p className="text-3xl font-bold text-gray-800">{completedCount}</p>
                 </div>
-                <CheckCircle2 size={24} color="#28a745" />
+                <CheckCircle2 size={24} className="text-green-500" />
               </CardContent>
             </Card>
           </div>
@@ -380,13 +376,13 @@ export default function FastNetAdmin() {
 
         {activeTab === "orders" && (
           <div>
-            <Card style={styles.card}>
+            <Card className="mb-6 rounded-lg shadow-sm">
               <CardHeader><CardTitle>Order Management</CardTitle></CardHeader>
               <CardContent>
-                <div style={styles.filterSection}>
-                  <div style={styles.filterGroup}>
-                    <label style={styles.label}>Filter Status:</label>
-                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={styles.select}>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-bold">Filter Status:</label>
+                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="p-2 border border-gray-300 rounded">
                       <option value="ALL">All</option>
                       <option value="PAID">Paid</option>
                       <option value="PROCESSING">Processing</option>
@@ -394,9 +390,9 @@ export default function FastNetAdmin() {
                       <option value="CANCELLED">Cancelled</option>
                     </select>
                   </div>
-                  <div style={styles.filterGroup}>
-                    <label style={styles.label}>Bulk Action:</label>
-                    <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} style={styles.select}>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-bold">Bulk Action:</label>
+                    <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} className="p-2 border border-gray-300 rounded">
                       <option value="">Select Status</option>
                       <option value="PAID">Paid</option>
                       <option value="PROCESSING">Processing</option>
@@ -404,44 +400,57 @@ export default function FastNetAdmin() {
                       <option value="CANCELLED">Cancelled</option>
                     </select>
                   </div>
-                  <Button onClick={handleBulkStatusChange} style={styles.bulkButton}>Update ({selectedOrders.size})</Button>
+                  <Button onClick={handleBulkStatusChange} className="bg-blue-500 hover:bg-blue-600 text-white font-bold">
+                    Update ({selectedOrders.size})
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-            <Card style={styles.card}>
-              <CardContent style={{ padding: "20px" }}>
-                <div style={styles.tableWrapper}>
-                  <table style={styles.table}>
+            <Card className="rounded-lg shadow-sm">
+              <CardContent className="p-5">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
                     <thead>
-                      <tr style={styles.tableHeader}>
-                        <th style={styles.tableCell}><input type="checkbox" checked={selectedOrders.size === filteredOrders.length && filteredOrders.length > 0} onChange={(e) => handleSelectAll(e.target.checked)} /></th>
-                        <th style={styles.tableCell}>Order ID</th>
-                        <th style={styles.tableCell}>Phone</th>
-                        <th style={styles.tableCell}>Package</th>
-                        <th style={styles.tableCell}>Price</th>
-                        <th style={styles.tableCell}>Status</th>
-                        <th style={styles.tableCell}>Date</th>
-                        <th style={styles.tableCell}>Action</th>
+                      <tr className="bg-gray-50 border-b-2 border-gray-200">
+                        <th className="p-3 text-left"><input type="checkbox" checked={selectedOrders.size === filteredOrders.length && filteredOrders.length > 0} onChange={(e) => handleSelectAll(e.target.checked)} /></th>
+                        <th className="p-3 text-left">Order ID</th>
+                        <th className="p-3 text-left">Phone</th>
+                        <th className="p-3 text-left">Package</th>
+                        <th className="p-3 text-left">Price</th>
+                        <th className="p-3 text-left">Status</th>
+                        <th className="p-3 text-left">Date</th>
+                        <th className="p-3 text-left">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredOrders.map((order) => (
-                        <tr key={order.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}><input type="checkbox" checked={selectedOrders.has(order.id)} onChange={() => handleToggleOrderSelect(order.id)} /></td>
-                          <td style={styles.tableCell}>{order.shortId}</td>
-                          <td style={styles.tableCell}>{order.customerPhone}</td>
-                          <td style={styles.tableCell}>{order.packageDetails}</td>
-                          <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
-                          <td style={styles.tableCell}>
-                            <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} style={{ ...styles.statusSelect, backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : "#007bff" }}>
+                        <tr key={order.id} className="border-b border-gray-200">
+                          <td className="p-3"><input type="checkbox" checked={selectedOrders.has(order.id)} onChange={() => handleToggleOrderSelect(order.id)} /></td>
+                          <td className="p-3">{order.shortId}</td>
+                          <td className="p-3">{order.customerPhone}</td>
+                          <td className="p-3">{order.packageDetails}</td>
+                          <td className="p-3">GH₵{order.packagePrice}</td>
+                          <td className="p-3">
+                            <select 
+                              value={order.status} 
+                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} 
+                              className={`p-1.5 px-3 text-white border-none rounded cursor-pointer text-sm font-bold ${
+                                order.status === "FULFILLED" ? "bg-green-500" : 
+                                order.status === "PROCESSING" ? "bg-yellow-500" : "bg-blue-500"
+                              }`}
+                            >
                               <option value="PAID">Paid</option>
                               <option value="PROCESSING">Processing</option>
                               <option value="FULFILLED">Fulfilled</option>
                               <option value="CANCELLED">Cancelled</option>
                             </select>
                           </td>
-                          <td style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</td>
-                          <td style={styles.tableCell}><button onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")} style={styles.actionButton}>✓</button></td>
+                          <td className="p-3">{order.createdAt.toLocaleDateString()}</td>
+                          <td className="p-3">
+                            <button onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")} className="p-1.5 px-3 bg-green-500 text-white border-none rounded cursor-pointer">
+                              ✓
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -454,43 +463,59 @@ export default function FastNetAdmin() {
 
         {activeTab === "packages" && (
           <div>
-            <Card style={styles.card}>
+            <Card className="mb-6 rounded-lg shadow-sm">
               <CardHeader><CardTitle>Add Package</CardTitle></CardHeader>
               <CardContent>
-                <div style={styles.formGrid}>
-                  <div><label style={styles.label}>Amount</label><Input placeholder="e.g. 1GB" value={newPackage.amount} onChange={(e) => setNewPackage({ ...newPackage, amount: e.target.value })} /></div>
-                  <div><label style={styles.label}>Price</label><Input type="number" placeholder="e.g. 5" value={newPackage.price} onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })} /></div>
-                  <div><label style={styles.label}>Delivery</label><Input placeholder="e.g. 5-10 mins" value={newPackage.delivery} onChange={(e) => setNewPackage({ ...newPackage, delivery: e.target.value })} /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm font-bold block mb-2">Amount</label>
+                    <Input placeholder="e.g. 1GB" value={newPackage.amount} onChange={(e) => setNewPackage({ ...newPackage, amount: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold block mb-2">Price</label>
+                    <Input type="number" placeholder="e.g. 5" value={newPackage.price} onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold block mb-2">Delivery</label>
+                    <Input placeholder="e.g. 5-10 mins" value={newPackage.delivery} onChange={(e) => setNewPackage({ ...newPackage, delivery: e.target.value })} />
+                  </div>
                 </div>
-                <Button onClick={handleAddPackage} style={styles.addButton}><Plus size={18} style={{ marginRight: "8px" }} /> Add</Button>
+                <Button onClick={handleAddPackage} className="bg-blue-500 hover:bg-blue-600 text-white font-bold">
+                  <Plus size={18} className="mr-2" /> Add
+                </Button>
               </CardContent>
             </Card>
-            <Card style={styles.card}>
-              <CardContent>
-                <div style={styles.tableWrapper}>
-                  <table style={styles.table}>
+            <Card className="rounded-lg shadow-sm">
+              <CardContent className="p-5">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
                     <thead>
-                      <tr style={styles.tableHeader}>
-                        <th style={styles.tableCell}>Amount</th>
-                        <th style={styles.tableCell}>Price</th>
-                        <th style={styles.tableCell}>Delivery</th>
-                        <th style={styles.tableCell}>Status</th>
-                        <th style={styles.tableCell}>Action</th>
+                      <tr className="bg-gray-50 border-b-2 border-gray-200">
+                        <th className="p-3 text-left">Amount</th>
+                        <th className="p-3 text-left">Price</th>
+                        <th className="p-3 text-left">Delivery</th>
+                        <th className="p-3 text-left">Status</th>
+                        <th className="p-3 text-left">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {packages.map((pkg) => (
-                        <tr key={pkg.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{pkg.dataAmount}</td>
-                          <td style={styles.tableCell}>GH₵{pkg.price}</td>
-                          <td style={styles.tableCell}>{pkg.deliveryTime}</td>
-                          <td style={styles.tableCell}>
-                            <button onClick={() => handleTogglePackage(pkg.id)} style={{ ...styles.statusButton, backgroundColor: pkg.isEnabled ? "#28a745" : "#dc3545" }}>
+                        <tr key={pkg.id} className="border-b border-gray-200">
+                          <td className="p-3">{pkg.dataAmount}</td>
+                          <td className="p-3">GH₵{pkg.price}</td>
+                          <td className="p-3">{pkg.deliveryTime}</td>
+                          <td className="p-3">
+                            <button 
+                              onClick={() => handleTogglePackage(pkg.id)} 
+                              className={`p-1.5 px-3 text-white border-none rounded cursor-pointer text-sm font-bold ${pkg.isEnabled ? "bg-green-500" : "bg-red-500"}`}
+                            >
                               {pkg.isEnabled ? "Enabled" : "Disabled"}
                             </button>
                           </td>
-                          <td style={styles.tableCell}>
-                            <button onClick={() => handleDeletePackage(pkg.id)} style={styles.deleteButton}><Trash2 size={16} /></button>
+                          <td className="p-3">
+                            <button onClick={() => handleDeletePackage(pkg.id)} className="p-1.5 px-3 bg-red-500 text-white border-none rounded cursor-pointer">
+                              <Trash2 size={16} />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -503,9 +528,8 @@ export default function FastNetAdmin() {
         )}
 
         {activeTab === "settings" && (
-          <div style={styles.dashboardGrid}>
-            {/* Supplier Management */}
-            <Card style={styles.card}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Card className="rounded-lg shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <SettingsIcon size={20} />
@@ -514,24 +538,26 @@ export default function FastNetAdmin() {
                 <CardDescription>Select active supplier for order fulfillment</CardDescription>
               </CardHeader>
               <CardContent>
-                <div style={styles.supplierGrid}>
+                <div className="grid grid-cols-1 gap-4">
                   {["dataxpress", "hubnet", "dakazina"].map((supplier) => (
                     <div 
                       key={supplier}
                       onClick={() => handleSupplierChange(supplier as Supplier)}
-                      style={{
-                        ...styles.supplierCard,
-                        borderColor: activeSupplier === supplier ? "#007bff" : "#ddd",
-                        backgroundColor: activeSupplier === supplier ? "#f0f7ff" : "white",
-                      }}
+                      className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${
+                        activeSupplier === supplier 
+                          ? "border-blue-500 bg-blue-50" 
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
                     >
-                      <div style={styles.supplierHeader}>
-                        <span style={styles.supplierName}>{supplier.charAt(0).toUpperCase() + supplier.slice(1)}</span>
-                        {activeSupplier === supplier && <span style={styles.activeBadge}>ACTIVE</span>}
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-lg font-bold text-gray-800">{supplier.charAt(0).toUpperCase() + supplier.slice(1)}</span>
+                        {activeSupplier === supplier && (
+                          <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">ACTIVE</span>
+                        )}
                       </div>
-                      <div style={styles.balanceInfo}>
+                      <div className="flex justify-between items-center text-gray-600">
                         <span>Balance:</span>
-                        <span style={styles.balanceValue}>
+                        <span className="font-bold text-gray-800 text-lg">
                           {walletBalances[supplier as Supplier].currency} {walletBalances[supplier as Supplier].balance}
                         </span>
                       </div>
@@ -541,26 +567,25 @@ export default function FastNetAdmin() {
               </CardContent>
             </Card>
 
-            {/* Transaction Charge Settings */}
-            <Card style={styles.card}>
+            <Card className="rounded-lg shadow-sm">
               <CardHeader>
                 <CardTitle>Transaction Settings</CardTitle>
               </CardHeader>
               <CardContent>
-                <div style={styles.settingsForm}>
+                <div className="flex flex-col gap-4">
                   <div>
-                    <label style={styles.label}>Transaction Charge (%)</label>
+                    <label className="text-sm font-bold block mb-2">Transaction Charge (%)</label>
                     <Input
                       type="number"
                       placeholder="1.3"
                       value={settings.transactionCharge}
                       onChange={(e) => setSettings({ ...settings, transactionCharge: e.target.value })}
                     />
-                    <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>
+                    <p className="text-sm text-gray-600 mt-1">
                       Percentage charge added to each transaction
                     </p>
                   </div>
-                  <Button onClick={handleSaveSettings} style={styles.saveButton}>
+                  <Button onClick={handleSaveSettings} className="bg-blue-500 hover:bg-blue-600 text-white font-bold w-fit">
                     Save Settings
                   </Button>
                 </div>
@@ -572,46 +597,3 @@ export default function FastNetAdmin() {
     </div>
   );
 }
-
-const styles: any = {
-  body: { fontFamily: "'Segoe UI', sans-serif", backgroundColor: "#f0f4f8", minHeight: "100vh", color: "#333" },
-  header: { backgroundColor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 40 },
-  headerContent: { maxWidth: "1400px", margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" },
-  h1: { fontSize: "1.5em", fontWeight: "bold", color: "#007bff", margin: 0 },
-  activeSupplierBadge: { backgroundColor: "#e6f7ff", color: "#007bff", padding: "4px 12px", borderRadius: "20px", fontSize: "0.85em", fontWeight: "bold", border: "1px solid #b3e0ff" },
-  main: { maxWidth: "1400px", margin: "0 auto", padding: "32px 20px" },
-  message: { padding: "16px", borderRadius: "8px", marginBottom: "20px", fontWeight: "bold" },
-  tabs: { display: "flex", gap: "20px", marginBottom: "24px", borderBottom: "2px solid #ddd" },
-  tab: { padding: "12px 20px", backgroundColor: "transparent", border: "none", cursor: "pointer", fontSize: "1em", transition: "all 0.3s" },
-  dashboardGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px", marginBottom: "30px" },
-  statCard: { borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-  statContent: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px" },
-  statLabel: { color: "#666", fontSize: "0.9em" },
-  statValue: { fontSize: "1.8em", fontWeight: "bold", color: "#333" },
-  card: { marginBottom: "24px", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-  filterSection: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", alignItems: "flex-end" },
-  filterGroup: { display: "flex", flexDirection: "column", gap: "8px" },
-  label: { fontSize: "0.875em", fontWeight: "bold" },
-  select: { padding: "8px", border: "1px solid #ddd", borderRadius: "4px" },
-  bulkButton: { backgroundColor: "#007bff", color: "white", fontWeight: "bold" },
-  tableWrapper: { overflowX: "auto" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  tableHeader: { backgroundColor: "#f9f9f9", borderBottom: "2px solid #ddd" },
-  tableRow: { borderBottom: "1px solid #ddd" },
-  tableCell: { padding: "12px", textAlign: "left" },
-  statusSelect: { padding: "6px 12px", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.875em", fontWeight: "bold" },
-  statusButton: { padding: "6px 12px", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.875em", fontWeight: "bold" },
-  deleteButton: { padding: "6px 12px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" },
-  actionButton: { padding: "6px 12px", backgroundColor: "#28a745", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" },
-  formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "16px", marginBottom: "16px" },
-  addButton: { backgroundColor: "#007bff", color: "white", fontWeight: "bold" },
-  supplierGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" },
-  supplierCard: { padding: "20px", borderRadius: "8px", border: "2px solid #ddd", cursor: "pointer", transition: "all 0.2s" },
-  supplierHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" },
-  supplierName: { fontSize: "1.2em", fontWeight: "bold", color: "#333" },
-  activeBadge: { backgroundColor: "#28a745", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "0.75em", fontWeight: "bold" },
-  balanceInfo: { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#666" },
-  balanceValue: { fontWeight: "bold", color: "#333", fontSize: "1.1em" },
-  settingsForm: { display: "flex", flexDirection: "column", gap: "16px" },
-  saveButton: { backgroundColor: "#007bff", color: "white", fontWeight: "bold", width: "fit-content" },
-};
