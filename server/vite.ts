@@ -4,9 +4,12 @@ import { createServer as createViteServer, ViteDevServer } from "vite";
 
 let vite: ViteDevServer;
 
-export async function setupVite(app: Express, server: any) {
+export async function setupVite(app: Express, _server: any) {
   vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: { 
+      middlewareMode: true,
+      allowedHosts: true,
+    },
     appType: "spa",
   });
 
@@ -44,7 +47,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(path.join(process.cwd(), "dist/public")));
 
   // Serve index.html for all other routes (SPA)
-  app.use("*", (req, res) => {
+  app.use("*", (_req, res) => {
     res.sendFile(path.join(process.cwd(), "dist/public/index.html"));
   });
 }
