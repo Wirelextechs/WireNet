@@ -29,13 +29,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { username, password } = req.body;
+      const { email, password } = req.body;
 
-      if (!username || !password) {
-        return res.status(400).json({ message: "Username and password required" });
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password required" });
       }
 
-      const user = await login(username, password);
+      const user = await login(email, password);
 
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });

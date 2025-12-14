@@ -13,7 +13,7 @@ interface Settings {
 
 interface AdminUser {
   id: string;
-  username: string;
+  email: string;
   password: string;
   createdAt: Date;
 }
@@ -68,34 +68,24 @@ class Storage {
     }
   }
 
-  async getAdminUser(username: string): Promise<AdminUser | null> {
-    const result = await db.select().from(adminUsers).where(eq(adminUsers.username, username)).limit(1);
+  async getAdminUserByEmail(email: string): Promise<AdminUser | null> {
+    const result = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
     if (result.length > 0) {
       return {
         id: String(result[0].id),
-        username: result[0].username,
+        email: result[0].email,
         password: result[0].password,
         createdAt: result[0].createdAt,
       };
     }
-    
-    if (username === "admin") {
-      return {
-        id: "1",
-        username: "admin",
-        password: "admin",
-        createdAt: new Date(),
-      };
-    }
-    
     return null;
   }
 
-  async createAdminUser(username: string, password: string): Promise<AdminUser> {
-    const result = await db.insert(adminUsers).values({ username, password }).returning();
+  async createAdminUser(email: string, password: string): Promise<AdminUser> {
+    const result = await db.insert(adminUsers).values({ email, password }).returning();
     return {
       id: String(result[0].id),
-      username: result[0].username,
+      email: result[0].email,
       password: result[0].password,
       createdAt: result[0].createdAt,
     };

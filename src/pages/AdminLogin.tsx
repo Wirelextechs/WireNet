@@ -17,14 +17,20 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // Check credentials
-      if (email === "wirelexcare@gmail.com" && password === "Hydrogen5") {
-        // Store in session
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
         sessionStorage.setItem("adminEmail", email);
         sessionStorage.setItem("adminLoggedIn", "true");
         navigate("/admin");
       } else {
-        setError("Invalid email or password");
+        setError(data.message || "Invalid email or password");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");

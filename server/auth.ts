@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import bcrypt from "bcrypt";
 import { storage } from "./storage";
 
 declare global {
@@ -6,7 +7,7 @@ declare global {
     interface Request {
       user?: {
         id: string;
-        username: string;
+        email: string;
       };
     }
   }
@@ -36,19 +37,28 @@ export async function isAdmin(
     return res.status(401).json({ message: "Not authenticated" });
   }
 
-  // All authenticated users are admins in this setup
   next();
 }
 
-export async function login(username: string, password: string) {
-  const user = await storage.getAdminUser(username);
+export async function login(email: string, password: string) {
+  const user = await storage.getAdminUserByEmail(email);
 
-  if (!user || user.password !== password) {
+  if (!user) {
+    return null;
+  }
+
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) {
     return null;
   }
 
   return {
     id: user.id,
-    username: user.username,
+    email: user.email,
   };
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 10;
+  return bcrypt.hash(password, saltRounds);
 }
