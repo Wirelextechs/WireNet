@@ -52,6 +52,16 @@ The platform integrates with three data bundle suppliers:
 
 The `server/supplier-manager.ts` routes orders to the active supplier based on admin settings. Each supplier has different API authentication methods and request formats.
 
+### Order Status Tracking
+The admin dashboard supports real-time order status checking from suppliers:
+- **DataXpress**: Supports status polling via `checkOrderStatus()`
+- **DataKazina**: Supports status polling via `checkTransactionStatus()`
+- **Hubnet**: Uses webhooks only (no polling supported)
+
+API Endpoints:
+- `POST /api/fastnet/orders/:id/check-status` - Check individual order status (skips Hubnet)
+- `POST /api/fastnet/orders/refresh-all-statuses` - Bulk refresh all processing orders (excludes Hubnet)
+
 ### Payment Processing
 - **Provider**: Paystack (JavaScript SDK loaded in index.html)
 - **Flow**: Client-side payment initiation, server-side verification
