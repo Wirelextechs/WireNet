@@ -509,7 +509,7 @@ export default function FastNetAdmin() {
                           <td style={styles.tableCell}>
                             <div style={{ display: "flex", gap: "5px" }}>
                               <button onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")} style={styles.actionButton} title="Mark Fulfilled">✓</button>
-                              {order.supplierUsed && (order.status === "PROCESSING" || order.status === "PAID") && (
+                              {order.supplierUsed && order.supplierUsed !== "hubnet" && (order.status === "PROCESSING" || order.status === "PAID") && (
                                 <button 
                                   onClick={() => handleCheckOrderStatus(order.id)} 
                                   disabled={checkingStatus === order.id}

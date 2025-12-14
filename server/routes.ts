@@ -270,6 +270,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Order has no supplier assigned" });
       }
 
+      // Hubnet does not support polling - status updates come via webhook
+      if (supplier === "hubnet") {
+        return res.json({
+          success: false,
+          supplierStatus: null,
+          message: "Hubnet does not support status polling. Status updates are received via webhook.",
+          supplier: "hubnet",
+        });
+      }
+
       // Use the order reference to check status
       const reference = order.shortId;
       
@@ -302,8 +312,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders = await storage.getFastnetOrders();
       
       // Filter to orders that have a supplier and are still processing
+      // Skip Hubnet orders as it doesn't support polling (uses webhooks instead)
       const processingOrders = orders.filter(o => 
-        o.supplierUsed && (o.status === "PROCESSING" || o.status === "PAID")
+        o.supplierUsed && 
+        o.supplierUsed !== "hubnet" && 
+        (o.status === "PROCESSING" || o.status === "PAID")
       );
 
       const results = [];
