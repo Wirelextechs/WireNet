@@ -161,8 +161,8 @@ export default function DataGodPage() {
     };
 
     setCart([...cart, newItem]);
-    setPhoneNumber("");
-    setSelectedPackage(null);
+    setPhoneNumber(""); // Clear phone number for next entry
+    setSelectedPackage(null); // Clear selection
   };
 
   const removeFromCart = (id: string) => {
@@ -183,14 +183,16 @@ export default function DataGodPage() {
 
     setPurchasing(true);
 
+    // Calculate total
     const subtotal = cart.reduce((sum, item) => sum + item.pkg.priceGHS, 0);
     const charge = subtotal * (transactionCharge / 100);
     const totalAmount = subtotal + charge;
 
+    // Initialize Paystack V1
     const handler = (window as any).PaystackPop.setup({
       key: publicKey,
       email: "customer@wirenet.com",
-      amount: Math.ceil(totalAmount * 100),
+      amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
       currency: "GHS",
       ref: `DG-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       metadata: {
@@ -220,6 +222,7 @@ export default function DataGodPage() {
       const existingOrders = JSON.parse(saved);
       const newOrders: Order[] = [];
 
+      // Create an order for each item in cart
       cart.forEach((item, index) => {
         const order: Order = {
           id: `${Date.now()}-${index}`,
@@ -246,55 +249,56 @@ export default function DataGodPage() {
     }
   };
 
+  // Calculate totals for display
   const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.priceGHS, 0);
   const cartCharge = cartSubtotal * (transactionCharge / 100);
   const cartTotal = cartSubtotal + cartCharge;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      <div className="bg-white shadow-md p-5 text-center border-b-4 border-yellow-400">
-        <div className="text-left">
+    <div style={styles.body}>
+      <div style={styles.header}>
+        <div style={styles.headerTop}>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/")}
-            className="mb-2.5"
+            style={{ marginBottom: "10px" }}
           >
-            <ArrowLeft size={18} className="mr-2" />
+            <ArrowLeft size={18} style={{ marginRight: "8px" }} />
             Back to WireNet
           </Button>
         </div>
-        <h1 className="text-gray-900 mb-1 text-4xl font-bold">DataGod Vending Platform</h1>
-        <p className="text-gray-600 text-lg">Cheapest Data Prices • 24hr Delivery</p>
+        <h1 style={styles.h1}>DataGod Vending Platform</h1>
+        <p style={styles.subtitle}>Cheapest Data Prices • 24hr Delivery</p>
       </div>
 
-      <div className="bg-gray-900 text-white p-2.5 text-center rounded mx-5 my-5">
-        📞 Contact: <a href="tel:+233XXXXXXXXX" className="text-yellow-400 no-underline font-bold">+233 XXX XXX XXX</a> | 
-        💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" className="text-yellow-400 no-underline font-bold">Chat with us</a>
+      <div style={styles.contactBar}>
+        📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
+        💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
       </div>
 
-      <main className="max-w-6xl mx-auto p-5">
+      <main style={styles.main}>
         {/* Status Checker */}
-        <div className="bg-gray-200 p-5 rounded-lg mb-8 text-center">
-          <h2 className="mt-0 text-blue-600">Check Order Status</h2>
-          <div className="flex justify-center gap-2.5 flex-wrap">
+        <div style={styles.statusChecker}>
+          <h2 style={styles.statusCheckerH2}>Check Order Status</h2>
+          <div style={styles.statusCheckerForm}>
             <Input
               type="text"
               placeholder="Enter Order ID"
               value={statusCheckId}
               onChange={(e) => setStatusCheckId(e.target.value)}
-              className="p-2.5 border border-gray-300 rounded w-40"
+              style={styles.input}
             />
             <Button
               onClick={handleStatusCheck}
               disabled={statusLoading}
-              className="px-5 py-2.5 bg-blue-600 text-white border-none rounded cursor-pointer hover:bg-blue-700"
+              style={styles.statusButton}
             >
               {statusLoading ? "Checking..." : "Check Status"}
             </Button>
           </div>
           {statusReport && (
-            <div className="mt-4 text-left p-2.5 bg-white rounded">
+            <div style={styles.statusReport}>
               <p><strong>Order ID:</strong> {statusReport.shortId}</p>
               <p><strong>Status:</strong> {statusReport.status}</p>
               <p><strong>Package:</strong> {statusReport.packageDetails}</p>
@@ -304,64 +308,64 @@ export default function DataGodPage() {
         </div>
 
         {/* Packages Grid */}
-        <h2 className="text-3xl mt-8 mb-5 text-gray-900">Available Packages</h2>
+        <h2 style={styles.sectionTitle}>Available Packages</h2>
         {loading ? (
-          <p className="text-center text-gray-600">Loading packages...</p>
+          <p style={styles.loading}>Loading packages...</p>
         ) : packages.length === 0 ? (
-          <p className="text-center text-gray-600">No packages available</p>
+          <p style={styles.loading}>No packages available</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+          <div style={styles.packagesGrid}>
             {packages.map((pkg) => (
               <div
                 key={pkg.id}
                 onClick={() => setSelectedPackage(pkg)}
-                className={`p-5 bg-white border-2 rounded-lg text-center cursor-pointer transition-all hover:border-yellow-400 ${
-                  selectedPackage?.id === pkg.id
-                    ? "border-yellow-400 bg-yellow-50 shadow-lg"
-                    : "border-gray-200"
-                }`}
+                style={{
+                  ...styles.packageCard,
+                  ...(selectedPackage?.id === pkg.id ? styles.packageCardSelected : {}),
+                }}
               >
-                <p className="text-xl font-bold text-yellow-400 my-2.5">{pkg.packageName}</p>
-                <p className="text-lg font-bold text-gray-900">GH₵{pkg.priceGHS}</p>
+                <p style={styles.packageCardName}>{pkg.packageName}</p>
+                <p style={styles.packageCardPrice}>GH₵{pkg.priceGHS}</p>
               </div>
             ))}
           </div>
         )}
 
         {/* Purchase Section */}
-        <h2 className="text-3xl mt-8 mb-5 text-gray-900">Purchase Data</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-          <div className="p-5 bg-gray-100 rounded-lg border border-gray-300">
+        <h2 style={styles.sectionTitle}>Purchase Data</h2>
+        <div style={styles.purchaseSection}>
+          <div style={styles.purchaseCard}>
             <h3>Phone Number</h3>
             <Input
               type="tel"
               placeholder="Enter MTN number"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
-              className="p-2.5 border border-gray-300 rounded w-full"
+              style={styles.input}
             />
           </div>
 
-          <div className="p-5 bg-gray-100 rounded-lg border border-gray-300">
+          <div style={styles.purchaseCard}>
             <h3>Selected Package</h3>
             {selectedPackage ? (
-              <div className="text-center">
-                <p className="text-4xl font-bold text-yellow-400 my-2.5">{selectedPackage.packageName}</p>
-                <p className="text-2xl font-bold text-gray-900">GH₵{selectedPackage.priceGHS}</p>
+              <div style={styles.selectedPackageInfo}>
+                <p style={styles.packageName}>{selectedPackage.packageName}</p>
+                <p style={styles.packagePrice}>GH₵{selectedPackage.priceGHS}</p>
               </div>
             ) : (
-              <p className="text-gray-400 text-center">Select a package above</p>
+              <p style={styles.noSelection}>Select a package above</p>
             )}
           </div>
 
-          <div className="p-5 bg-gray-100 rounded-lg border border-gray-300">
+          <div style={styles.purchaseCard}>
             <h3>Add to Cart</h3>
             <Button
               onClick={addToCart}
               disabled={!phoneNumber || !selectedPackage}
-              className={`w-full p-3 bg-yellow-400 text-gray-900 border-none rounded cursor-pointer font-bold text-lg hover:bg-yellow-500 ${
-                !phoneNumber || !selectedPackage ? "opacity-50" : ""
-              }`}
+              style={{
+                ...styles.buyButton,
+                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+              }}
             >
               Add More +
             </Button>
@@ -370,35 +374,35 @@ export default function DataGodPage() {
 
         {/* Cart Section */}
         {cart.length > 0 && (
-          <div className="bg-white p-5 rounded-lg shadow-lg mt-8">
-            <h2 className="text-3xl mt-0 mb-5 text-gray-900">
-              <ShoppingCart size={24} className="mr-2.5 align-middle inline" />
+          <div style={styles.cartSection}>
+            <h2 style={styles.sectionTitle}>
+              <ShoppingCart size={24} style={{ marginRight: "10px", verticalAlign: "middle" }} />
               Your Cart ({cart.length})
             </h2>
-            <div className="mb-5">
+            <div style={styles.cartList}>
               {cart.map((item) => (
-                <div key={item.id} className="flex justify-between items-center p-2.5 border-b border-gray-200">
+                <div key={item.id} style={styles.cartItem}>
                   <div>
-                    <p className="font-bold m-0">{item.phoneNumber}</p>
-                    <p className="text-gray-600 m-0 text-sm">{item.pkg.packageName} - GH₵{item.pkg.priceGHS}</p>
+                    <p style={styles.cartItemPhone}>{item.phoneNumber}</p>
+                    <p style={styles.cartItemPkg}>{item.pkg.packageName} - GH₵{item.pkg.priceGHS}</p>
                   </div>
-                  <button onClick={() => removeFromCart(item.id)} className="bg-transparent border-none text-red-600 cursor-pointer hover:text-red-700">
+                  <button onClick={() => removeFromCart(item.id)} style={styles.removeButton}>
                     <Trash2 size={18} />
                   </button>
                 </div>
               ))}
             </div>
             
-            <div className="border-t-2 border-gray-200 pt-4">
-              <div className="flex justify-between mb-1.5 text-gray-600">
+            <div style={styles.cartSummary}>
+              <div style={styles.summaryRow}>
                 <span>Subtotal:</span>
                 <span>GH₵{cartSubtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between mb-1.5 text-gray-600">
+              <div style={styles.summaryRow}>
                 <span>Fee ({transactionCharge}%):</span>
                 <span>GH₵{cartCharge.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between mt-2.5 mb-5 text-xl font-bold text-gray-900">
+              <div style={styles.summaryTotal}>
                 <span>Total:</span>
                 <span>GH₵{cartTotal.toFixed(2)}</span>
               </div>
@@ -406,7 +410,7 @@ export default function DataGodPage() {
               <Button
                 onClick={handleCheckout}
                 disabled={purchasing}
-                className="w-full p-4 bg-green-500 text-white border-none rounded font-bold text-lg hover:bg-green-600"
+                style={styles.checkoutButton}
               >
                 {purchasing ? "Processing..." : `Pay GH₵${cartTotal.toFixed(2)}`}
               </Button>
@@ -418,7 +422,7 @@ export default function DataGodPage() {
       {settings.whatsappLink && (
         <button
           onClick={handleWhatsAppClick}
-          className="fixed bottom-6 right-6 bg-green-500 text-white border-none rounded-full w-14 h-14 flex items-center justify-center cursor-pointer shadow-lg z-50 hover:bg-green-600"
+          style={styles.whatsappButton}
           title="Chat on WhatsApp"
         >
           <MessageCircle size={24} />
@@ -427,3 +431,249 @@ export default function DataGodPage() {
     </div>
   );
 }
+
+const styles: any = {
+  body: {
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    margin: 0,
+    padding: 0,
+    backgroundColor: "#f4f4f9",
+    color: "#333",
+  },
+  header: {
+    backgroundColor: "white",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    padding: "20px",
+    textAlign: "center" as const,
+    borderBottom: "3px solid #ffcc00",
+  },
+  headerTop: {
+    textAlign: "left" as const,
+  },
+  h1: {
+    color: "#1a1a1a",
+    marginBottom: "5px",
+    fontSize: "2.5em",
+  },
+  subtitle: {
+    color: "#666",
+    fontSize: "1.1em",
+  },
+  contactBar: {
+    backgroundColor: "#1a1a1a",
+    color: "white",
+    padding: "10px",
+    textAlign: "center" as const,
+    borderRadius: "5px",
+    margin: "20px",
+  },
+  contactLink: {
+    color: "#ffcc00",
+    textDecoration: "none",
+    fontWeight: "bold",
+  },
+  main: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    padding: "20px",
+  },
+  statusChecker: {
+    backgroundColor: "#e9ecef",
+    padding: "20px",
+    borderRadius: "8px",
+    marginBottom: "30px",
+    textAlign: "center" as const,
+  },
+  statusCheckerH2: {
+    marginTop: 0,
+    color: "#007bff",
+  },
+  statusCheckerForm: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "10px",
+    flexWrap: "wrap" as const,
+  },
+  input: {
+    padding: "10px",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    width: "150px",
+  },
+  statusButton: {
+    padding: "10px 20px",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  statusReport: {
+    marginTop: "15px",
+    textAlign: "left" as const,
+    padding: "10px",
+    backgroundColor: "#fff",
+    borderRadius: "5px",
+  },
+  sectionTitle: {
+    fontSize: "1.8em",
+    marginTop: "30px",
+    marginBottom: "20px",
+    color: "#1a1a1a",
+  },
+  purchaseSection: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "20px",
+    marginBottom: "30px",
+  },
+  purchaseCard: {
+    padding: "20px",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "8px",
+    border: "1px solid #ddd",
+  },
+  selectedPackageInfo: {
+    textAlign: "center" as const,
+  },
+  packageName: {
+    fontSize: "2em",
+    fontWeight: "bold",
+    color: "#ffcc00",
+    margin: "10px 0",
+  },
+  packagePrice: {
+    fontSize: "1.5em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  noSelection: {
+    color: "#999",
+    textAlign: "center" as const,
+  },
+  buyButton: {
+    width: "100%",
+    padding: "12px",
+    backgroundColor: "#ffcc00",
+    color: "#1a1a1a",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "1.1em",
+  },
+  loading: {
+    textAlign: "center" as const,
+    color: "#666",
+  },
+  packagesGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+    gap: "15px",
+    marginBottom: "30px",
+  },
+  packageCard: {
+    padding: "20px",
+    backgroundColor: "#fff",
+    border: "2px solid #ddd",
+    borderRadius: "8px",
+    textAlign: "center" as const,
+    cursor: "pointer",
+    transition: "all 0.3s",
+  },
+  packageCardSelected: {
+    border: "2px solid #ffcc00",
+    backgroundColor: "#fffbf0",
+    boxShadow: "0 0 10px rgba(255, 204, 0, 0.3)",
+  },
+  packageCardName: {
+    fontSize: "1.3em",
+    fontWeight: "bold",
+    color: "#ffcc00",
+    margin: "10px 0",
+  },
+  packageCardPrice: {
+    fontSize: "1.2em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  whatsappButton: {
+    position: "fixed" as const,
+    bottom: "24px",
+    right: "24px",
+    backgroundColor: "#25D366",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "56px",
+    height: "56px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    zIndex: 50,
+  },
+  cartSection: {
+    backgroundColor: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    marginTop: "30px",
+  },
+  cartList: {
+    marginBottom: "20px",
+  },
+  cartItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px",
+    borderBottom: "1px solid #eee",
+  },
+  cartItemPhone: {
+    fontWeight: "bold",
+    margin: 0,
+  },
+  cartItemPkg: {
+    color: "#666",
+    margin: 0,
+    fontSize: "0.9em",
+  },
+  removeButton: {
+    background: "none",
+    border: "none",
+    color: "#dc3545",
+    cursor: "pointer",
+  },
+  cartSummary: {
+    borderTop: "2px solid #eee",
+    paddingTop: "15px",
+  },
+  summaryRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "5px",
+    color: "#666",
+  },
+  summaryTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "10px",
+    marginBottom: "20px",
+    fontSize: "1.2em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  checkoutButton: {
+    width: "100%",
+    padding: "15px",
+    backgroundColor: "#28a745",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "1.2em",
+  },
+};
