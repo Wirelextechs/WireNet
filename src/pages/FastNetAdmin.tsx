@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, ShoppingCart, Package as PackageIcon, Clock, CheckCircle2, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ShoppingCart, Package as PackageIcon, Clock, CheckCircle2, Settings as SettingsIcon, RefreshCw, Search } from "lucide-react";
 import { packagesAPI } from "@/lib/supabase";
 
 interface Order {
@@ -12,7 +12,8 @@ interface Order {
   customerPhone: string;
   packageDetails: string;
   packagePrice: number;
-  status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED";
+  status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED" | "FAILED";
+  supplierUsed?: string;
   createdAt: Date;
 }
 
@@ -42,6 +43,8 @@ export default function FastNetAdmin() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
   const [activeSupplier, setActiveSupplier] = useState<Supplier>("dataxpress");
+  const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
   const [walletBalances, setWalletBalances] = useState<{
     dataxpress: WalletBalance;
     hubnet: WalletBalance;
@@ -104,6 +107,7 @@ export default function FastNetAdmin() {
           customerPhone: o.customerPhone || o.customer_phone,
           packageDetails: o.packageDetails || o.package_details,
           packagePrice: o.packagePrice || o.package_price,
+          supplierUsed: o.supplierUsed || o.supplier_used,
           createdAt: new Date(o.createdAt || o.created_at) 
         })));
       } else if (response.status === 401) {
@@ -241,6 +245,60 @@ export default function FastNetAdmin() {
       console.error("Error updating order:", error);
       setMessage("❌ Failed to update order");
       setTimeout(() => setMessage(""), 2000);
+    }
+  };
+
+  const handleCheckOrderStatus = async (orderId: string) => {
+    setCheckingStatus(orderId);
+    try {
+      const response = await fetch(`/api/fastnet/orders/${orderId}/check-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setMessage(`✅ Status from ${result.supplier}: ${result.supplierStatus}`);
+          await loadOrders(); // Reload orders to get updated status
+        } else {
+          setMessage(`⚠️ ${result.message || "Could not check status"}`);
+        }
+      } else {
+        const error = await response.json();
+        setMessage(`❌ ${error.message || "Failed to check status"}`);
+      }
+    } catch (error) {
+      console.error("Error checking order status:", error);
+      setMessage("❌ Failed to check order status");
+    } finally {
+      setCheckingStatus(null);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  const handleRefreshAllStatuses = async () => {
+    setRefreshingAll(true);
+    try {
+      const response = await fetch("/api/fastnet/orders/refresh-all-statuses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setMessage(`✅ ${result.message}`);
+        await loadOrders(); // Reload orders to get updated statuses
+      } else {
+        const error = await response.json();
+        setMessage(`❌ ${error.message || "Failed to refresh statuses"}`);
+      }
+    } catch (error) {
+      console.error("Error refreshing all statuses:", error);
+      setMessage("❌ Failed to refresh all statuses");
+    } finally {
+      setRefreshingAll(false);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
@@ -405,6 +463,10 @@ export default function FastNetAdmin() {
                     </select>
                   </div>
                   <Button onClick={handleBulkStatusChange} style={styles.bulkButton}>Update ({selectedOrders.size})</Button>
+                  <Button onClick={handleRefreshAllStatuses} disabled={refreshingAll} style={{ ...styles.bulkButton, marginLeft: "10px", backgroundColor: "#17a2b8" }}>
+                    <RefreshCw size={16} style={{ marginRight: "6px" }} className={refreshingAll ? "animate-spin" : ""} />
+                    {refreshingAll ? "Refreshing..." : "Refresh All Statuses"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -420,8 +482,9 @@ export default function FastNetAdmin() {
                         <th style={styles.tableCell}>Package</th>
                         <th style={styles.tableCell}>Price</th>
                         <th style={styles.tableCell}>Status</th>
+                        <th style={styles.tableCell}>Supplier</th>
                         <th style={styles.tableCell}>Date</th>
-                        <th style={styles.tableCell}>Action</th>
+                        <th style={styles.tableCell}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -433,15 +496,31 @@ export default function FastNetAdmin() {
                           <td style={styles.tableCell}>{order.packageDetails}</td>
                           <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
                           <td style={styles.tableCell}>
-                            <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} style={{ ...styles.statusSelect, backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : "#007bff" }}>
+                            <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} style={{ ...styles.statusSelect, backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "FAILED" ? "#dc3545" : "#007bff" }}>
                               <option value="PAID">Paid</option>
                               <option value="PROCESSING">Processing</option>
                               <option value="FULFILLED">Fulfilled</option>
+                              <option value="FAILED">Failed</option>
                               <option value="CANCELLED">Cancelled</option>
                             </select>
                           </td>
+                          <td style={styles.tableCell}>{order.supplierUsed ? order.supplierUsed.toUpperCase() : "-"}</td>
                           <td style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</td>
-                          <td style={styles.tableCell}><button onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")} style={styles.actionButton}>✓</button></td>
+                          <td style={styles.tableCell}>
+                            <div style={{ display: "flex", gap: "5px" }}>
+                              <button onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")} style={styles.actionButton} title="Mark Fulfilled">✓</button>
+                              {order.supplierUsed && (order.status === "PROCESSING" || order.status === "PAID") && (
+                                <button 
+                                  onClick={() => handleCheckOrderStatus(order.id)} 
+                                  disabled={checkingStatus === order.id}
+                                  style={{ ...styles.actionButton, backgroundColor: "#17a2b8" }}
+                                  title="Check Status from Supplier"
+                                >
+                                  {checkingStatus === order.id ? "..." : <Search size={14} />}
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

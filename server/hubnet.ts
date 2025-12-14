@@ -210,3 +210,58 @@ export async function getCostPrice(
     message: "Hubnet does not provide automated cost price API. Please configure pricing manually.",
   };
 }
+
+/**
+ * Check transaction status from Hubnet
+ * @param transactionId - The transaction ID or reference to check
+ */
+export async function checkTransactionStatus(
+  transactionId: string
+): Promise<{ success: boolean; status?: string; message?: string; data?: any }> {
+  if (!API_KEY) {
+    return {
+      success: false,
+      message: "Hubnet API key not configured",
+    };
+  }
+
+  try {
+    // Hubnet uses the transaction endpoint to check status
+    const response = await fetch(`${HUBNET_BASE_URL}/mtn-transaction-status`, {
+      method: "POST",
+      headers: {
+        "token": `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reference: transactionId }),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Failed to check transaction status: ${response.status}`,
+      };
+    }
+
+    const result: any = await response.json();
+
+    if (result.status) {
+      return {
+        success: true,
+        status: result.data?.status || result.transaction_status || "unknown",
+        data: result.data || result,
+      };
+    } else {
+      return {
+        success: false,
+        message: result.reason || result.message || "Failed to check status",
+      };
+    }
+  } catch (error) {
+    console.error(`❌ Failed to check Hubnet transaction status:`, error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}

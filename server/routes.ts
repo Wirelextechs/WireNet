@@ -251,6 +251,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check Order Status from Supplier (Admin only)
+  app.post("/api/fastnet/orders/:id/check-status", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Get the order to find its supplier and reference
+      const orders = await storage.getFastnetOrders();
+      const order = orders.find(o => o.id === id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Check if order has a supplier assigned
+      const supplier = order.supplierUsed as "dataxpress" | "hubnet" | "dakazina";
+      if (!supplier) {
+        return res.status(400).json({ message: "Order has no supplier assigned" });
+      }
+
+      // Use the order reference to check status
+      const reference = order.shortId;
+      
+      const statusResult = await supplierManager.checkOrderStatus(supplier, reference);
+      
+      // If we got a successful status, update the order in our database
+      if (statusResult.success && statusResult.status) {
+        const normalizedStatus = normalizeSupplierStatus(statusResult.status);
+        if (normalizedStatus !== order.status) {
+          await storage.updateFastnetOrderStatus(id, normalizedStatus, supplier, JSON.stringify(statusResult.data || {}));
+        }
+      }
+
+      res.json({
+        success: statusResult.success,
+        supplierStatus: statusResult.status,
+        message: statusResult.message,
+        data: statusResult.data,
+        supplier: statusResult.supplier,
+      });
+    } catch (error: any) {
+      console.error("Error checking order status:", error);
+      res.status(500).json({ message: error.message || "Failed to check order status" });
+    }
+  });
+
+  // Bulk refresh order statuses (Admin only)
+  app.post("/api/fastnet/orders/refresh-all-statuses", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const orders = await storage.getFastnetOrders();
+      
+      // Filter to orders that have a supplier and are still processing
+      const processingOrders = orders.filter(o => 
+        o.supplierUsed && (o.status === "PROCESSING" || o.status === "PAID")
+      );
+
+      const results = [];
+      
+      for (const order of processingOrders) {
+        try {
+          const supplier = order.supplierUsed as "dataxpress" | "hubnet" | "dakazina";
+          const statusResult = await supplierManager.checkOrderStatus(supplier, order.shortId);
+          
+          if (statusResult.success && statusResult.status) {
+            const normalizedStatus = normalizeSupplierStatus(statusResult.status);
+            if (normalizedStatus !== order.status) {
+              await storage.updateFastnetOrderStatus(order.id, normalizedStatus, supplier, JSON.stringify(statusResult.data || {}));
+            }
+          }
+          
+          results.push({
+            orderId: order.id,
+            shortId: order.shortId,
+            success: statusResult.success,
+            previousStatus: order.status,
+            newStatus: statusResult.status,
+          });
+        } catch (err: any) {
+          results.push({
+            orderId: order.id,
+            shortId: order.shortId,
+            success: false,
+            error: err.message,
+          });
+        }
+      }
+
+      res.json({
+        message: `Refreshed ${results.length} orders`,
+        results,
+      });
+    } catch (error: any) {
+      console.error("Error refreshing order statuses:", error);
+      res.status(500).json({ message: error.message || "Failed to refresh order statuses" });
+    }
+  });
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
@@ -258,4 +354,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const server = createServer(app);
   return server;
+}
+
+/**
+ * Normalize supplier status to our internal status format
+ */
+function normalizeSupplierStatus(supplierStatus: string): string {
+  const status = supplierStatus.toLowerCase();
+  
+  if (status === "success" || status === "completed" || status === "delivered" || status === "fulfilled") {
+    return "FULFILLED";
+  }
+  if (status === "pending" || status === "processing" || status === "queued") {
+    return "PROCESSING";
+  }
+  if (status === "failed" || status === "error" || status === "rejected") {
+    return "FAILED";
+  }
+  
+  return "PROCESSING"; // Default to processing for unknown statuses
 }

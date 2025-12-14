@@ -111,3 +111,29 @@ export async function setActiveSupplier(supplier: SupplierName): Promise<void> {
   await storage.upsertSetting("activeSupplier", supplier);
   console.log(`✅ Active supplier changed to: ${supplier.toUpperCase()}`);
 }
+
+/**
+ * Check order/transaction status from a specific supplier
+ * @param supplier The supplier to query
+ * @param reference The order reference or transaction ID
+ */
+export async function checkOrderStatus(
+  supplier: SupplierName,
+  reference: string
+): Promise<{ success: boolean; status?: string; message?: string; data?: any; supplier: SupplierName }> {
+  console.log(`🔍 Checking order status from ${supplier.toUpperCase()} for reference: ${reference}`);
+
+  let result;
+  if (supplier === "hubnet") {
+    result = await hubnet.checkTransactionStatus(reference);
+  } else if (supplier === "dakazina") {
+    result = await dakazina.checkTransactionStatus(reference);
+  } else {
+    result = await dataxpress.checkOrderStatus(reference);
+  }
+
+  return {
+    ...result,
+    supplier,
+  };
+}
