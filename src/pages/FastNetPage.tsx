@@ -292,30 +292,21 @@ export default function FastNetPage() {
           </div>
 
           <div style={styles.purchaseCard}>
-            <h3>Actions</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <Button
-                onClick={handleCheckout}
-                disabled={purchasing || !phoneNumber || !selectedPackage}
-                style={{
-                  ...styles.checkoutButton,
-                  opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
-                }}
-              >
-                {purchasing ? "Processing..." : selectedPackage ? `Pay GH₵${calculateTotal(selectedPackage.price).toFixed(2)}` : "Pay Now"}
-              </Button>
-              <Button
-                onClick={addToCart}
-                disabled={!phoneNumber || !selectedPackage}
-                style={{
-                  ...styles.buyButton,
-                  opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
-                }}
-              >
-                <ShoppingCart size={18} style={{ marginRight: "8px" }} />
-                Add More +
-              </Button>
-            </div>
+            <h3>Add to Cart</h3>
+            <Button
+              onClick={addToCart}
+              disabled={!phoneNumber || !selectedPackage}
+              style={{
+                ...styles.buyButton,
+                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+              }}
+            >
+              <ShoppingCart size={18} style={{ marginRight: "8px" }} />
+              Add to Cart
+            </Button>
+            <p style={{ fontSize: "0.85em", color: "#666", marginTop: "10px", textAlign: "center" }}>
+              Add items to cart, then pay for all at once
+            </p>
           </div>
         </div>
 
@@ -364,17 +355,6 @@ export default function FastNetPage() {
           </div>
         )}
 
-        {cart.length === 0 && selectedPackage && phoneNumber && (
-          <div style={styles.quickCheckout}>
-            <Button
-              onClick={handleCheckout}
-              disabled={purchasing}
-              style={styles.checkoutButton}
-            >
-              {purchasing ? "Processing..." : `Pay GH₵${calculateTotal(selectedPackage.price).toFixed(2)}`}
-            </Button>
-          </div>
-        )}
       </main>
 
       <button
