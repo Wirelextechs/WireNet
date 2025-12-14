@@ -138,21 +138,24 @@ export default function FastNetPage() {
 
     setPurchasing(true);
 
-    try {
-      const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
-      const charge = subtotal * (transactionCharge / 100);
-      const totalAmount = subtotal + charge;
+    const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+    const charge = subtotal * (transactionCharge / 100);
+    const totalAmount = subtotal + charge;
 
+    try {
       const handler = (window as any).PaystackPop.setup({
         key: publicKey,
         email: "customer@wirenet.com",
         amount: Math.ceil(totalAmount * 100),
         currency: "GHS",
         ref: `FN-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        callback: async (response: any) => {
-          try {
-            let successCount = 0;
-            for (const item of cart) {
+        callback: function(response: any) {
+          console.log("Payment successful:", response.reference);
+          const cartItems = [...cart];
+          let successCount = 0;
+          
+          const processOrders = async () => {
+            for (const item of cartItems) {
               try {
                 const orderResponse = await fetch("/api/fastnet/purchase", {
                   method: "POST",
@@ -175,12 +178,10 @@ export default function FastNetPage() {
             setCart([]);
             setPhoneNumber("");
             setSelectedPackage(null);
-          } catch (error) {
-            console.error("Error:", error);
-            alert("Failed to process order");
-          } finally {
             setPurchasing(false);
-          }
+          };
+          
+          processOrders();
         },
         onClose: () => {
           alert("Transaction cancelled");
