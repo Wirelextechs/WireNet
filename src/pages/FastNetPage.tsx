@@ -19,12 +19,12 @@ interface CartItem {
 }
 
 const DEFAULT_PACKAGES: Package[] = [
-  { id: "1", dataAmount: "1", price: 5, deliveryTime: "5-10 mins", isEnabled: true },
-  { id: "2", dataAmount: "2", price: 9, deliveryTime: "5-10 mins", isEnabled: true },
-  { id: "3", dataAmount: "5", price: 20, deliveryTime: "10-15 mins", isEnabled: true },
-  { id: "4", dataAmount: "10", price: 35, deliveryTime: "15-20 mins", isEnabled: true },
-  { id: "5", dataAmount: "20", price: 65, deliveryTime: "20 mins", isEnabled: true },
-  { id: "6", dataAmount: "50", price: 150, deliveryTime: "20 mins", isEnabled: true },
+  { id: "1", dataAmount: "1GB", price: 5, deliveryTime: "5-10 mins", isEnabled: true },
+  { id: "2", dataAmount: "2GB", price: 9, deliveryTime: "5-10 mins", isEnabled: true },
+  { id: "3", dataAmount: "5GB", price: 20, deliveryTime: "10-15 mins", isEnabled: true },
+  { id: "4", dataAmount: "10GB", price: 35, deliveryTime: "15-20 mins", isEnabled: true },
+  { id: "5", dataAmount: "20GB", price: 65, deliveryTime: "20 mins", isEnabled: true },
+  { id: "6", dataAmount: "50GB", price: 150, deliveryTime: "20 mins", isEnabled: true },
 ];
 
 export default function FastNetPage() {
@@ -144,7 +144,7 @@ export default function FastNetPage() {
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     phoneNumber: item.phoneNumber,
-                    dataAmount: `${item.pkg.dataAmount}GB`,
+                    dataAmount: item.pkg.dataAmount,
                     price: item.pkg.price,
                     reference: response.reference,
                   }),
@@ -235,7 +235,7 @@ export default function FastNetPage() {
                     selectedPackage?.id === pkg.id ? "border-blue-600 bg-blue-50" : "border-gray-300 hover:border-blue-400"
                   }`}
                 >
-                  <div className="font-bold text-blue-900">{pkg.dataAmount}GB</div>
+                  <div className="font-bold text-blue-900">{pkg.dataAmount}</div>
                   <div className="text-lg font-bold text-blue-600">GH₵{pkg.price}</div>
                   <div className="text-xs text-gray-600">⏱ {pkg.deliveryTime}</div>
                 </button>
@@ -262,7 +262,7 @@ export default function FastNetPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">Selected Package</label>
               {selectedPackage ? (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="text-2xl font-bold text-blue-900">{selectedPackage.dataAmount}GB</div>
+                  <div className="text-2xl font-bold text-blue-900">{selectedPackage.dataAmount}</div>
                   <div className="text-blue-600">GH₵{selectedPackage.price}</div>
                   <div className="text-lg font-bold text-blue-900 mt-2">Total: GH₵{calculateTotal(selectedPackage.price).toFixed(2)}</div>
                 </div>
@@ -291,7 +291,7 @@ export default function FastNetPage() {
                 {cart.map((item) => (
                   <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded border border-gray-200">
                     <span>
-                      {item.pkg.dataAmount}GB - {item.phoneNumber} - GH₵{calculateTotal(item.pkg.price).toFixed(2)}
+                      {item.pkg.dataAmount} - {item.phoneNumber} - GH₵{calculateTotal(item.pkg.price).toFixed(2)}
                     </span>
                     <button onClick={() => handleRemoveFromCart(item.id)} className="text-red-600 hover:text-red-800 font-bold">
                       <Trash2 size={16} />
