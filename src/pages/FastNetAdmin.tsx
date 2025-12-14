@@ -171,7 +171,7 @@ export default function FastNetAdmin() {
   };
 
   // --- Dashboard Stats ---
-  const totalRevenue = orders.filter(o => o.status === "FULFILLED").reduce((sum, o) => sum + o.packagePrice, 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.price || o.amount || 0), 0);
   const pendingCount = orders.filter(o => o.status === "PROCESSING" || o.status === "PAID").length;
   const completedCount = orders.filter(o => o.status === "FULFILLED").length;
 
