@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { ordersAPI, packagesAPI, settingsAPI } from "@/lib/supabase";
 
 interface Package {
   id: string;
@@ -26,20 +27,18 @@ export default function FastNetPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [transactionCharge, setTransactionCharge] = useState(1.3);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     fetchPackages();
     loadSettings();
   }, []);
 
-  const loadSettings = () => {
+  const loadSettings = async () => {
     try {
-      const saved = localStorage.getItem("fastnetSettings");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.transactionCharge) {
-          setTransactionCharge(parseFloat(parsed.transactionCharge));
-        }
+      const charge = await settingsAPI.get("fastnet", "transactionCharge");
+      if (charge) {
+        setTransactionCharge(parseFloat(charge));
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -48,633 +47,240 @@ export default function FastNetPage() {
 
   const fetchPackages = async () => {
     try {
-      const saved = localStorage.getItem("fastnetPackages");
-      if (saved) {
-        setPackages(JSON.parse(saved).sort((a: any, b: any) => parseFloat(a.dataAmount) - parseFloat(b.dataAmount)));
-      } else {
-        const defaults = [
-          { id: "1", dataAmount: "1GB", price: 5, deliveryTime: "5-10 mins" },
-          { id: "2", dataAmount: "2GB", price: 9, deliveryTime: "5-10 mins" },
-          { id: "3", dataAmount: "5GB", price: 20, deliveryTime: "10-15 mins" },
-          { id: "4", dataAmount: "10GB", price: 35, deliveryTime: "15-20 mins" },
-          { id: "5", dataAmount: "20GB", price: 65, deliveryTime: "20 mins" },
-          { id: "6", dataAmount: "50GB", price: 150, deliveryTime: "20 mins" },
-          { id: "7", dataAmount: "100GB", price: 280, deliveryTime: "20 mins" },
-        ];
-        localStorage.setItem("fastnetPackages", JSON.stringify(defaults));
-        setPackages(defaults);
-      }
-      setLoading(false);
+      setLoading(true);
+      const data = await packagesAPI.getByCategory("fastnet");
+      setPackages(data || []);
     } catch (error) {
       console.error("Error fetching packages:", error);
+      setMessage("❌ Failed to load packages");
+      setTimeout(() => setMessage(""), 3000);
+    } finally {
       setLoading(false);
     }
   };
 
-  const addToCart = () => {
+  const calculateTotal = (price: number) => {
+    return price + (price * transactionCharge) / 100;
+  };
+
+  const handleAddToCart = () => {
     if (!phoneNumber || !selectedPackage) {
-      alert("Please enter phone number and select a package");
+      setMessage("❌ Please enter phone number and select a package");
+      setTimeout(() => setMessage(""), 3000);
       return;
     }
-
-    const newItem: CartItem = {
-      id: Date.now().toString(),
-      pkg: selectedPackage,
-      phoneNumber: phoneNumber,
-    };
-
-    setCart([...cart, newItem]);
+    setCart([...cart, { id: Date.now().toString(), pkg: selectedPackage, phoneNumber }]);
     setPhoneNumber("");
     setSelectedPackage(null);
+    setMessage("✅ Added to cart");
+    setTimeout(() => setMessage(""), 2000);
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(cart.filter(item => item.id !== id));
+  const handleRemoveFromCart = (id: string) => {
+    setCart(cart.filter((item) => item.id !== id));
   };
 
-  const handleCheckout = async () => {
-    if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
+  const handlePayment = async () => {
+    const itemsToProcess = cart.length > 0 ? cart : selectedPackage && phoneNumber ? [{ id: Date.now().toString(), pkg: selectedPackage, phoneNumber }] : null;
 
-    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
-    if (!publicKey) {
-      alert("Paystack public key not found.");
+    if (!itemsToProcess) {
+      setMessage("❌ Please select a package and enter phone number");
+      setTimeout(() => setMessage(""), 3000);
       return;
     }
 
     setPurchasing(true);
 
-    const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
-    const charge = subtotal * (transactionCharge / 100);
-    const totalAmount = subtotal + charge;
-
     try {
-      // Ensure Paystack is loaded
-      if (!(window as any).PaystackPop) {
-        alert("Paystack failed to load. Please refresh the page.");
+      const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+      if (!publicKey) {
+        setMessage("❌ Payment configuration error");
         setPurchasing(false);
         return;
       }
 
+      const totalAmount = itemsToProcess.reduce((sum: number, item: any) => sum + calculateTotal(item.pkg.price), 0);
+
       const handler = (window as any).PaystackPop.setup({
         key: publicKey,
-        email: "customer@wirenet.com",
-        amount: Math.ceil(totalAmount * 100),
+        email: "customer@example.com",
+        amount: Math.round(totalAmount * 100),
         currency: "GHS",
-        ref: `FN-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Items Count",
-              variable_name: "items_count",
-              value: cart.length.toString(),
-            },
-          ],
-        },
-        callback: (response: any) => {
-          completeBulkOrder(response.reference);
-        },
+        ref: `FN${Date.now()}`,
         onClose: () => {
-          alert("Transaction cancelled");
+          setMessage("⚠️ Transaction cancelled");
           setPurchasing(false);
+          setTimeout(() => setMessage(""), 3000);
+        },
+        callback: async (response: any) => {
+          try {
+            console.log("✅ Payment successful:", response);
+
+            let successCount = 0;
+            for (const item of itemsToProcess) {
+              try {
+                await ordersAPI.create({
+                  phone: item.phoneNumber,
+                  price: item.pkg.price,
+                  package_price: item.pkg.price,
+                  amount: calculateTotal(item.pkg.price),
+                  status: "PENDING",
+                  category: "fastnet",
+                  supplier: "hubnet",
+                });
+                successCount++;
+              } catch (error) {
+                console.error("Error creating order:", error);
+              }
+            }
+
+            if (successCount === itemsToProcess.length) {
+              setMessage(`✅ Payment successful! ${successCount} order(s) created.`);
+              setCart([]);
+              setPhoneNumber("");
+              setSelectedPackage(null);
+            } else {
+              setMessage(`⚠️ Payment successful but only ${successCount}/${itemsToProcess.length} orders created`);
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            setMessage("❌ Failed to process order");
+          } finally {
+            setPurchasing(false);
+            setTimeout(() => setMessage(""), 4000);
+          }
         },
       });
 
       handler.openIframe();
     } catch (error) {
       console.error("Paystack error:", error);
-      alert("Failed to initialize payment. Please try again.");
+      setMessage("❌ Failed to initialize payment");
       setPurchasing(false);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
-  const handleSinglePurchase = async () => {
-    if (!phoneNumber || !selectedPackage) {
-      alert("Please enter phone number and select a package");
-      return;
-    }
-
-    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
-    if (!publicKey) {
-      alert("Paystack public key not found.");
-      return;
-    }
-
-    setPurchasing(true);
-
-    const amount = selectedPackage.price;
-    const charge = amount * (transactionCharge / 100);
-    const totalAmount = amount + charge;
-
-    try {
-      if (!(window as any).PaystackPop) {
-        alert("Paystack failed to load. Please refresh the page.");
-        setPurchasing(false);
-        return;
-      }
-
-      const handler = (window as any).PaystackPop.setup({
-        key: publicKey,
-        email: "customer@wirenet.com",
-        amount: Math.ceil(totalAmount * 100),
-        currency: "GHS",
-        ref: `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Phone Number",
-              variable_name: "phone_number",
-              value: phoneNumber,
-            },
-            {
-              display_name: "Package",
-              variable_name: "package",
-              value: selectedPackage.dataAmount,
-            },
-          ],
-        },
-        callback: (response: any) => {
-          completeSingleOrder(response.reference);
-        },
-        onClose: () => {
-          alert("Transaction cancelled");
-          setPurchasing(false);
-        },
-      });
-
-      handler.openIframe();
-    } catch (error) {
-      console.error("Paystack error:", error);
-      alert("Failed to initialize payment. Please try again.");
-      setPurchasing(false);
-    }
-  };
-
-  const completeSingleOrder = async (reference: string) => {
-    if (!selectedPackage) return;
-
-    try {
-      const response = await fetch("/api/fastnet/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phoneNumber,
-          dataAmount: selectedPackage.dataAmount,
-          price: selectedPackage.price,
-          reference,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        alert(`✅ Purchase successful! ${result.message}`);
-        setPhoneNumber("");
-        setSelectedPackage(null);
-      } else {
-        alert(`❌ Order fulfillment failed: ${result.message}`);
-      }
-    } catch (error) {
-      console.error("Order completion error:", error);
-      alert("❌ Error processing order");
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
-  const completeBulkOrder = async (reference: string) => {
-    try {
-      let successCount = 0;
-      
-      for (let i = 0; i < cart.length; i++) {
-        const item = cart[i];
-        const itemRef = `${reference}-${i + 1}`;
-        
-        const response = await fetch("/api/fastnet/purchase", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phoneNumber: item.phoneNumber,
-            dataAmount: item.pkg.dataAmount,
-            price: item.pkg.price,
-            reference: itemRef,
-          }),
-        });
-
-        if (response.ok) successCount++;
-      }
-
-      alert(`✅ Payment successful! ${successCount}/${cart.length} orders processed.`);
-      setCart([]);
-    } catch (error) {
-      console.error("Order completion error:", error);
-      alert("❌ Error processing orders");
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
-  const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
-  const cartCharge = cartSubtotal * (transactionCharge / 100);
-  const cartTotal = cartSubtotal + cartCharge;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-blue-900 mb-4">Loading...</div>
+          <div className="text-blue-600">Fetching packages from database...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.body}>
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/")}
-            style={{ marginBottom: "10px" }}
-          >
-            <ArrowLeft size={18} style={{ marginRight: "8px" }} />
-            Back to WireNet
-          </Button>
-          <h1 style={styles.h1}>FastNet - NON-EXPIRY MTN DATA</h1>
-          <p style={styles.subtitle}>⚡ Super Fast Delivery • 5-20 Minutes</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <button onClick={() => navigate("/")} className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2">
+            <ArrowLeft size={20} /> Back to WireNet
+          </button>
+          <h1 className="text-4xl font-bold text-blue-900 mb-2">FastNet - NON-EXPIRY MTN DATA</h1>
+          <p className="text-blue-700">⚡ Super Fast Delivery • 5-20 Minutes</p>
         </div>
 
-        <div style={styles.contactBar}>
-          📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
-          💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
-        </div>
-
-        <h2 style={styles.sectionTitle}>Available Packages</h2>
-        {loading ? (
-          <p style={styles.loading}>Loading packages...</p>
-        ) : (
-          <div style={styles.packagesGrid}>
-            {packages.map((pkg) => (
-              <div
-                key={pkg.id}
-                onClick={() => setSelectedPackage(pkg)}
-                style={{
-                  ...styles.packageCard,
-                  ...(selectedPackage?.id === pkg.id ? styles.packageCardSelected : {}),
-                }}
-              >
-                <p style={styles.packageCardName}>{pkg.dataAmount}</p>
-                <p style={styles.packageCardPrice}>GH₵{pkg.price}</p>
-                <p style={styles.packageCardDelivery}>⏱️ {pkg.deliveryTime}</p>
-              </div>
-            ))}
+        {message && (
+          <div className={`p-4 rounded-lg mb-6 ${message.includes("✅") ? "bg-green-100 text-green-900" : message.includes("⚠️") ? "bg-yellow-100 text-yellow-900" : "bg-red-100 text-red-900"}`}>
+            {message}
           </div>
         )}
 
-        <h2 style={styles.sectionTitle}>Purchase Data</h2>
-        <div style={styles.purchaseSection}>
-          <div style={styles.purchaseCard}>
-            <h3>Phone Number</h3>
-            <Input
-              type="tel"
-              placeholder="Enter MTN number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.purchaseCard}>
-            <h3>Selected Package</h3>
-            {selectedPackage ? (
-              <div style={styles.selectedPackageInfo}>
-                <p style={styles.packageName}>{selectedPackage.dataAmount}</p>
-                <p style={styles.packagePrice}>GH₵{selectedPackage.price}</p>
-                <p style={styles.deliveryTime}>⏱️ {selectedPackage.deliveryTime}</p>
-                <p style={{ fontSize: "0.9em", color: "#666", marginTop: "5px" }}>
-                  + {transactionCharge}% fee: GH₵{(selectedPackage.price * (transactionCharge / 100)).toFixed(2)}
-                </p>
-                <p style={{ fontWeight: "bold", marginTop: "5px" }}>
-                  Total: GH₵{(selectedPackage.price * (1 + transactionCharge / 100)).toFixed(2)}
-                </p>
-              </div>
-            ) : (
-              <p style={styles.noSelection}>Select a package above</p>
-            )}
-          </div>
-
-          <div style={styles.purchaseCard}>
-            <h3>Add to Cart</h3>
-            <Button
-              onClick={addToCart}
-              disabled={!phoneNumber || !selectedPackage}
-              style={{
-                ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
-                marginBottom: "10px",
-                backgroundColor: "#6c757d",
-              }}
-            >
-              Add More +
-            </Button>
-            
-            <h3>Complete Purchase</h3>
-            <Button
-              onClick={handleSinglePurchase}
-              disabled={!phoneNumber || !selectedPackage || purchasing}
-              style={{
-                ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage || purchasing ? 0.5 : 1,
-              }}
-            >
-              {purchasing ? "Processing..." : "Pay with Paystack"}
-            </Button>
-            <p style={styles.paymentNote}>Secure payment via Paystack</p>
-          </div>
+        <div className="bg-blue-600 text-white p-4 rounded-lg mb-8 flex justify-between items-center">
+          <span>📞 Contact: +233 XXX XXX XXX</span>
+          <a href="#" className="hover:underline">
+            💬 WhatsApp: Chat with us
+          </a>
         </div>
 
-        {cart.length > 0 && (
-          <div style={styles.cartSection}>
-            <h2 style={styles.sectionTitle}>
-              <ShoppingCart size={24} style={{ marginRight: "10px", verticalAlign: "middle" }} />
-              Your Cart ({cart.length})
-            </h2>
-            <div style={styles.cartList}>
-              {cart.map((item) => (
-                <div key={item.id} style={styles.cartItem}>
-                  <div>
-                    <p style={styles.cartItemPhone}>{item.phoneNumber}</p>
-                    <p style={styles.cartItemPkg}>{item.pkg.dataAmount} - GH₵{item.pkg.price}</p>
-                  </div>
-                  <button onClick={() => removeFromCart(item.id)} style={styles.removeButton}>
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-blue-900 mb-4">Available Packages</h2>
+          {packages.length === 0 ? (
+            <div className="bg-white p-6 rounded-lg text-center text-gray-600">No packages available</div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              {packages.map((pkg) => (
+                <button
+                  key={pkg.id}
+                  onClick={() => setSelectedPackage(pkg)}
+                  className={`p-4 rounded-lg border-2 transition ${
+                    selectedPackage?.id === pkg.id ? "border-blue-600 bg-blue-50" : "border-gray-300 hover:border-blue-400"
+                  }`}
+                >
+                  <div className="font-bold text-blue-900">{pkg.dataAmount}GB</div>
+                  <div className="text-lg font-bold text-blue-600">GH₵{pkg.price}</div>
+                  <div className="text-xs text-gray-600">⏱ {pkg.deliveryTime}</div>
+                </button>
               ))}
             </div>
-            
-            <div style={styles.cartSummary}>
-              <div style={styles.summaryRow}>
-                <span>Subtotal:</span>
-                <span>GH₵{cartSubtotal.toFixed(2)}</span>
-              </div>
-              <div style={styles.summaryRow}>
-                <span>Fee ({transactionCharge}%):</span>
-                <span>GH₵{cartCharge.toFixed(2)}</span>
-              </div>
-              <div style={styles.summaryTotal}>
-                <span>Total:</span>
-                <span>GH₵{cartTotal.toFixed(2)}</span>
-              </div>
-              
-              <Button
-                onClick={handleCheckout}
-                disabled={purchasing}
-                style={styles.checkoutButton}
-              >
-                {purchasing ? "Processing..." : `Pay GH₵${cartTotal.toFixed(2)}`}
+          )}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold text-blue-900 mb-6">Purchase Data</h2>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+              <Input
+                type="text"
+                placeholder="Enter MTN number"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Selected Package</label>
+              {selectedPackage ? (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-900">{selectedPackage.dataAmount}GB</div>
+                  <div className="text-blue-600">GH₵{selectedPackage.price}</div>
+                  <div className="text-lg font-bold text-blue-900 mt-2">Total: GH₵{calculateTotal(selectedPackage.price).toFixed(2)}</div>
+                </div>
+              ) : (
+                <div className="text-gray-500">Select a package above</div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 justify-end">
+              <Button onClick={handleAddToCart} disabled={!phoneNumber || !selectedPackage} variant="outline">
+                <ShoppingCart size={16} className="mr-2" /> Add More +
+              </Button>
+              <Button onClick={handlePayment} disabled={purchasing || (!cart.length && (!phoneNumber || !selectedPackage))} className="bg-green-600 hover:bg-green-700">
+                {purchasing ? "Processing..." : "Pay with Paystack"}
               </Button>
             </div>
           </div>
-        )}
 
-        <div style={styles.featuresSection}>
-          <h2 style={styles.sectionTitle}>Why Choose FastNet?</h2>
-          <div style={styles.featuresGrid}>
-            <div style={styles.featureCard}>
-              <h3>⚡ Lightning Fast</h3>
-              <p>Get your data in 5-20 minutes</p>
+          {cart.length > 0 && (
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h3 className="font-bold text-gray-900 mb-3">
+                <ShoppingCart size={16} className="inline mr-2" />
+                Cart ({cart.length} items)
+              </h3>
+              <div className="space-y-2 mb-4">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded border border-gray-200">
+                    <span>
+                      {item.pkg.dataAmount}GB - {item.phoneNumber} - GH₵{calculateTotal(item.pkg.price).toFixed(2)}
+                    </span>
+                    <button onClick={() => handleRemoveFromCart(item.id)} className="text-red-600 hover:text-red-800 font-bold">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="text-right font-bold text-lg text-blue-900">
+                Total: GH₵{cart.reduce((sum, item) => sum + calculateTotal(item.pkg.price), 0).toFixed(2)}
+              </div>
             </div>
-            <div style={styles.featureCard}>
-              <h3>💰 Affordable</h3>
-              <p>Competitive pricing for all packages</p>
-            </div>
-            <div style={styles.featureCard}>
-              <h3>🔒 Secure</h3>
-              <p>Safe payment processing with Paystack</p>
-            </div>
-            <div style={styles.featureCard}>
-              <h3>♾️ Non-Expiry</h3>
-              <p>Your data never expires</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-const styles: any = {
-  body: {
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    margin: 0,
-    padding: 0,
-    backgroundColor: "#f0f4f8",
-    color: "#333",
-  },
-  container: {
-    maxWidth: "1200px",
-    margin: "20px auto",
-    padding: "20px",
-    backgroundColor: "white",
-    borderRadius: "10px",
-    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-  },
-  header: {
-    textAlign: "center" as const,
-    paddingBottom: "20px",
-    borderBottom: "3px solid #007bff",
-  },
-  h1: {
-    color: "#007bff",
-    marginBottom: "5px",
-    fontSize: "2.5em",
-  },
-  subtitle: {
-    color: "#666",
-    fontSize: "1.1em",
-  },
-  contactBar: {
-    backgroundColor: "#007bff",
-    color: "white",
-    padding: "10px",
-    textAlign: "center" as const,
-    borderRadius: "5px",
-    marginBottom: "20px",
-  },
-  contactLink: {
-    color: "#fff",
-    textDecoration: "none",
-    fontWeight: "bold",
-  },
-  sectionTitle: {
-    fontSize: "1.8em",
-    marginTop: "30px",
-    marginBottom: "20px",
-    color: "#007bff",
-  },
-  purchaseSection: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: "20px",
-    marginBottom: "30px",
-  },
-  purchaseCard: {
-    padding: "20px",
-    backgroundColor: "#f9f9f9",
-    borderRadius: "8px",
-    border: "1px solid #ddd",
-  },
-  selectedPackageInfo: {
-    textAlign: "center" as const,
-  },
-  packageName: {
-    fontSize: "2em",
-    fontWeight: "bold",
-    color: "#007bff",
-    margin: "10px 0",
-  },
-  packagePrice: {
-    fontSize: "1.5em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-  },
-  deliveryTime: {
-    fontSize: "0.9em",
-    color: "#666",
-    margin: "5px 0 0 0",
-  },
-  noSelection: {
-    color: "#999",
-    textAlign: "center" as const,
-  },
-  buyButton: {
-    width: "100%",
-    padding: "12px",
-    backgroundColor: "#007bff",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    fontSize: "1.1em",
-  },
-  paymentNote: {
-    fontSize: "0.8em",
-    color: "#999",
-    textAlign: "center" as const,
-    marginTop: "10px",
-  },
-  loading: {
-    textAlign: "center" as const,
-    color: "#666",
-  },
-  packagesGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-    gap: "15px",
-    marginBottom: "30px",
-  },
-  packageCard: {
-    padding: "20px",
-    backgroundColor: "#fff",
-    border: "2px solid #ddd",
-    borderRadius: "8px",
-    textAlign: "center" as const,
-    cursor: "pointer",
-    transition: "all 0.3s",
-  },
-  packageCardSelected: {
-    border: "2px solid #007bff",
-    backgroundColor: "#f0f7ff",
-    boxShadow: "0 0 10px rgba(0, 123, 255, 0.3)",
-  },
-  packageCardName: {
-    fontSize: "1.3em",
-    fontWeight: "bold",
-    color: "#007bff",
-    margin: "10px 0",
-  },
-  packageCardPrice: {
-    fontSize: "1.2em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-  },
-  packageCardDelivery: {
-    fontSize: "0.85em",
-    color: "#666",
-    margin: "5px 0 0 0",
-  },
-  featuresSection: {
-    marginTop: "40px",
-    paddingTop: "30px",
-    borderTop: "2px solid #eee",
-  },
-  featuresGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "20px",
-  },
-  featureCard: {
-    padding: "20px",
-    backgroundColor: "#f0f7ff",
-    borderRadius: "8px",
-    border: "1px solid #007bff",
-    textAlign: "center" as const,
-  },
-  cartSection: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-    marginTop: "30px",
-  },
-  cartList: {
-    marginBottom: "20px",
-  },
-  cartItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px",
-    borderBottom: "1px solid #eee",
-  },
-  cartItemPhone: {
-    fontWeight: "bold",
-    margin: 0,
-  },
-  cartItemPkg: {
-    color: "#666",
-    margin: 0,
-    fontSize: "0.9em",
-  },
-  removeButton: {
-    background: "none",
-    border: "none",
-    color: "#dc3545",
-    cursor: "pointer",
-  },
-  cartSummary: {
-    borderTop: "2px solid #eee",
-    paddingTop: "15px",
-  },
-  summaryRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "5px",
-    color: "#666",
-  },
-  summaryTotal: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "10px",
-    marginBottom: "20px",
-    fontSize: "1.2em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-  },
-  checkoutButton: {
-    width: "100%",
-    padding: "15px",
-    backgroundColor: "#28a745",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    fontSize: "1.2em",
-  },
-};
