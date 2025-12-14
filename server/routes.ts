@@ -1,11 +1,11 @@
 import { Express } from "express";
 import { createServer, Server } from "http";
-import { storage } from "./storage";
-import { isAuthenticated, isAdmin, login } from "./auth";
+import { storage } from "./storage.js";
+import { isAuthenticated, isAdmin, login } from "./auth.js";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { Pool } from "pg";
-import * as supplierManager from "./supplier-manager";
+import * as supplierManager from "./supplier-manager.js";
 
 const PgStore = pgSession(session);
 

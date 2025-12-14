@@ -3,10 +3,10 @@
  * Routes orders to the active supplier (DataXpress, Hubnet, or DataKazina)
  */
 
-import * as dataxpress from "./dataxpress";
-import * as hubnet from "./hubnet";
-import * as dakazina from "./dakazina";
-import { storage } from "./storage";
+import * as dataxpress from "./dataxpress.js";
+import * as hubnet from "./hubnet.js";
+import * as dakazina from "./dakazina.js";
+import { storage } from "./storage.js";
 
 export type SupplierName = "dataxpress" | "hubnet" | "dakazina";
 
