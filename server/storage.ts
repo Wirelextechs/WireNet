@@ -1,5 +1,5 @@
 import { db } from "./db.js";
-import { fastnetOrders, settings, adminUsers, type FastnetOrder, type InsertFastnetOrder } from "@shared/db-schema.js";
+import { fastnetOrders, settings, adminUsers, type FastnetOrder, type InsertFastnetOrder } from "../shared/db-schema.js";
 import { eq, desc } from "drizzle-orm";
 
 interface Settings {
