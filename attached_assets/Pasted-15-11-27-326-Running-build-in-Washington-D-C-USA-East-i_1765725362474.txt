@@ -1,0 +1,48 @@
+15:11:27.326 Running build in Washington, D.C., USA (East) – iad1
+15:11:27.327 Build machine configuration: 2 cores, 8 GB
+15:11:27.614 Cloning github.com/Wirelextechs/WireNet (Branch: main, Commit: fb5e189)
+15:11:28.650 Cloning completed: 1.036s
+15:11:29.321 Restored build cache from previous deployment (5sVzDmsu2if7v2sQvfgSQ9EnzyVB)
+15:11:29.906 Running "vercel build"
+15:11:30.339 Vercel CLI 50.0.1
+15:11:31.095 Installing dependencies...
+15:11:37.160 
+15:11:37.160 up to date in 6s
+15:11:37.161 
+15:11:37.161 59 packages are looking for funding
+15:11:37.161   run `npm fund` for details
+15:11:37.295 
+15:11:37.295 > wirenet@1.0.0 build
+15:11:37.295 > vite build
+15:11:37.296 
+15:11:37.570 [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+15:11:37.626 transforming...
+15:11:41.114 [32m✓[39m 1743 modules transformed.
+15:11:41.447 rendering chunks...
+15:11:41.458 computing gzip size...
+15:11:41.476 [2mdist/[22m[32mindex.html                [39m[1m[2m  0.64 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+15:11:41.477 [2mdist/[22m[2massets/[22m[35mmain-DGSJU0Nx.css  [39m[1m[2m 15.21 kB[22m[1m[22m[2m │ gzip:   3.72 kB[22m
+15:11:41.477 [2mdist/[22m[2massets/[22m[36mmain-BgyuRI0q.js   [39m[1m[2m473.04 kB[22m[1m[22m[2m │ gzip: 133.84 kB[22m
+15:11:41.478 [32m✓ built in 3.88s[39m
+15:11:41.759 Using TypeScript 5.6.3 (local user-provided)
+15:11:45.725 server/routes.ts(81,35): error TS6133: 'req' is declared but its value is never read.
+15:11:45.726 server/routes.ts(111,67): error TS6133: 'req' is declared but its value is never read.
+15:11:45.727 server/routes.ts(219,69): error TS6133: 'req' is declared but its value is never read.
+15:11:45.727 server/routes.ts(255,27): error TS6133: 'req' is declared but its value is never read.
+15:11:45.727 
+15:11:46.794 server/dataxpress.ts(15,10): error TS6133: 'parseDataAmount' is declared but its value is never read.
+15:11:46.797 
+15:11:46.823 server/hubnet.ts(50,11): error TS6196: 'HubnetBalanceResponse' is declared but never used.
+15:11:46.824 server/hubnet.ts(204,3): error TS6133: 'dataAmount' is declared but its value is never read.
+15:11:46.824 
+15:11:46.865 server/dakazina.ts(50,11): error TS6196: 'DataKazinaPurchaseRequest' is declared but never used.
+15:11:46.865 server/dakazina.ts(66,11): error TS6196: 'DataKazinaBalanceResponse' is declared but never used.
+15:11:46.866 server/dakazina.ts(277,3): error TS6133: 'dataAmount' is declared but its value is never read.
+15:11:46.866 
+15:11:48.415 Build Completed in /vercel/output [17s]
+15:11:48.601 Deploying outputs...
+15:11:53.674 Deployment completed
+15:11:54.613 Creating build cache...
+15:12:14.343 Created build cache: 19.724s
+15:12:14.344 Uploading build cache [97.56 MB]
+15:12:15.671 Build cache uploaded: 1.332s
