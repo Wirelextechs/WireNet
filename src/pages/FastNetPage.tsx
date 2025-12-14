@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { packagesAPI } from "@/lib/supabase";
 
 interface Package {
   id: string;
@@ -17,15 +18,6 @@ interface CartItem {
   pkg: Package;
   phoneNumber: string;
 }
-
-const DEFAULT_PACKAGES: Package[] = [
-  { id: "1", dataAmount: "1GB", price: 5, deliveryTime: "5-10 mins", isEnabled: true },
-  { id: "2", dataAmount: "2GB", price: 9, deliveryTime: "5-10 mins", isEnabled: true },
-  { id: "3", dataAmount: "5GB", price: 20, deliveryTime: "10-15 mins", isEnabled: true },
-  { id: "4", dataAmount: "10GB", price: 35, deliveryTime: "15-20 mins", isEnabled: true },
-  { id: "5", dataAmount: "20GB", price: 65, deliveryTime: "20 mins", isEnabled: true },
-  { id: "6", dataAmount: "50GB", price: 150, deliveryTime: "20 mins", isEnabled: true },
-];
 
 export default function FastNetPage() {
   const [, navigate] = useLocation();
@@ -57,23 +49,18 @@ export default function FastNetPage() {
     }
   };
 
-  const loadPackages = () => {
+  const loadPackages = async () => {
     try {
       setLoading(true);
-      const saved = localStorage.getItem("fastnetPackages");
-      if (saved) {
-        const allPackages = JSON.parse(saved) as Package[];
-        const enabledPackages = allPackages
-          .filter((pkg) => pkg.isEnabled !== false)
-          .sort((a, b) => parseFloat(a.dataAmount) - parseFloat(b.dataAmount));
-        setPackages(enabledPackages);
+      const data = await packagesAPI.getByCategory("fastnet");
+      if (data && data.length > 0) {
+        setPackages(data);
       } else {
-        localStorage.setItem("fastnetPackages", JSON.stringify(DEFAULT_PACKAGES));
-        setPackages(DEFAULT_PACKAGES);
+        setMessage("No packages available. Please contact admin.");
       }
     } catch (error) {
-      console.error("Error loading packages:", error);
-      setPackages(DEFAULT_PACKAGES);
+      console.error("Error loading packages from Supabase:", error);
+      setMessage("Failed to load packages. Please try again.");
     } finally {
       setLoading(false);
     }

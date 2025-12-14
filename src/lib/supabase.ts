@@ -35,9 +35,16 @@ export const packagesAPI = {
   },
 
   async getByCategory(category: string) {
-    const { data, error } = await supabase.from('packages').select('*').eq('category', category).eq('enabled', true).order('data_amount', { ascending: true })
+    const { data, error } = await supabase.from('packages').select('*').eq('category', category).eq('active', true).order('price', { ascending: true })
     if (error) throw error
-    return data
+    return data?.map((pkg: any) => ({
+      id: pkg.id,
+      dataAmount: pkg.size,
+      price: Number(pkg.price),
+      deliveryTime: pkg.delivery_time,
+      network: pkg.network,
+      isEnabled: pkg.active,
+    }))
   },
 
   async update(id: string, updates: any) {
@@ -49,6 +56,25 @@ export const packagesAPI = {
   async delete(id: string) {
     const { error } = await supabase.from('packages').delete().eq('id', id)
     if (error) throw error
+  },
+
+  async getAll(category: string) {
+    const { data, error } = await supabase.from('packages').select('*').eq('category', category).order('price', { ascending: true })
+    if (error) throw error
+    return data?.map((pkg: any) => ({
+      id: pkg.id,
+      dataAmount: pkg.size,
+      price: Number(pkg.price),
+      deliveryTime: pkg.delivery_time,
+      network: pkg.network,
+      isEnabled: pkg.active,
+    }))
+  },
+
+  async toggle(id: string, active: boolean) {
+    const { data, error } = await supabase.from('packages').update({ active, updated_at: new Date() }).eq('id', id).select()
+    if (error) throw error
+    return data
   },
 }
 
