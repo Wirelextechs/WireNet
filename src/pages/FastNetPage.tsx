@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { MessageCircle, ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { packagesAPI } from "@/lib/supabase";
 
@@ -28,7 +28,9 @@ export default function FastNetPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [transactionCharge, setTransactionCharge] = useState(1.3);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [message, setMessage] = useState("");
+  const [statusCheckId, setStatusCheckId] = useState("");
+  const [statusReport, setStatusReport] = useState<any>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
     loadPackages();
@@ -55,12 +57,9 @@ export default function FastNetPage() {
       const data = await packagesAPI.getByCategory("fastnet");
       if (data && data.length > 0) {
         setPackages(data);
-      } else {
-        setMessage("No packages available. Please contact admin.");
       }
     } catch (error) {
       console.error("Error loading packages from Supabase:", error);
-      setMessage("Failed to load packages. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -70,229 +69,586 @@ export default function FastNetPage() {
     return price + (price * transactionCharge) / 100;
   };
 
-  const handleAddToCart = () => {
-    if (!phoneNumber || !selectedPackage) {
-      setMessage("❌ Please enter phone number and select a package");
-      setTimeout(() => setMessage(""), 3000);
+  const handleStatusCheck = async () => {
+    if (!statusCheckId) {
+      alert("Please enter an order ID");
       return;
     }
-    setCart([...cart, { id: Date.now().toString(), pkg: selectedPackage, phoneNumber }]);
+    setStatusLoading(true);
+    try {
+      const response = await fetch(`/api/fastnet/orders/status/${statusCheckId}`);
+      if (response.ok) {
+        const order = await response.json();
+        setStatusReport({
+          shortId: order.shortId || order.short_id,
+          status: order.status,
+          packageDetails: order.packageDetails || order.package_details,
+          createdAt: new Date(order.createdAt || order.created_at).toLocaleDateString(),
+        });
+      } else {
+        setStatusReport(null);
+        alert("Order not found");
+      }
+    } catch (error) {
+      console.error("Status check error:", error);
+      setStatusReport(null);
+      alert("Error checking status");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const addToCart = () => {
+    if (!phoneNumber || !selectedPackage) {
+      alert("Please enter phone number and select a package");
+      return;
+    }
+    const newItem: CartItem = {
+      id: Date.now().toString(),
+      pkg: selectedPackage,
+      phoneNumber: phoneNumber,
+    };
+    setCart([...cart, newItem]);
     setPhoneNumber("");
     setSelectedPackage(null);
-    setMessage("✅ Added to cart");
-    setTimeout(() => setMessage(""), 2000);
   };
 
-  const handleRemoveFromCart = (id: string) => {
-    setCart(cart.filter((item) => item.id !== id));
+  const removeFromCart = (id: string) => {
+    setCart(cart.filter(item => item.id !== id));
   };
 
-  const handlePayment = async () => {
+  const handleCheckout = async () => {
     const itemsToProcess = cart.length > 0 ? cart : selectedPackage && phoneNumber ? [{ id: Date.now().toString(), pkg: selectedPackage, phoneNumber }] : null;
 
-    if (!itemsToProcess) {
-      setMessage("❌ Please select a package and enter phone number");
-      setTimeout(() => setMessage(""), 3000);
+    if (!itemsToProcess || itemsToProcess.length === 0) {
+      alert("Please add items to cart first");
+      return;
+    }
+
+    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      alert("Payment configuration error");
       return;
     }
 
     setPurchasing(true);
 
-    try {
-      const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
-      if (!publicKey) {
-        setMessage("❌ Payment configuration error");
-        setPurchasing(false);
-        return;
-      }
+    const subtotal = itemsToProcess.reduce((sum, item) => sum + item.pkg.price, 0);
+    const charge = subtotal * (transactionCharge / 100);
+    const totalAmount = subtotal + charge;
 
-      const totalAmount = itemsToProcess.reduce((sum: number, item: any) => sum + calculateTotal(item.pkg.price), 0);
-
-      const handler = (window as any).PaystackPop.setup({
-        key: publicKey,
-        email: "customer@example.com",
-        amount: Math.round(totalAmount * 100),
-        currency: "GHS",
-        ref: `FN${Date.now()}`,
-        onClose: () => {
-          setMessage("⚠️ Transaction cancelled");
-          setPurchasing(false);
-          setTimeout(() => setMessage(""), 3000);
-        },
-        callback: async (response: any) => {
-          try {
-            console.log("✅ Payment successful:", response);
-
-            let successCount = 0;
-            for (const item of itemsToProcess) {
-              try {
-                const orderResponse = await fetch("/api/fastnet/purchase", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    phoneNumber: item.phoneNumber,
-                    dataAmount: item.pkg.dataAmount,
-                    price: item.pkg.price,
-                    reference: response.reference,
-                  }),
-                });
-                if (orderResponse.ok) {
-                  successCount++;
-                } else {
-                  console.error("Order creation failed:", await orderResponse.text());
-                }
-              } catch (error) {
-                console.error("Error creating order:", error);
+    const handler = (window as any).PaystackPop.setup({
+      key: publicKey,
+      email: "customer@wirenet.com",
+      amount: Math.ceil(totalAmount * 100),
+      currency: "GHS",
+      ref: `FN-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      callback: async (response: any) => {
+        try {
+          let successCount = 0;
+          for (const item of itemsToProcess) {
+            try {
+              const orderResponse = await fetch("/api/fastnet/purchase", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  phoneNumber: item.phoneNumber,
+                  dataAmount: item.pkg.dataAmount,
+                  price: item.pkg.price,
+                  reference: response.reference,
+                }),
+              });
+              if (orderResponse.ok) {
+                successCount++;
               }
+            } catch (error) {
+              console.error("Error creating order:", error);
             }
-
-            if (successCount === itemsToProcess.length) {
-              setMessage(`✅ Payment successful! ${successCount} order(s) created.`);
-              setCart([]);
-              setPhoneNumber("");
-              setSelectedPackage(null);
-            } else {
-              setMessage(`⚠️ Payment successful but only ${successCount}/${itemsToProcess.length} orders created`);
-            }
-          } catch (error) {
-            console.error("Error:", error);
-            setMessage("❌ Failed to process order");
-          } finally {
-            setPurchasing(false);
-            setTimeout(() => setMessage(""), 4000);
           }
-        },
-      });
+          alert(`Payment successful! ${successCount} order(s) created.`);
+          setCart([]);
+          setPhoneNumber("");
+          setSelectedPackage(null);
+        } catch (error) {
+          console.error("Error:", error);
+          alert("Failed to process order");
+        } finally {
+          setPurchasing(false);
+        }
+      },
+      onClose: () => {
+        alert("Transaction cancelled");
+        setPurchasing(false);
+      },
+    });
 
-      handler.openIframe();
-    } catch (error) {
-      console.error("Paystack error:", error);
-      setMessage("❌ Failed to initialize payment");
-      setPurchasing(false);
-      setTimeout(() => setMessage(""), 3000);
-    }
+    handler.openIframe();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-900 mb-4">Loading...</div>
-          <div className="text-blue-600">Loading packages...</div>
-        </div>
-      </div>
-    );
-  }
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+  const cartCharge = cartSubtotal * (transactionCharge / 100);
+  const cartTotal = cartSubtotal + cartCharge;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <button onClick={() => navigate("/")} className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2">
-            <ArrowLeft size={20} /> Back to WireNet
-          </button>
-          <h1 className="text-4xl font-bold text-blue-900 mb-2">FastNet - NON-EXPIRY MTN DATA</h1>
-          <p className="text-blue-700">⚡ Super Fast Delivery • 5-20 Minutes</p>
+    <div style={styles.body}>
+      <div style={styles.header}>
+        <div style={styles.headerTop}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            style={{ marginBottom: "10px" }}
+          >
+            <ArrowLeft size={18} style={{ marginRight: "8px" }} />
+            Back to WireNet
+          </Button>
+        </div>
+        <h1 style={styles.h1}>FastNet - NON-EXPIRY MTN DATA</h1>
+        <p style={styles.subtitle}>Super Fast Delivery - 5-20 Minutes</p>
+      </div>
+
+      <div style={styles.contactBar}>
+        📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
+        💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
+      </div>
+
+      <main style={styles.main}>
+        <div style={styles.statusChecker}>
+          <h2 style={styles.statusCheckerH2}>Check Order Status</h2>
+          <div style={styles.statusCheckerForm}>
+            <Input
+              type="text"
+              placeholder="Enter Order ID"
+              value={statusCheckId}
+              onChange={(e) => setStatusCheckId(e.target.value)}
+              style={styles.input}
+            />
+            <Button
+              onClick={handleStatusCheck}
+              disabled={statusLoading}
+              style={styles.statusButton}
+            >
+              {statusLoading ? "Checking..." : "Check Status"}
+            </Button>
+          </div>
+          {statusReport && (
+            <div style={styles.statusReport}>
+              <p><strong>Order ID:</strong> {statusReport.shortId}</p>
+              <p><strong>Status:</strong> {statusReport.status}</p>
+              <p><strong>Package:</strong> {statusReport.packageDetails}</p>
+              <p><strong>Date:</strong> {statusReport.createdAt}</p>
+            </div>
+          )}
         </div>
 
-        {message && (
-          <div className={`p-4 rounded-lg mb-6 ${message.includes("✅") ? "bg-green-100 text-green-900" : message.includes("⚠️") ? "bg-yellow-100 text-yellow-900" : "bg-red-100 text-red-900"}`}>
-            {message}
+        <h2 style={styles.sectionTitle}>Available Packages</h2>
+        {loading ? (
+          <p style={styles.loading}>Loading packages...</p>
+        ) : packages.length === 0 ? (
+          <p style={styles.loading}>No packages available</p>
+        ) : (
+          <div style={styles.packagesGrid}>
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                onClick={() => setSelectedPackage(pkg)}
+                style={{
+                  ...styles.packageCard,
+                  ...(selectedPackage?.id === pkg.id ? styles.packageCardSelected : {}),
+                }}
+              >
+                <p style={styles.packageCardName}>{pkg.dataAmount}</p>
+                <p style={styles.packageCardPrice}>GH₵{pkg.price}</p>
+                <p style={styles.packageDelivery}>⏱ {pkg.deliveryTime}</p>
+              </div>
+            ))}
           </div>
         )}
 
-        <div className="bg-blue-600 text-white p-4 rounded-lg mb-8 flex justify-between items-center">
-          <span>📞 Contact: +233 XXX XXX XXX</span>
-          <a href="#" className="hover:underline">
-            💬 WhatsApp: Chat with us
-          </a>
+        <h2 style={styles.sectionTitle}>Purchase Data</h2>
+        <div style={styles.purchaseSection}>
+          <div style={styles.purchaseCard}>
+            <h3>Phone Number</h3>
+            <Input
+              type="tel"
+              placeholder="Enter MTN number"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.purchaseCard}>
+            <h3>Selected Package</h3>
+            {selectedPackage ? (
+              <div style={styles.selectedPackageInfo}>
+                <p style={styles.packageName}>{selectedPackage.dataAmount}</p>
+                <p style={styles.packagePrice}>GH₵{selectedPackage.price}</p>
+                <p style={styles.packageTotal}>Total: GH₵{calculateTotal(selectedPackage.price).toFixed(2)}</p>
+              </div>
+            ) : (
+              <p style={styles.noSelection}>Select a package above</p>
+            )}
+          </div>
+
+          <div style={styles.purchaseCard}>
+            <h3>Add to Cart</h3>
+            <Button
+              onClick={addToCart}
+              disabled={!phoneNumber || !selectedPackage}
+              style={{
+                ...styles.buyButton,
+                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+              }}
+            >
+              <ShoppingCart size={18} style={{ marginRight: "8px" }} />
+              Add More +
+            </Button>
+          </div>
         </div>
 
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-blue-900 mb-4">Available Packages</h2>
-          {packages.length === 0 ? (
-            <div className="bg-white p-6 rounded-lg text-center text-gray-600">No packages available</div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-              {packages.map((pkg) => (
-                <button
-                  key={pkg.id}
-                  onClick={() => setSelectedPackage(pkg)}
-                  className={`p-4 rounded-lg border-2 transition ${
-                    selectedPackage?.id === pkg.id ? "border-blue-600 bg-blue-50" : "border-gray-300 hover:border-blue-400"
-                  }`}
-                >
-                  <div className="font-bold text-blue-900">{pkg.dataAmount}</div>
-                  <div className="text-lg font-bold text-blue-600">GH₵{pkg.price}</div>
-                  <div className="text-xs text-gray-600">⏱ {pkg.deliveryTime}</div>
-                </button>
+        {cart.length > 0 && (
+          <div style={styles.cartSection}>
+            <h2 style={styles.sectionTitle}>
+              <ShoppingCart size={24} style={{ marginRight: "10px", verticalAlign: "middle" }} />
+              Your Cart ({cart.length})
+            </h2>
+            <div style={styles.cartList}>
+              {cart.map((item) => (
+                <div key={item.id} style={styles.cartItem}>
+                  <div>
+                    <p style={styles.cartItemPhone}>{item.phoneNumber}</p>
+                    <p style={styles.cartItemPkg}>{item.pkg.dataAmount} - GH₵{item.pkg.price}</p>
+                  </div>
+                  <button onClick={() => removeFromCart(item.id)} style={styles.removeButton}>
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               ))}
             </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold text-blue-900 mb-6">Purchase Data</h2>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-              <Input
-                type="text"
-                placeholder="Enter MTN number"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Selected Package</label>
-              {selectedPackage ? (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="text-2xl font-bold text-blue-900">{selectedPackage.dataAmount}</div>
-                  <div className="text-blue-600">GH₵{selectedPackage.price}</div>
-                  <div className="text-lg font-bold text-blue-900 mt-2">Total: GH₵{calculateTotal(selectedPackage.price).toFixed(2)}</div>
-                </div>
-              ) : (
-                <div className="text-gray-500">Select a package above</div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2 justify-end">
-              <Button onClick={handleAddToCart} disabled={!phoneNumber || !selectedPackage} variant="outline">
-                <ShoppingCart size={16} className="mr-2" /> Add More +
-              </Button>
-              <Button onClick={handlePayment} disabled={purchasing || (!cart.length && (!phoneNumber || !selectedPackage))} className="bg-green-600 hover:bg-green-700">
-                {purchasing ? "Processing..." : "Pay with Paystack"}
+            
+            <div style={styles.cartSummary}>
+              <div style={styles.summaryRow}>
+                <span>Subtotal:</span>
+                <span>GH₵{cartSubtotal.toFixed(2)}</span>
+              </div>
+              <div style={styles.summaryRow}>
+                <span>Fee ({transactionCharge}%):</span>
+                <span>GH₵{cartCharge.toFixed(2)}</span>
+              </div>
+              <div style={styles.summaryTotal}>
+                <span>Total:</span>
+                <span>GH₵{cartTotal.toFixed(2)}</span>
+              </div>
+              
+              <Button
+                onClick={handleCheckout}
+                disabled={purchasing}
+                style={styles.checkoutButton}
+              >
+                {purchasing ? "Processing..." : `Pay GH₵${cartTotal.toFixed(2)}`}
               </Button>
             </div>
           </div>
+        )}
 
-          {cart.length > 0 && (
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <h3 className="font-bold text-gray-900 mb-3">
-                <ShoppingCart size={16} className="inline mr-2" />
-                Cart ({cart.length} items)
-              </h3>
-              <div className="space-y-2 mb-4">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded border border-gray-200">
-                    <span>
-                      {item.pkg.dataAmount} - {item.phoneNumber} - GH₵{calculateTotal(item.pkg.price).toFixed(2)}
-                    </span>
-                    <button onClick={() => handleRemoveFromCart(item.id)} className="text-red-600 hover:text-red-800 font-bold">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="text-right font-bold text-lg text-blue-900">
-                Total: GH₵{cart.reduce((sum, item) => sum + calculateTotal(item.pkg.price), 0).toFixed(2)}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        {cart.length === 0 && selectedPackage && phoneNumber && (
+          <div style={styles.quickCheckout}>
+            <Button
+              onClick={handleCheckout}
+              disabled={purchasing}
+              style={styles.checkoutButton}
+            >
+              {purchasing ? "Processing..." : `Pay GH₵${calculateTotal(selectedPackage.price).toFixed(2)}`}
+            </Button>
+          </div>
+        )}
+      </main>
+
+      <button
+        onClick={() => window.open("https://wa.me/233XXXXXXXXX", "_blank")}
+        style={styles.whatsappButton}
+        title="Chat on WhatsApp"
+      >
+        <MessageCircle size={24} />
+      </button>
     </div>
   );
 }
+
+const styles: any = {
+  body: {
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    margin: 0,
+    padding: 0,
+    backgroundColor: "#f0f4f8",
+    color: "#333",
+    minHeight: "100vh",
+  },
+  header: {
+    backgroundColor: "white",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    padding: "20px",
+    textAlign: "center" as const,
+    borderBottom: "3px solid #007bff",
+  },
+  headerTop: {
+    textAlign: "left" as const,
+  },
+  h1: {
+    color: "#1a1a1a",
+    marginBottom: "5px",
+    fontSize: "2.5em",
+  },
+  subtitle: {
+    color: "#007bff",
+    fontSize: "1.1em",
+    fontWeight: "500",
+  },
+  contactBar: {
+    backgroundColor: "#007bff",
+    color: "white",
+    padding: "12px",
+    textAlign: "center" as const,
+    borderRadius: "5px",
+    margin: "20px",
+  },
+  contactLink: {
+    color: "#ffcc00",
+    textDecoration: "none",
+    fontWeight: "bold",
+  },
+  main: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    padding: "20px",
+  },
+  statusChecker: {
+    backgroundColor: "#e3f2fd",
+    padding: "20px",
+    borderRadius: "8px",
+    marginBottom: "30px",
+    textAlign: "center" as const,
+    border: "1px solid #90caf9",
+  },
+  statusCheckerH2: {
+    marginTop: 0,
+    color: "#1565c0",
+  },
+  statusCheckerForm: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "10px",
+    flexWrap: "wrap" as const,
+  },
+  input: {
+    padding: "10px",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    width: "200px",
+  },
+  statusButton: {
+    padding: "10px 20px",
+    backgroundColor: "#1565c0",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  statusReport: {
+    marginTop: "15px",
+    textAlign: "left" as const,
+    padding: "15px",
+    backgroundColor: "#fff",
+    borderRadius: "5px",
+    maxWidth: "400px",
+    margin: "15px auto 0",
+  },
+  sectionTitle: {
+    fontSize: "1.8em",
+    marginTop: "30px",
+    marginBottom: "20px",
+    color: "#1a1a1a",
+  },
+  purchaseSection: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "20px",
+    marginBottom: "30px",
+  },
+  purchaseCard: {
+    padding: "20px",
+    backgroundColor: "#fff",
+    borderRadius: "8px",
+    border: "1px solid #ddd",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+  },
+  selectedPackageInfo: {
+    textAlign: "center" as const,
+  },
+  packageName: {
+    fontSize: "2em",
+    fontWeight: "bold",
+    color: "#007bff",
+    margin: "10px 0",
+  },
+  packagePrice: {
+    fontSize: "1.5em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  packageTotal: {
+    fontSize: "1.1em",
+    color: "#28a745",
+    marginTop: "10px",
+    fontWeight: "bold",
+  },
+  noSelection: {
+    color: "#999",
+    textAlign: "center" as const,
+    padding: "20px 0",
+  },
+  buyButton: {
+    width: "100%",
+    padding: "12px",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "1.1em",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loading: {
+    textAlign: "center" as const,
+    color: "#666",
+    padding: "40px",
+  },
+  packagesGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+    gap: "15px",
+    marginBottom: "30px",
+  },
+  packageCard: {
+    padding: "20px",
+    backgroundColor: "#fff",
+    border: "2px solid #ddd",
+    borderRadius: "10px",
+    textAlign: "center" as const,
+    cursor: "pointer",
+    transition: "all 0.3s",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+  },
+  packageCardSelected: {
+    border: "2px solid #007bff",
+    backgroundColor: "#e3f2fd",
+    boxShadow: "0 0 15px rgba(0, 123, 255, 0.3)",
+    transform: "scale(1.02)",
+  },
+  packageCardName: {
+    fontSize: "1.4em",
+    fontWeight: "bold",
+    color: "#007bff",
+    margin: "5px 0",
+  },
+  packageCardPrice: {
+    fontSize: "1.2em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+    margin: "5px 0",
+  },
+  packageDelivery: {
+    fontSize: "0.85em",
+    color: "#666",
+    margin: "5px 0 0",
+  },
+  whatsappButton: {
+    position: "fixed" as const,
+    bottom: "24px",
+    right: "24px",
+    backgroundColor: "#25D366",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "56px",
+    height: "56px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    zIndex: 50,
+  },
+  cartSection: {
+    backgroundColor: "white",
+    padding: "25px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    marginTop: "30px",
+  },
+  cartList: {
+    marginBottom: "20px",
+  },
+  cartItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px",
+    borderBottom: "1px solid #eee",
+  },
+  cartItemPhone: {
+    fontWeight: "bold",
+    margin: 0,
+    color: "#1a1a1a",
+  },
+  cartItemPkg: {
+    color: "#666",
+    margin: 0,
+    fontSize: "0.9em",
+  },
+  removeButton: {
+    background: "none",
+    border: "none",
+    color: "#dc3545",
+    cursor: "pointer",
+    padding: "5px",
+  },
+  cartSummary: {
+    borderTop: "2px solid #eee",
+    paddingTop: "15px",
+  },
+  summaryRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "8px",
+    color: "#666",
+  },
+  summaryTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "15px",
+    marginBottom: "20px",
+    fontSize: "1.3em",
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  checkoutButton: {
+    width: "100%",
+    padding: "15px",
+    backgroundColor: "#28a745",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "1.2em",
+  },
+  quickCheckout: {
+    marginTop: "20px",
+    textAlign: "center" as const,
+  },
+};
