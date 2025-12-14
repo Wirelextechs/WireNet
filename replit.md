@@ -37,6 +37,13 @@ Key server files:
 - **Tables**: fastnet_orders, settings, admin_users
 - **Fallback**: Can work with in-memory storage if DATABASE_URL not set
 
+### Package Management
+- **Storage**: Browser localStorage (key: `fastnetPackages`)
+- **Format**: Packages are stored with `dataAmount` including the "GB" suffix (e.g., "5GB")
+- **Default Packages**: If localStorage is empty, default packages are initialized (1GB, 2GB, 5GB, 10GB, 20GB, 50GB)
+- **Admin Management**: Admins can add/edit/disable packages via the FastNet Admin dashboard
+- **Storefront**: FastNetPage loads enabled packages from localStorage and displays them for purchase
+
 ### Order Fulfillment System
 The platform integrates with three data bundle suppliers:
 1. **DataXpress** (`server/dataxpress.ts`) - Primary supplier
