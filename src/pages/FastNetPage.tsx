@@ -118,71 +118,82 @@ export default function FastNetPage() {
   };
 
   const handleCheckout = async () => {
-    const itemsToProcess = cart.length > 0 ? cart : selectedPackage && phoneNumber ? [{ id: Date.now().toString(), pkg: selectedPackage, phoneNumber }] : null;
-
-    if (!itemsToProcess || itemsToProcess.length === 0) {
+    if (cart.length === 0) {
       alert("Please add items to cart first");
       return;
     }
 
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     if (!publicKey) {
-      alert("Payment configuration error");
+      alert("Payment configuration error - Paystack key not found");
+      console.error("VITE_PAYSTACK_PUBLIC_KEY is not set");
+      return;
+    }
+
+    if (!(window as any).PaystackPop) {
+      alert("Payment system not loaded. Please refresh the page.");
+      console.error("PaystackPop is not available");
       return;
     }
 
     setPurchasing(true);
 
-    const subtotal = itemsToProcess.reduce((sum, item) => sum + item.pkg.price, 0);
-    const charge = subtotal * (transactionCharge / 100);
-    const totalAmount = subtotal + charge;
+    try {
+      const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+      const charge = subtotal * (transactionCharge / 100);
+      const totalAmount = subtotal + charge;
 
-    const handler = (window as any).PaystackPop.setup({
-      key: publicKey,
-      email: "customer@wirenet.com",
-      amount: Math.ceil(totalAmount * 100),
-      currency: "GHS",
-      ref: `FN-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      callback: async (response: any) => {
-        try {
-          let successCount = 0;
-          for (const item of itemsToProcess) {
-            try {
-              const orderResponse = await fetch("/api/fastnet/purchase", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  phoneNumber: item.phoneNumber,
-                  dataAmount: item.pkg.dataAmount,
-                  price: item.pkg.price,
-                  reference: response.reference,
-                }),
-              });
-              if (orderResponse.ok) {
-                successCount++;
+      const handler = (window as any).PaystackPop.setup({
+        key: publicKey,
+        email: "customer@wirenet.com",
+        amount: Math.ceil(totalAmount * 100),
+        currency: "GHS",
+        ref: `FN-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        callback: async (response: any) => {
+          try {
+            let successCount = 0;
+            for (const item of cart) {
+              try {
+                const orderResponse = await fetch("/api/fastnet/purchase", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    phoneNumber: item.phoneNumber,
+                    dataAmount: item.pkg.dataAmount,
+                    price: item.pkg.price,
+                    reference: response.reference,
+                  }),
+                });
+                if (orderResponse.ok) {
+                  successCount++;
+                }
+              } catch (error) {
+                console.error("Error creating order:", error);
               }
-            } catch (error) {
-              console.error("Error creating order:", error);
             }
+            alert(`Payment successful! ${successCount} order(s) created.`);
+            setCart([]);
+            setPhoneNumber("");
+            setSelectedPackage(null);
+          } catch (error) {
+            console.error("Error:", error);
+            alert("Failed to process order");
+          } finally {
+            setPurchasing(false);
           }
-          alert(`Payment successful! ${successCount} order(s) created.`);
-          setCart([]);
-          setPhoneNumber("");
-          setSelectedPackage(null);
-        } catch (error) {
-          console.error("Error:", error);
-          alert("Failed to process order");
-        } finally {
+        },
+        onClose: () => {
+          alert("Transaction cancelled");
           setPurchasing(false);
-        }
-      },
-      onClose: () => {
-        alert("Transaction cancelled");
-        setPurchasing(false);
-      },
-    });
+        },
+      });
 
-    handler.openIframe();
+      handler.openIframe();
+    } catch (error) {
+      console.error("Paystack initialization error:", error);
+      alert("Failed to initialize payment. Please try again.");
+      setPurchasing(false);
+    }
   };
 
   const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
