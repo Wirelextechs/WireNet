@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Plus, Trash2, ShoppingCart, Package as PackageIcon, Clock, CheckCircle2, Settings as SettingsIcon } from "lucide-react";
+import { packagesAPI } from "@/lib/supabase";
 
 interface Order {
   id: string;
@@ -118,25 +119,17 @@ export default function FastNetAdmin() {
     }
   };
 
-  const loadPackages = () => {
+  const loadPackages = async () => {
     try {
-      const saved = localStorage.getItem("fastnetPackages");
-      if (saved) {
-        setPackages(JSON.parse(saved).sort((a: any, b: any) => parseFloat(a.dataAmount) - parseFloat(b.dataAmount)));
+      const data = await packagesAPI.getAll("fastnet");
+      if (data && data.length > 0) {
+        setPackages(data);
       } else {
-        const defaults = [
-          { id: "1", dataAmount: "1GB", price: 5, deliveryTime: "5-10 mins", isEnabled: true },
-          { id: "2", dataAmount: "2GB", price: 9, deliveryTime: "5-10 mins", isEnabled: true },
-          { id: "3", dataAmount: "5GB", price: 20, deliveryTime: "10-15 mins", isEnabled: true },
-          { id: "4", dataAmount: "10GB", price: 35, deliveryTime: "15-20 mins", isEnabled: true },
-          { id: "5", dataAmount: "20GB", price: 65, deliveryTime: "20 mins", isEnabled: true },
-          { id: "6", dataAmount: "50GB", price: 150, deliveryTime: "20 mins", isEnabled: true },
-        ];
-        localStorage.setItem("fastnetPackages", JSON.stringify(defaults));
-        setPackages(defaults);
+        setPackages([]);
       }
     } catch (error) {
-      console.error("Error loading packages:", error);
+      console.error("Error loading packages from Supabase:", error);
+      setPackages([]);
     }
   };
 
@@ -252,38 +245,56 @@ export default function FastNetAdmin() {
   };
 
   // --- Package Management ---
-  const handleAddPackage = () => {
+  const handleAddPackage = async () => {
     if (!newPackage.amount || !newPackage.price || !newPackage.delivery) {
       setMessage("❌ Please fill all fields");
       return;
     }
-    const pkg: Package = {
-      id: Date.now().toString(),
-      dataAmount: newPackage.amount,
-      price: parseFloat(newPackage.price),
-      deliveryTime: newPackage.delivery,
-      isEnabled: true,
-    };
-    const updated = [...packages, pkg].sort((a, b) => parseFloat(a.dataAmount) - parseFloat(b.dataAmount));
-    setPackages(updated);
-    localStorage.setItem("fastnetPackages", JSON.stringify(updated));
-    setNewPackage({ amount: "", price: "", delivery: "" });
-    setMessage("✅ Package added");
-    setTimeout(() => setMessage(""), 2000);
+    try {
+      const dataAmountNum = parseInt(newPackage.amount.replace(/\D/g, ''));
+      await packagesAPI.create({
+        category: 'fastnet',
+        data_amount: dataAmountNum,
+        price: parseFloat(newPackage.price),
+        delivery_time: newPackage.delivery,
+        enabled: true,
+      });
+      await loadPackages();
+      setNewPackage({ amount: "", price: "", delivery: "" });
+      setMessage("✅ Package added");
+      setTimeout(() => setMessage(""), 2000);
+    } catch (error) {
+      console.error("Error adding package:", error);
+      setMessage("❌ Failed to add package");
+      setTimeout(() => setMessage(""), 2000);
+    }
   };
 
-  const handleDeletePackage = (id: string) => {
-    const updated = packages.filter(p => p.id !== id);
-    setPackages(updated);
-    localStorage.setItem("fastnetPackages", JSON.stringify(updated));
-    setMessage("✅ Package deleted");
-    setTimeout(() => setMessage(""), 2000);
+  const handleDeletePackage = async (id: string) => {
+    try {
+      await packagesAPI.delete(id);
+      await loadPackages();
+      setMessage("✅ Package deleted");
+      setTimeout(() => setMessage(""), 2000);
+    } catch (error) {
+      console.error("Error deleting package:", error);
+      setMessage("❌ Failed to delete package");
+      setTimeout(() => setMessage(""), 2000);
+    }
   };
 
-  const handleTogglePackage = (id: string) => {
-    const updated = packages.map(p => p.id === id ? { ...p, isEnabled: !p.isEnabled } : p);
-    setPackages(updated);
-    localStorage.setItem("fastnetPackages", JSON.stringify(updated));
+  const handleTogglePackage = async (id: string) => {
+    try {
+      const pkg = packages.find(p => p.id === id);
+      if (pkg) {
+        await packagesAPI.toggle(id, !pkg.isEnabled);
+        await loadPackages();
+      }
+    } catch (error) {
+      console.error("Error toggling package:", error);
+      setMessage("❌ Failed to update package");
+      setTimeout(() => setMessage(""), 2000);
+    }
   };
 
   const filteredOrders = getFilteredOrders();
