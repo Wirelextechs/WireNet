@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
-        status: "PAID",
+        status: "PROCESSING",
         paymentReference: reference || null,
       });
 
@@ -192,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           await storage.updateFastnetOrderStatus(
             order.id, 
-            "FAILED",
+            "PAID",
             fulfillmentResult.supplier,
             fulfillmentResult.message
           );
@@ -202,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fulfillment threw an error - no supplier accepted the order
         await storage.updateFastnetOrderStatus(
           order.id, 
-          "FAILED",
+          "PAID",
           undefined,
           fulfillError.message
         );
@@ -388,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const processingOrders = orders.filter(o => 
         o.supplierUsed && 
         o.supplierUsed !== "hubnet" && 
-        (o.status === "PROCESSING" || o.status === "PAID" || o.status === "FAILED")
+        (o.status === "PROCESSING" || o.status === "PAID" || o.status === "PAID")
       );
 
       const results = [];
@@ -682,7 +682,7 @@ function normalizeSupplierStatus(supplierStatus: string): string {
   if (status === "failed" || status === "rejected" ||
       status === "cancelled" || status === "canceled" || status === "declined" || status === "2") {
     console.log(`❌ Status "${status}" normalized to FAILED`);
-    return "FAILED";
+    return "PAID";
   }
   
   console.log(`⚠️ Unknown status "${status}" - defaulting to PROCESSING`);
