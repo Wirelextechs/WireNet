@@ -596,7 +596,7 @@ const styles: any = {
     backgroundColor: "#fff",
     border: "2px solid #ddd",
     borderRadius: "10px",
-    textAlign: "center" as const",
+    textAlign: "center" as const,
     cursor: "pointer",
     transition: "all 0.3s",
     boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
