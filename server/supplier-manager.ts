@@ -15,11 +15,17 @@ export type SupplierName = "dataxpress" | "hubnet" | "dakazina";
  */
 async function getActiveSupplier(): Promise<SupplierName> {
   try {
-    const setting = await storage.getSetting("activeSupplier");
+    // Check fastnetActiveSupplier first (used by admin settings)
+    const setting = await storage.getSetting("fastnetActiveSupplier");
     if (setting && (setting.value === "dataxpress" || setting.value === "hubnet" || setting.value === "dakazina")) {
       return setting.value as SupplierName;
     }
-    // Default to dataxpress if setting not found
+    // Fallback to legacy activeSupplier key
+    const legacySetting = await storage.getSetting("activeSupplier");
+    if (legacySetting && (legacySetting.value === "dataxpress" || legacySetting.value === "hubnet" || legacySetting.value === "dakazina")) {
+      return legacySetting.value as SupplierName;
+    }
+    // Default to dataxpress if no setting found
     return "dataxpress";
   } catch (error) {
     console.error("Failed to get active supplier, defaulting to dataxpress:", error);
@@ -108,6 +114,8 @@ export async function getActiveSupplierName(): Promise<SupplierName> {
  * Set the active supplier
  */
 export async function setActiveSupplier(supplier: SupplierName): Promise<void> {
+  // Update both keys for consistency
+  await storage.upsertSetting("fastnetActiveSupplier", supplier);
   await storage.upsertSetting("activeSupplier", supplier);
   console.log(`✅ Active supplier changed to: ${supplier.toUpperCase()}`);
 }
