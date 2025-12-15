@@ -31,6 +31,7 @@ export default function FastNetPage() {
   const [statusCheckId, setStatusCheckId] = useState("");
   const [statusReport, setStatusReport] = useState<any>(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   useEffect(() => {
     loadPackages();
@@ -98,11 +99,47 @@ export default function FastNetPage() {
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Remove all non-digits
+    value = value.replace(/\D/g, '');
+
+    // Auto-convert 233 to 0
+    if (value.startsWith('233')) {
+      value = '0' + value.substring(3);
+    }
+
+    // Limit to 10 digits
+    if (value.length > 10) {
+      value = value.substring(0, 10);
+    }
+
+    setPhoneNumber(value);
+
+    // Validation
+    if (value.length > 0 && (value.length !== 10 || !value.startsWith('0'))) {
+      setPhoneError("Number must be 10 digits starting with 0");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  const isValidPhone = (phone: string) => {
+    return /^0\d{9}$/.test(phone);
+  };
+
   const addToCart = () => {
     if (!phoneNumber || !selectedPackage) {
       alert("Please enter phone number and select a package");
       return;
     }
+    
+    if (!isValidPhone(phoneNumber)) {
+      alert("Please enter a valid 10-digit MTN number (e.g., 054xxxxxxx)");
+      return;
+    }
+
     const newItem: CartItem = {
       id: Date.now().toString(),
       pkg: selectedPackage,
@@ -111,6 +148,7 @@ export default function FastNetPage() {
     setCart([...cart, newItem]);
     setPhoneNumber("");
     setSelectedPackage(null);
+    setPhoneError("");
   };
 
   const removeFromCart = (id: string) => {
@@ -295,11 +333,15 @@ export default function FastNetPage() {
             <h3>Phone Number</h3>
             <Input
               type="tel"
-              placeholder="Enter MTN number"
+              placeholder="Enter MTN number (e.g. 054...)"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              style={styles.input}
+              onChange={handlePhoneChange}
+              style={{
+                ...styles.input,
+                borderColor: phoneError ? "red" : "#ccc"
+              }}
             />
+            {phoneError && <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>{phoneError}</p>}
           </div>
 
           <div style={styles.purchaseCard}>
@@ -319,10 +361,10 @@ export default function FastNetPage() {
             <h3>Add to Cart</h3>
             <Button
               onClick={addToCart}
-              disabled={!phoneNumber || !selectedPackage}
+              disabled={!phoneNumber || !selectedPackage || !!phoneError}
               style={{
                 ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage ? 0.5 : 1,
+                opacity: !phoneNumber || !selectedPackage || !!phoneError ? 0.5 : 1,
               }}
             >
               <ShoppingCart size={18} style={{ marginRight: "8px" }} />
@@ -554,7 +596,7 @@ const styles: any = {
     backgroundColor: "#fff",
     border: "2px solid #ddd",
     borderRadius: "10px",
-    textAlign: "center" as const,
+    textAlign: "center" as const",
     cursor: "pointer",
     transition: "all 0.3s",
     boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
