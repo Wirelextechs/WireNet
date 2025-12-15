@@ -302,10 +302,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Use the order reference to check status
-      const reference = order.shortId;
+      // Get reference for status check
+      // DataKazina uses their transaction_id, DataXpress uses our order reference
+      let statusReference = order.shortId;
+      if (supplier === "dakazina" && order.supplierResponse) {
+        try {
+          const responseData = JSON.parse(order.supplierResponse);
+          if (responseData.transaction_id) {
+            statusReference = responseData.transaction_id;
+            console.log(`📋 Using DataKazina transaction_id: ${statusReference}`);
+          }
+        } catch (e) {
+          console.log(`⚠️ Could not parse supplier response, using shortId`);
+        }
+      }
       
-      const statusResult = await supplierManager.checkOrderStatus(supplier, reference);
+      const statusResult = await supplierManager.checkOrderStatus(supplier, statusReference);
       
       // If we got a successful status, update the order in our database
       if (statusResult.success && statusResult.status) {
@@ -346,7 +358,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const order of processingOrders) {
         try {
           const supplier = order.supplierUsed as "dataxpress" | "hubnet" | "dakazina";
-          const statusResult = await supplierManager.checkOrderStatus(supplier, order.shortId);
+          
+          // Get reference for status check - DataKazina uses transaction_id
+          let statusReference = order.shortId;
+          if (supplier === "dakazina" && order.supplierResponse) {
+            try {
+              const responseData = JSON.parse(order.supplierResponse);
+              if (responseData.transaction_id) {
+                statusReference = responseData.transaction_id;
+              }
+            } catch (e) {
+              // Use shortId as fallback
+            }
+          }
+          
+          const statusResult = await supplierManager.checkOrderStatus(supplier, statusReference);
           
           if (statusResult.success && statusResult.status) {
             const normalizedStatus = normalizeSupplierStatus(statusResult.status);
