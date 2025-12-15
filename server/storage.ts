@@ -13,6 +13,7 @@ interface Settings {
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
   datagodTransactionCharge?: string;
+  fastnetTransactionCharge?: string;
   fastnetActiveSupplier?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +41,7 @@ class Storage {
       datagodEnabled: settingsMap["datagodEnabled"] !== "false",
       fastnetEnabled: settingsMap["fastnetEnabled"] !== "false",
       datagodTransactionCharge: settingsMap["datagodTransactionCharge"] || "1.3",
+      fastnetTransactionCharge: settingsMap["fastnetTransactionCharge"] || "1.3",
       fastnetActiveSupplier: settingsMap["fastnetActiveSupplier"] || "dataxpress",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -58,6 +60,9 @@ class Storage {
     }
     if (data.datagodTransactionCharge !== undefined) {
       await this.upsertSetting("datagodTransactionCharge", data.datagodTransactionCharge);
+    }
+    if (data.fastnetTransactionCharge !== undefined) {
+      await this.upsertSetting("fastnetTransactionCharge", data.fastnetTransactionCharge);
     }
     if (data.fastnetActiveSupplier !== undefined) {
       await this.upsertSetting("fastnetActiveSupplier", data.fastnetActiveSupplier);

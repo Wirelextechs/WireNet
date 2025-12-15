@@ -77,25 +77,16 @@ export default function DataGodAdmin() {
     }
   };
 
-  const loadSettings = () => {
+  const loadSettings = async () => {
     try {
-      const savedWirenet = localStorage.getItem("wirenetSettings");
-      const savedDatagod = localStorage.getItem("datagodSettings");
-      
-      let whatsAppLink = "";
-      let transactionCharge = "1.3";
-
-      if (savedWirenet) {
-        const parsed = JSON.parse(savedWirenet);
-        whatsAppLink = parsed.whatsappLink || "";
+      const response = await fetch("/api/settings", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setSettings({
+          whatsAppLink: data.whatsappLink || "",
+          transactionCharge: data.datagodTransactionCharge || "1.3",
+        });
       }
-      
-      if (savedDatagod) {
-        const parsed = JSON.parse(savedDatagod);
-        transactionCharge = parsed.transactionCharge || "1.3";
-      }
-
-      setSettings({ whatsAppLink, transactionCharge });
     } catch (error) {
       console.error("Error loading settings:", error);
     }
@@ -627,19 +618,26 @@ export default function DataGodAdmin() {
                   </p>
                 </div>
                 <Button
-                  onClick={() => {
-                    const updated = { ...settings };
-                    const currentWirenet = JSON.parse(localStorage.getItem("wirenetSettings") || "{}");
-                    localStorage.setItem("wirenetSettings", JSON.stringify({
-                      ...currentWirenet,
-                      whatsappLink: updated.whatsAppLink,
-                    }));
-                    
-                    localStorage.setItem("datagodSettings", JSON.stringify({
-                      transactionCharge: updated.transactionCharge,
-                    }));
-                    
-                    setMessage("Settings saved");
+                  onClick={async () => {
+                    try {
+                      const response = await fetch("/api/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({
+                          whatsappLink: settings.whatsAppLink,
+                          datagodTransactionCharge: settings.transactionCharge,
+                        }),
+                      });
+                      if (response.ok) {
+                        setMessage("Settings saved");
+                      } else {
+                        setMessage("Failed to save settings");
+                      }
+                    } catch (error) {
+                      console.error("Error saving settings:", error);
+                      setMessage("Failed to save settings");
+                    }
                     setTimeout(() => setMessage(""), 2000);
                   }}
                   style={styles.saveButton}

@@ -90,13 +90,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { whatsappLink, datagodEnabled, fastnetEnabled, datagodTransactionCharge, fastnetActiveSupplier } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, datagodTransactionCharge, fastnetTransactionCharge, fastnetActiveSupplier } = req.body;
 
       const updated = await storage.updateSettings({
         whatsappLink,
         datagodEnabled,
         fastnetEnabled,
         datagodTransactionCharge,
+        fastnetTransactionCharge,
         fastnetActiveSupplier,
       });
 

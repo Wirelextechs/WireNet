@@ -139,19 +139,12 @@ export default function FastNetAdmin() {
 
   const loadSettings = async () => {
     try {
-      // Load local settings (transaction charge)
-      const saved = localStorage.getItem("fastnetSettings");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSettings({ transactionCharge: parsed.transactionCharge || "1.3" });
-      }
-      
-      // Load active supplier from server (source of truth)
-      const response = await fetch("/api/fastnet/supplier", { credentials: "include" });
+      const response = await fetch("/api/settings", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        if (data.supplier) {
-          setActiveSupplier(data.supplier);
+        setSettings({ transactionCharge: data.fastnetTransactionCharge || "1.3" });
+        if (data.fastnetActiveSupplier) {
+          setActiveSupplier(data.fastnetActiveSupplier as Supplier);
         }
       }
     } catch (error) {
@@ -182,13 +175,25 @@ export default function FastNetAdmin() {
     setTimeout(() => setMessage(""), 3000);
   };
 
-  const handleSaveSettings = () => {
-    const currentSettings = JSON.parse(localStorage.getItem("fastnetSettings") || "{}");
-    localStorage.setItem("fastnetSettings", JSON.stringify({
-      ...currentSettings,
-      transactionCharge: settings.transactionCharge,
-    }));
-    setMessage("✅ Settings saved");
+  const handleSaveSettings = async () => {
+    try {
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          fastnetTransactionCharge: settings.transactionCharge,
+        }),
+      });
+      if (response.ok) {
+        setMessage("✅ Settings saved");
+      } else {
+        setMessage("❌ Failed to save settings");
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      setMessage("❌ Failed to save settings");
+    }
     setTimeout(() => setMessage(""), 2000);
   };
 
