@@ -327,15 +327,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get reference for status check
       // DataKazina uses their transaction_id, DataXpress uses our order reference
       let statusReference = order.shortId;
-      if (supplier === "dakazina" && order.supplierResponse) {
-        try {
-          const responseData = JSON.parse(order.supplierResponse);
-          if (responseData.transaction_id) {
-            statusReference = responseData.transaction_id;
-            console.log(`📋 Using DataKazina transaction_id: ${statusReference}`);
+      console.log(`📋 Order ${order.shortId} - Supplier: ${supplier}, supplierResponse: ${order.supplierResponse}`);
+      
+      if (supplier === "dakazina") {
+        if (order.supplierResponse) {
+          try {
+            const responseData = JSON.parse(order.supplierResponse);
+            console.log(`📋 Parsed supplierResponse:`, responseData);
+            
+            // Try multiple possible locations for transaction_id
+            const txnId = responseData.transaction_id || 
+                          responseData.data?.transaction_id || 
+                          responseData.transactionId;
+            
+            if (txnId) {
+              statusReference = txnId;
+              console.log(`✅ Using DataKazina transaction_id: ${statusReference}`);
+            } else {
+              console.log(`⚠️ No transaction_id found in supplierResponse, using shortId`);
+            }
+          } catch (e) {
+            console.log(`❌ Failed to parse supplierResponse: ${e}`);
           }
-        } catch (e) {
-          console.log(`⚠️ Could not parse supplier response, using shortId`);
+        } else {
+          console.log(`⚠️ No supplierResponse stored for DataKazina order ${order.shortId}`);
         }
       }
       
@@ -384,14 +399,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get reference for status check - DataKazina uses transaction_id
           let statusReference = order.shortId;
-          if (supplier === "dakazina" && order.supplierResponse) {
-            try {
-              const responseData = JSON.parse(order.supplierResponse);
-              if (responseData.transaction_id) {
-                statusReference = responseData.transaction_id;
+          console.log(`📋 Order ${order.shortId} - Supplier: ${supplier}, supplierResponse: ${order.supplierResponse}`);
+          
+          if (supplier === "dakazina") {
+            if (order.supplierResponse) {
+              try {
+                const responseData = JSON.parse(order.supplierResponse);
+                console.log(`📋 Parsed supplierResponse:`, responseData);
+                
+                // Try multiple possible locations for transaction_id
+                const txnId = responseData.transaction_id || 
+                              responseData.data?.transaction_id || 
+                              responseData.transactionId;
+                
+                if (txnId) {
+                  statusReference = txnId;
+                  console.log(`✅ Using DataKazina transaction_id: ${statusReference}`);
+                } else {
+                  console.log(`⚠️ No transaction_id found in supplierResponse, using shortId`);
+                }
+              } catch (e) {
+                console.log(`❌ Failed to parse supplierResponse: ${e}`);
               }
-            } catch (e) {
-              // Use shortId as fallback
+            } else {
+              console.log(`⚠️ No supplierResponse stored for DataKazina order ${order.shortId}`);
             }
           }
           

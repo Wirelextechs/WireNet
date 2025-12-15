@@ -1,0 +1,291 @@
+
+
+P
+prosper wedam's Workspace
+
+Home
+Chat
+My agents
+
+New agent
+Make Money with Lindy
+
+Make Money with Lindy
+Our partners share how they built 6-figure agent businesses — live
+
+
+
+Chat
+
+Search
+
+
+Yesterday
+•
+December 14
+Git Repo Access Request
+Thursday
+•
+December 11
+Build DataGod-like Site
+December 6
+API Integration Documentation
+Upload a csv file to start multiple new tasks
+Sat, December 6 at 7:09 AM
+
+
+
+access this link and provide a detailed api integration documentation https://documenter.getpostman.com/view/9357868/2sB3BBqrsR#e530495d-c8e9-4f16-adce-e35eb50e1634
+•
+Ready to help! Quick question:
+
+1️⃣ Do it now (I'll extract the API documentation immediately)
+
+2️⃣ Build workflow (Create agent to do this repeatedly)
+
+•
+Start computer
+Computer started
+•
+I'll navigate to the Postman documentation link and extract the API integration details for you.
+
+Navigate to Postman API documentation
+Wait for page to load
+Scroll down to see more API endpoints
+Continue scrolling to see all endpoints
+Use Computer
+The sandbox is currently in sleep mode.
+•
+Extract webpage text
+•
+Perfect! I've successfully accessed and extracted the API documentation. Here's a detailed API integration documentation for the DataKazina API:
+
+📋 DataKazina API - Complete Integration Guide
+Overview
+The DataKazina API is a complete collection for managing data package purchases, transactions, and account management. It provides endpoints for purchasing single/bulk data packages and tracking transaction history.
+
+🔐 Authentication
+Authentication Method: API Key
+
+Header Parameter:
+
+Key: x-api-key
+Value: dk_2uU6jK7JfGEPZrTvqzUXv9ZK3JJ3D9mO (example)
+All requests require the API key to be included in the request headers.
+
+📡 Base URL
+https://reseller.dakazinabusinessconsult.com/api/v1/
+🔌 API Endpoints
+1. Fetch Transactions
+Method: GET
+
+Endpoint: /fetch-transactions
+
+Full URL: https://reseller.dakazinabusinessconsult.com/api/v1/fetch-transactions
+
+Description: Get transaction history for the authenticated user
+
+Authentication: API Key required
+
+Request Headers:
+
+x-api-key: {your_api_key}
+cURL Example:
+
+curl --location 'https://reseller.dakazinabusinessconsult.com/api/v1/fetch-transactions' \
+--header 'x-api-key: dk_2uU6jK7JfGEPZrTvqzUXv9ZK3JJ3D9mO'
+2. Check Transaction Status
+Method: POST
+Endpoint: /fetch-single-transaction
+Full URL: https://reseller.dakazinabusinessconsult.com/api/v1/fetch-single-transaction
+Description: Check the status of a specific transaction
+Authentication: API Key required
+Request Headers:
+
+Content-Type: application/json
+x-api-key: {your_api_key}
+Request Body:
+
+{
+    "transaction_id": "txn_68befc1e59dc4"
+}
+cURL Example:
+
+curl --location 'https://reseller.dakazinabusinessconsult.com/api/v1/fetch-single-transaction' \
+--header 'Content-Type: application/json' \
+--header 'x-api-key: dk_2uU6jK7JfGEPZrTvqzUXv9ZK3JJ3D9mO' \
+--data '{
+    "transaction_id": "txn_68befc1e59dc4"
+}'
+3. Buy Data Package (Single)
+Method: POST
+Endpoint: /buy-data-package
+Full URL: https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package
+Description: Purchase a single data package
+Authentication: API Key required
+Request Headers:
+
+Content-Type: application/json
+Accept: application/json
+x-api-key: {your_api_key}
+Request Body:
+
+{
+  "recipient_msisdn": "0551053716",
+  "network_id": 3,
+  "shared_bundle": 12,
+  "incoming_api_ref": "unique_reference_003"
+}
+Request Parameters Explanation:
+
+Parameter	Type	Description
+recipient_msisdn	String	Phone number of the recipient (mobile number)
+network_id	Integer	Network identifier (e.g., 3 for a specific network)
+shared_bundle	Integer	Bundle/package ID to purchase
+incoming_api_ref	String	Unique reference for tracking this transaction
+cURL Example:
+
+curl --location 'https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'x-api-key: dk_2uU6jK7JfGEPZrTvqzUXv9ZK3JJ3D9mO' \
+--data '{
+  "recipient_msisdn": "0551053716",
+  "network_id": 3,
+  "shared_bundle": 12,
+  "incoming_api_ref": "unique_reference_003"
+}'
+4. Buy Bulk Data Packages
+Method: POST
+Endpoint: /buy-bulk-data-packages
+Full URL: https://reseller.dakazinabusinessconsult.com/api/v1/buy-bulk-data-packages
+Description: Purchase multiple data packages in a single request
+Authentication: API Key required
+Request Headers:
+
+Content-Type: application/json
+x-api-key: {your_api_key}
+Request Body:
+
+{
+  "orders": [
+    {
+      "recipient_msisdn": "0555702562",
+      "network_id": 3,
+      "shared_bundle": 1,
+      "incoming_api_ref": "bulk_ref_001"
+    },
+    {
+      "recipient_msisdn": "0551053716",
+      "network_id": 3,
+      "shared_bundle": 2,
+      "incoming_api_ref": "bulk_ref_002"
+    }
+  ]
+}
+cURL Example:
+
+curl --location 'https://reseller.dakazinabusinessconsult.com/api/v1/buy-bulk-data-packages' \
+--header 'Content-Type: application/json' \
+--header 'x-api-key: dk_2uU6jK7JfGEPZrTvqzUXv9ZK3JJ3D9mO' \
+--data '{
+  "orders": [
+    {
+      "recipient_msisdn": "0555702562",
+      "network_id": 3,
+      "shared_bundle": 1,
+      "incoming_api_ref": "bulk_ref_001"
+    },
+    {
+      "recipient_msisdn": "0551053716",
+      "network_id": 3,
+      "shared_bundle": 2,
+      "incoming_api_ref": "bulk_ref_002"
+    }
+  ]
+}'
+📊 Response Format
+All endpoints return JSON responses. The documentation indicates that responses include:
+
+Body: Response data (varies by endpoint)
+Headers: Response headers information
+🔑 Key Integration Points
+Always include the API key in the x-api-key header for all requests
+
+Use JSON format for request bodies (Content-Type: application/json)
+
+Unique References: Use the incoming_api_ref parameter to track transactions uniquely
+
+Bulk Operations: For multiple purchases, use the bulk endpoint to optimize API calls
+
+Phone Format: Ensure phone numbers (msisdn) are in the correct format for the target network
+
+📝 Integration Checklist
+✅ Store API key securely (environment variables recommended)
+✅ Implement error handling for failed requests
+✅ Use unique transaction references for tracking
+✅ Validate phone numbers before sending requests
+✅ Implement retry logic for network failures
+✅ Log all transactions for audit purposes
+This documentation provides everything needed to integrate with the DataKazina API for data package purchasing and transaction management!
+
+•
+
+
+One more question: What are the shared_bundle IDs for each package size?
+Let me scroll through the documentation to find the Data Packages section which should contain the shared_bundle IDs for each package size.
+
+Scroll up to find Data Packages section
+Click on Data Packages section in sidebar
+Wait for page to load
+Click on Fetch Data Packages endpoint
+Wait for endpoint details to load
+Scroll down to see response example with bundle IDs
+Use Computer
+The sandbox is currently in sleep mode.
+•
+Extract webpage text
+•
+I can see the documentation shows examples using shared_bundle IDs like 1, 2, and 12, but the actual response body with the complete list of bundle IDs and their details isn't being displayed in the documentation. Let me try clicking on the "Body" tab in the Example Response section to see if there's a response example.
+
+Scroll up to find Fetch Data Packages section
+Click on Body tab in Example Response
+Click on Body tab in Example Response
+Wait for response body to load
+Use Computer
+The sandbox is currently in sleep mode.
+•
+Extract webpage text
+•
+Unfortunately, I'm unable to find the complete list of shared_bundle IDs with their corresponding package sizes in the Postman documentation. The documentation shows:
+
+Example usage with shared_bundle values like 1, 2, and 12
+A "Fetch Data Packages" endpoint that should return this information
+However, the Example Response sections in the documentation are not displaying the actual response bodies that would contain the bundle ID mappings.
+
+📌 What I Found:
+The documentation references a "Fetch Data Packages" endpoint:
+
+GET https://reseller.dakazinabusinessconsult.com/api/v1/fetch-data-packages
+This endpoint is described as: "Get all available data packages with pricing and network information."
+
+✅ Recommendation:
+To get the complete list of shared_bundle IDs and their package sizes, you should:
+
+Call the Fetch Data Packages endpoint directly using your API key:
+curl --location 'https://reseller.dakazinabusinessconsult.com/api/v1/fetch-data-packages' \
+--header 'x-api-key: YOUR_API_KEY'
+Contact DataKazina support - They can provide you with a complete mapping document of all available bundle IDs and their corresponding data sizes/prices.
+
+Check your account dashboard - The reseller portal at https://reseller.dakazinabusinessconsult.com likely has a list of available packages.
+
+Would you like me to help you with anything else regarding the API integration?
+
+•
+Your last payment failed, please make a payment on the Billing page to restore access.
+Enter message
+
+Drop files here to add them to the conversation
+Accepted Types: .txt, .csv, .md, .pdf, .png, .jpg, .jpeg, .gif
+
+Chat
