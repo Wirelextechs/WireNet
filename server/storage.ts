@@ -1,5 +1,10 @@
 import { db } from "./db.js";
-import { fastnetOrders, settings, adminUsers, type FastnetOrder, type InsertFastnetOrder } from "../shared/db-schema.js";
+import { 
+  fastnetOrders, settings, adminUsers, datagodOrders, datagodPackages,
+  type FastnetOrder, type InsertFastnetOrder,
+  type DatagodOrder, type InsertDatagodOrder,
+  type DatagodPackage, type InsertDatagodPackage
+} from "../shared/db-schema.js";
 import { eq, desc } from "drizzle-orm";
 
 interface Settings {
@@ -138,6 +143,77 @@ class Storage {
   async getFastnetOrderByShortId(shortId: string): Promise<FastnetOrder | null> {
     const result = await db.select().from(fastnetOrders).where(eq(fastnetOrders.shortId, shortId)).limit(1);
     return result.length > 0 ? result[0] : null;
+  }
+
+  // DataGod Orders
+  async createDatagodOrder(data: {
+    shortId: string;
+    customerPhone: string;
+    packageName: string;
+    packagePrice: number;
+    status?: string;
+    paymentReference?: string;
+  }): Promise<DatagodOrder> {
+    const result = await db.insert(datagodOrders).values({
+      shortId: data.shortId,
+      customerPhone: data.customerPhone,
+      packageName: data.packageName,
+      packagePrice: data.packagePrice,
+      status: data.status || "PAID",
+      paymentReference: data.paymentReference || null,
+    }).returning();
+    return result[0];
+  }
+
+  async getDatagodOrders(): Promise<DatagodOrder[]> {
+    return await db.select().from(datagodOrders).orderBy(desc(datagodOrders.createdAt));
+  }
+
+  async updateDatagodOrderStatus(id: number, status: string): Promise<DatagodOrder | null> {
+    const result = await db.update(datagodOrders)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(datagodOrders.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  // DataGod Packages
+  async createDatagodPackage(data: {
+    packageName: string;
+    dataValueGB: number;
+    priceGHS: number;
+    isEnabled?: boolean;
+  }): Promise<DatagodPackage> {
+    const result = await db.insert(datagodPackages).values({
+      packageName: data.packageName,
+      dataValueGB: data.dataValueGB,
+      priceGHS: data.priceGHS,
+      isEnabled: data.isEnabled !== false,
+    }).returning();
+    return result[0];
+  }
+
+  async getDatagodPackages(): Promise<DatagodPackage[]> {
+    return await db.select().from(datagodPackages).orderBy(datagodPackages.dataValueGB);
+  }
+
+  async getEnabledDatagodPackages(): Promise<DatagodPackage[]> {
+    return await db.select().from(datagodPackages)
+      .where(eq(datagodPackages.isEnabled, true))
+      .orderBy(datagodPackages.dataValueGB);
+  }
+
+  async updateDatagodPackage(id: number, data: Partial<InsertDatagodPackage>): Promise<DatagodPackage | null> {
+    const result = await db.update(datagodPackages)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(datagodPackages.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async deleteDatagodPackage(id: number): Promise<boolean> {
+    const result = await db.delete(datagodPackages).where(eq(datagodPackages.id, id)).returning();
+    return result.length > 0;
   }
 }
 

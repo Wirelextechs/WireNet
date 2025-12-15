@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, timestamp, text, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
 export const fastnetOrders = pgTable("fastnet_orders", {
@@ -42,3 +42,32 @@ export const adminUsers = pgTable("admin_users", {
 });
 
 export type AdminUser = typeof adminUsers.$inferSelect;
+
+// DataGod Tables
+export const datagodOrders = pgTable("datagod_orders", {
+  id: serial("id").primaryKey(),
+  shortId: varchar("short_id", { length: 50 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 20 }).notNull(),
+  packageName: varchar("package_name", { length: 100 }).notNull(),
+  packagePrice: real("package_price").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("PAID"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type DatagodOrder = typeof datagodOrders.$inferSelect;
+export type InsertDatagodOrder = typeof datagodOrders.$inferInsert;
+
+export const datagodPackages = pgTable("datagod_packages", {
+  id: serial("id").primaryKey(),
+  packageName: varchar("package_name", { length: 100 }).notNull(),
+  dataValueGB: real("data_value_gb").notNull(),
+  priceGHS: real("price_ghs").notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type DatagodPackage = typeof datagodPackages.$inferSelect;
+export type InsertDatagodPackage = typeof datagodPackages.$inferInsert;
