@@ -43,53 +43,67 @@ export default function AdminDashboard() {
     loadSettings();
   }, [navigate]);
 
-  const loadSettings = () => {
+  const loadSettings = async () => {
     try {
-      // Load from localStorage
-      const savedSettings = localStorage.getItem("wirenetSettings");
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(parsed);
-        setWhatsappLink(parsed.whatsappLink || "");
-        setAfaLink(parsed.afaLink || "");
-      } else {
-        // Initialize with defaults
-        const defaultSettings = {
-          whatsappLink: "",
-          afaLink: "",
-          datagodEnabled: true,
-          fastnetEnabled: true,
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings({
+          datagodEnabled: data.datagodEnabled,
+          fastnetEnabled: data.fastnetEnabled,
           afaEnabled: true,
-        };
-        localStorage.setItem("wirenetSettings", JSON.stringify(defaultSettings));
-        setSettings(defaultSettings);
+          whatsappLink: data.whatsappLink || "",
+          afaLink: "",
+        });
+        setWhatsappLink(data.whatsappLink || "");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
     }
   };
 
-  const handleToggleDataGod = () => {
-    const newSettings = { ...settings, datagodEnabled: !settings.datagodEnabled };
-    setSettings(newSettings);
-    localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
-    setMessage("✅ DataGod toggle updated!");
-    setTimeout(() => setMessage(""), 2000);
+  const handleToggleDataGod = async () => {
+    try {
+      const newValue = !settings.datagodEnabled;
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ datagodEnabled: newValue }),
+      });
+      if (response.ok) {
+        setSettings({ ...settings, datagodEnabled: newValue });
+        setMessage("DataGod toggle updated!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      console.error("Error updating DataGod toggle:", error);
+    }
   };
 
-  const handleToggleFastNet = () => {
-    const newSettings = { ...settings, fastnetEnabled: !settings.fastnetEnabled };
-    setSettings(newSettings);
-    localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
-    setMessage("✅ FastNet toggle updated!");
-    setTimeout(() => setMessage(""), 2000);
+  const handleToggleFastNet = async () => {
+    try {
+      const newValue = !settings.fastnetEnabled;
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fastnetEnabled: newValue }),
+      });
+      if (response.ok) {
+        setSettings({ ...settings, fastnetEnabled: newValue });
+        setMessage("FastNet toggle updated!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      console.error("Error updating FastNet toggle:", error);
+    }
   };
 
   const handleToggleAfa = () => {
     const newSettings = { ...settings, afaEnabled: !settings.afaEnabled };
     setSettings(newSettings);
-    localStorage.setItem("wirenetSettings", JSON.stringify(newSettings));
-    setMessage("✅ AFA toggle updated!");
+    setMessage("AFA toggle updated!");
     setTimeout(() => setMessage(""), 2000);
   };
 
@@ -98,21 +112,32 @@ export default function AdminDashboard() {
     setMessage("");
 
     try {
-      const updatedSettings = {
-        whatsappLink,
-        afaLink,
-        datagodEnabled: settings.datagodEnabled,
-        fastnetEnabled: settings.fastnetEnabled,
-        afaEnabled: settings.afaEnabled,
-      };
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          whatsappLink,
+          datagodEnabled: settings.datagodEnabled,
+          fastnetEnabled: settings.fastnetEnabled,
+        }),
+      });
 
-      // Save to localStorage
-      localStorage.setItem("wirenetSettings", JSON.stringify(updatedSettings));
-      setSettings(updatedSettings);
-      setMessage("✅ Settings saved successfully!");
-      setTimeout(() => setMessage(""), 3000);
+      if (response.ok) {
+        const updated = await response.json();
+        setSettings({
+          ...settings,
+          whatsappLink: updated.whatsappLink,
+          datagodEnabled: updated.datagodEnabled,
+          fastnetEnabled: updated.fastnetEnabled,
+        });
+        setMessage("Settings saved successfully!");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage("Failed to save settings");
+      }
     } catch (error) {
-      setMessage("❌ Failed to save settings");
+      setMessage("Failed to save settings");
       console.error(error);
     } finally {
       setLoading(false);
