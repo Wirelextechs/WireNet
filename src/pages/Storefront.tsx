@@ -30,12 +30,18 @@ export default function Storefront() {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-  const fetchSettings = () => {
+  const fetchSettings = async () => {
     try {
-      const savedSettings = localStorage.getItem("wirenetSettings");
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(parsed);
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings({
+          whatsappLink: data.whatsappLink || "",
+          datagodEnabled: data.datagodEnabled !== false,
+          fastnetEnabled: data.fastnetEnabled !== false,
+          afaEnabled: true,
+          afaLink: data.afaLink || "",
+        });
       }
     } catch (error) {
       console.error("Error fetching settings:", error);

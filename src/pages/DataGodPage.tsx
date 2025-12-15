@@ -45,33 +45,25 @@ export default function DataGodPage() {
   useEffect(() => {
     fetchSettings();
     fetchPackages();
-    loadTransactionSettings();
   }, []);
 
-  const fetchSettings = () => {
+  const fetchSettings = async () => {
     try {
-      const saved = localStorage.getItem("wirenetSettings");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSettings(parsed);
-        setWhatsappLink(parsed.whatsappLink || "");
-      }
-    } catch (error) {
-      console.error("Error fetching settings:", error);
-    }
-  };
-
-  const loadTransactionSettings = () => {
-    try {
-      const saved = localStorage.getItem("datagodSettings");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.transactionCharge) {
-          setTransactionCharge(parseFloat(parsed.transactionCharge));
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings({
+          whatsappLink: data.whatsappLink || "",
+          datagodEnabled: data.datagodEnabled !== false,
+          fastnetEnabled: data.fastnetEnabled !== false,
+        });
+        setWhatsappLink(data.whatsappLink || "");
+        if (data.datagodTransactionCharge) {
+          setTransactionCharge(parseFloat(data.datagodTransactionCharge));
         }
       }
     } catch (error) {
-      console.error("Error loading transaction settings:", error);
+      console.error("Error fetching settings:", error);
     }
   };
 

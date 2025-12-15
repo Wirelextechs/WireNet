@@ -37,13 +37,13 @@ export default function FastNetPage() {
     loadSettings();
   }, []);
 
-  const loadSettings = () => {
+  const loadSettings = async () => {
     try {
-      const saved = localStorage.getItem("fastnetSettings");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.transactionCharge) {
-          setTransactionCharge(parseFloat(parsed.transactionCharge));
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.fastnetTransactionCharge) {
+          setTransactionCharge(parseFloat(data.fastnetTransactionCharge));
         }
       }
     } catch (error) {
