@@ -633,8 +633,14 @@ function normalizeSupplierStatus(supplierStatus: string): string {
     return "FULFILLED";
   }
   
-  // Pending/processing statuses -> PROCESSING
-  if (status === "pending" || status === "processing" || status === "queued" ||
+  // Accepted/pending/placed statuses -> PAID (order accepted but not yet processing)
+  if (status === "accepted" || status === "pending" || status === "placed") {
+    console.log(`💳 Status "${status}" normalized to PAID`);
+    return "PAID";
+  }
+  
+  // Processing statuses -> PROCESSING
+  if (status === "processing" || status === "queued" ||
       status === "initiated" || status === "waiting" || status === "0") {
     console.log(`⏳ Status "${status}" normalized to PROCESSING`);
     return "PROCESSING";
