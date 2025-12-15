@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? "Order submitted to supplier successfully" 
           : `Order created but fulfillment failed: ${fulfillmentResult.message}`,
         orderId: order.shortId,
-        status: fulfillmentResult.success ? "PROCESSING" : "FAILED",
+        status: fulfillmentResult.success ? "PROCESSING" : "PAID",
         data: fulfillmentResult 
       });
     } catch (error: any) {
