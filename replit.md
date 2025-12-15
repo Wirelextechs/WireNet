@@ -76,6 +76,10 @@ API Endpoints:
 ### Payment Processing
 - **Provider**: Paystack (JavaScript SDK loaded in index.html)
 - **Flow**: Client-side payment initiation, server-side verification
+- **Success Page**: After successful payment, customers are redirected to `/order/success/:orderId?service=datagod|fastnet`
+  - Displays order ID with copy functionality
+  - Shows order summary (package, phone, amount, status)
+  - Provides navigation buttons to Home, DataGod, and FastNet pages
 
 ## External Dependencies
 

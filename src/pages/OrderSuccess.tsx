@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, Copy, Home, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLocation, useRoute } from "wouter";
+import { useLocation } from "wouter";
 
 interface OrderDetails {
   shortId: string;
@@ -15,8 +15,11 @@ interface OrderDetails {
 
 export default function OrderSuccess() {
   const [, navigate] = useLocation();
-  const [, params] = useRoute("/order/success/:orderId");
-  const orderId = params?.orderId || "";
+  
+  // Extract orderId from pathname to avoid query param issues
+  const pathname = window.location.pathname;
+  const pathParts = pathname.split("/");
+  const orderId = pathParts[pathParts.length - 1] || "";
   
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
