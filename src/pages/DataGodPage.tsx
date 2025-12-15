@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 
 interface Package {
-  id: string;
+  id: number;
   packageName: string;
   dataValueGB: number;
   priceGHS: number;
@@ -16,17 +16,6 @@ interface CartItem {
   id: string;
   pkg: Package;
   phoneNumber: string;
-}
-
-interface Order {
-  id: string;
-  shortId: string;
-  customerPhone: string;
-  packageGB: number;
-  packagePrice: number;
-  packageDetails: string;
-  status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED";
-  createdAt: Date;
 }
 
 interface Settings {
@@ -86,26 +75,18 @@ export default function DataGodPage() {
     }
   };
 
-  const fetchPackages = () => {
+  const fetchPackages = async () => {
     try {
-      const saved = localStorage.getItem("datagodPackages");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const enabledPackages = parsed.filter((p: Package) => p.isEnabled).sort((a: any, b: any) => a.dataValueGB - b.dataValueGB);
-        setPackages(enabledPackages);
+      const response = await fetch("/api/datagod/packages");
+      if (response.ok) {
+        const data = await response.json();
+        setPackages(data.sort((a: Package, b: Package) => a.dataValueGB - b.dataValueGB));
       } else {
-        const defaults = [
-          { id: "1", packageName: "1GB", dataValueGB: 1, priceGHS: 2.5, isEnabled: true },
-          { id: "2", packageName: "2GB", dataValueGB: 2, priceGHS: 4.5, isEnabled: true },
-          { id: "3", packageName: "5GB", dataValueGB: 5, priceGHS: 10, isEnabled: true },
-          { id: "4", packageName: "10GB", dataValueGB: 10, priceGHS: 18, isEnabled: true },
-        ];
-        localStorage.setItem("datagodPackages", JSON.stringify(defaults));
-        setPackages(defaults.sort((a, b) => a.dataValueGB - b.dataValueGB));
+        console.error("Failed to load packages:", response.statusText);
       }
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching packages:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -124,25 +105,23 @@ export default function DataGodPage() {
 
     setStatusLoading(true);
     try {
-      const saved = localStorage.getItem("datagodOrders");
-      if (saved) {
-        const orders = JSON.parse(saved);
-        const order = orders.find((o: Order) => o.shortId === statusCheckId);
-        if (order) {
-          setStatusReport({
-            shortId: order.shortId,
-            status: order.status,
-            packageDetails: order.packageDetails,
-            createdAt: new Date(order.createdAt).toLocaleDateString(),
-          });
-        } else {
-          setStatusReport(null);
-          alert("Order not found");
-        }
+      const response = await fetch(`/api/datagod/orders/status/${statusCheckId}`);
+      if (response.ok) {
+        const order = await response.json();
+        setStatusReport({
+          shortId: order.shortId,
+          status: order.status,
+          packageName: order.packageName,
+          createdAt: new Date(order.createdAt).toLocaleDateString(),
+        });
+      } else {
+        setStatusReport(null);
+        alert("Order not found");
       }
     } catch (error) {
       console.error("Status check error:", error);
       setStatusReport(null);
+      alert("Error checking order status");
     } finally {
       setStatusLoading(false);
     }
@@ -161,8 +140,8 @@ export default function DataGodPage() {
     };
 
     setCart([...cart, newItem]);
-    setPhoneNumber(""); // Clear phone number for next entry
-    setSelectedPackage(null); // Clear selection
+    setPhoneNumber("");
+    setSelectedPackage(null);
   };
 
   const removeFromCart = (id: string) => {
@@ -177,22 +156,20 @@ export default function DataGodPage() {
 
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     if (!publicKey) {
-      alert("Paystack public key not found. Please check Vercel environment variables (VITE_PAYSTACK_PUBLIC_KEY).");
+      alert("Paystack public key not found. Please check environment variables.");
       return;
     }
 
     setPurchasing(true);
 
-    // Calculate total
     const subtotal = cart.reduce((sum, item) => sum + item.pkg.priceGHS, 0);
     const charge = subtotal * (transactionCharge / 100);
     const totalAmount = subtotal + charge;
 
-    // Initialize Paystack V1
     const handler = (window as any).PaystackPop.setup({
       key: publicKey,
       email: "customer@wirenet.com",
-      amount: Math.ceil(totalAmount * 100), // Amount in kobo/pesewas
+      amount: Math.ceil(totalAmount * 100),
       currency: "GHS",
       ref: `DG-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       metadata: {
@@ -218,38 +195,33 @@ export default function DataGodPage() {
 
   const completeBulkOrder = async (reference: string) => {
     try {
-      const saved = localStorage.getItem("datagodOrders") || "[]";
-      const existingOrders = JSON.parse(saved);
-      const newOrders: Order[] = [];
+      const orderPromises = cart.map((item, index) => 
+        fetch("/api/datagod/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shortId: `${reference}-${index + 1}`,
+            customerPhone: item.phoneNumber,
+            packageName: item.pkg.packageName,
+            packagePrice: item.pkg.priceGHS,
+            status: "PAID",
+            paymentReference: reference,
+          }),
+        })
+      );
 
-      // Create an order for each item in cart
-      cart.forEach((item, index) => {
-        const order: Order = {
-          id: `${Date.now()}-${index}`,
-          shortId: `${reference}-${index + 1}`,
-          customerPhone: item.phoneNumber,
-          packageGB: item.pkg.dataValueGB,
-          packagePrice: item.pkg.priceGHS,
-          packageDetails: item.pkg.packageName,
-          status: "PAID",
-          createdAt: new Date(),
-        };
-        newOrders.push(order);
-      });
+      await Promise.all(orderPromises);
 
-      localStorage.setItem("datagodOrders", JSON.stringify([...existingOrders, ...newOrders]));
-
-      alert(`✅ Payment successful! ${cart.length} orders created.`);
+      alert(`Payment successful! ${cart.length} orders created.`);
       setCart([]);
     } catch (error) {
       console.error("Purchase error:", error);
-      alert("❌ Error creating orders");
+      alert("Error creating orders");
     } finally {
       setPurchasing(false);
     }
   };
 
-  // Calculate totals for display
   const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.priceGHS, 0);
   const cartCharge = cartSubtotal * (transactionCharge / 100);
   const cartTotal = cartSubtotal + cartCharge;
@@ -269,16 +241,14 @@ export default function DataGodPage() {
           </Button>
         </div>
         <h1 style={styles.h1}>DataGod Vending Platform</h1>
-        <p style={styles.subtitle}>Cheapest Data Prices • 24hr Delivery</p>
+        <p style={styles.subtitle}>Cheapest Data Prices - 24hr Delivery</p>
       </div>
 
       <div style={styles.contactBar}>
-        📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
-        💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
+        Contact us for support | WhatsApp: Chat with us
       </div>
 
       <main style={styles.main}>
-        {/* Status Checker */}
         <div style={styles.statusChecker}>
           <h2 style={styles.statusCheckerH2}>Check Order Status</h2>
           <div style={styles.statusCheckerForm}>
@@ -301,13 +271,12 @@ export default function DataGodPage() {
             <div style={styles.statusReport}>
               <p><strong>Order ID:</strong> {statusReport.shortId}</p>
               <p><strong>Status:</strong> {statusReport.status}</p>
-              <p><strong>Package:</strong> {statusReport.packageDetails}</p>
+              <p><strong>Package:</strong> {statusReport.packageName}</p>
               <p><strong>Date:</strong> {statusReport.createdAt}</p>
             </div>
           )}
         </div>
 
-        {/* Packages Grid */}
         <h2 style={styles.sectionTitle}>Available Packages</h2>
         {loading ? (
           <p style={styles.loading}>Loading packages...</p>
@@ -331,7 +300,6 @@ export default function DataGodPage() {
           </div>
         )}
 
-        {/* Purchase Section */}
         <h2 style={styles.sectionTitle}>Purchase Data</h2>
         <div style={styles.purchaseSection}>
           <div style={styles.purchaseCard}>
@@ -372,7 +340,6 @@ export default function DataGodPage() {
           </div>
         </div>
 
-        {/* Cart Section */}
         {cart.length > 0 && (
           <div style={styles.cartSection}>
             <h2 style={styles.sectionTitle}>
@@ -466,11 +433,6 @@ const styles: any = {
     textAlign: "center" as const,
     borderRadius: "5px",
     margin: "20px",
-  },
-  contactLink: {
-    color: "#ffcc00",
-    textDecoration: "none",
-    fontWeight: "bold",
   },
   main: {
     maxWidth: "1200px",

@@ -177,6 +177,11 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
+  async getDatagodOrderByShortId(shortId: string): Promise<DatagodOrder | null> {
+    const result = await db.select().from(datagodOrders).where(eq(datagodOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
   // DataGod Packages
   async createDatagodPackage(data: {
     packageName: string;

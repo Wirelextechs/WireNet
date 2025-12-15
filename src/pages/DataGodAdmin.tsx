@@ -3,34 +3,27 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Edit2, Download, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Download, Upload, RefreshCw } from "lucide-react";
 
 interface Order {
-  id: string;
+  id: number;
   shortId: string;
   customerPhone: string;
-  packageGB: number;
+  packageName: string;
   packagePrice: number;
-  packageDetails: string;
   status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED";
-  createdAt: Date;
-  updatedAt?: Date;
+  paymentReference?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 interface Package {
-  id: string;
+  id: number;
   packageName: string;
   dataValueGB: number;
   priceGHS: number;
   isEnabled: boolean;
 }
-
-const OrderStatus = {
-  PAID: "PAID",
-  PROCESSING: "PROCESSING",
-  FULFILLED: "FULFILLED",
-  CANCELLED: "CANCELLED",
-};
 
 export default function DataGodAdmin() {
   const [, navigate] = useLocation();
@@ -39,11 +32,11 @@ export default function DataGodAdmin() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState({ whatsAppLink: "", transactionCharge: "1.3" });
   const [filterStatus, setFilterStatus] = useState("ALL");
-  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
   const [message, setMessage] = useState("");
   const [newPackage, setNewPackage] = useState({ name: "", gb: "", price: "" });
-  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -51,32 +44,33 @@ export default function DataGodAdmin() {
     loadSettings();
   }, []);
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
+    setLoading(true);
     try {
-      const saved = localStorage.getItem("datagodOrders");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setOrders(parsed.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt) })).sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()));
+      const response = await fetch("/api/datagod/orders", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.sort((a: Order, b: Order) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
+      } else {
+        console.error("Failed to load orders:", response.statusText);
       }
     } catch (error) {
       console.error("Error loading orders:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadPackages = () => {
+  const loadPackages = async () => {
     try {
-      const saved = localStorage.getItem("datagodPackages");
-      if (saved) {
-        setPackages(JSON.parse(saved).sort((a: any, b: any) => a.dataValueGB - b.dataValueGB));
+      const response = await fetch("/api/datagod/packages/all", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setPackages(data.sort((a: Package, b: Package) => a.dataValueGB - b.dataValueGB));
       } else {
-        const defaults = [
-          { id: "1", packageName: "1GB", dataValueGB: 1, priceGHS: 2.5, isEnabled: true },
-          { id: "2", packageName: "2GB", dataValueGB: 2, priceGHS: 4.5, isEnabled: true },
-          { id: "3", packageName: "5GB", dataValueGB: 5, priceGHS: 10, isEnabled: true },
-          { id: "4", packageName: "10GB", dataValueGB: 10, priceGHS: 18, isEnabled: true },
-        ];
-        localStorage.setItem("datagodPackages", JSON.stringify(defaults));
-        setPackages(defaults.sort((a, b) => a.dataValueGB - b.dataValueGB));
+        console.error("Failed to load packages:", response.statusText);
       }
     } catch (error) {
       console.error("Error loading packages:", error);
@@ -112,7 +106,7 @@ export default function DataGodAdmin() {
     return orders.filter(o => o.status === filterStatus);
   };
 
-  const handleToggleOrderSelect = (orderId: string) => {
+  const handleToggleOrderSelect = (orderId: number) => {
     const newSelected = new Set(selectedOrders);
     if (newSelected.has(orderId)) {
       newSelected.delete(orderId);
@@ -130,86 +124,147 @@ export default function DataGodAdmin() {
     }
   };
 
-  const handleBulkStatusChange = () => {
+  const handleBulkStatusChange = async () => {
     if (selectedOrders.size === 0) {
-      setMessage("❌ Please select at least one order");
+      setMessage("Please select at least one order");
       return;
     }
     if (!bulkStatus) {
-      setMessage("❌ Please select a status");
+      setMessage("Please select a status");
       return;
     }
 
-    const updated = orders.map(o =>
-      selectedOrders.has(o.id) ? { ...o, status: bulkStatus as any, updatedAt: new Date() } : o
-    );
-    setOrders(updated);
-    localStorage.setItem("datagodOrders", JSON.stringify(updated));
-    setSelectedOrders(new Set());
-    setBulkStatus("");
-    setMessage(`✅ ${selectedOrders.size} orders updated to ${bulkStatus}`);
-    setTimeout(() => setMessage(""), 3000);
+    setLoading(true);
+    try {
+      const updatePromises = Array.from(selectedOrders).map(orderId =>
+        fetch(`/api/datagod/orders/${orderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: bulkStatus }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+      await loadOrders();
+      setSelectedOrders(new Set());
+      setBulkStatus("");
+      setMessage(`${selectedOrders.size} orders updated to ${bulkStatus}`);
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      console.error("Error updating orders:", error);
+      setMessage("Failed to update orders");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
-    const updated = orders.map(o =>
-      o.id === orderId ? { ...o, status: newStatus as any, updatedAt: new Date() } : o
-    );
-    setOrders(updated);
-    localStorage.setItem("datagodOrders", JSON.stringify(updated));
-    setMessage("✅ Order status updated");
-    setTimeout(() => setMessage(""), 2000);
+  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/datagod/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        await loadOrders();
+        setMessage("Order status updated");
+        setTimeout(() => setMessage(""), 2000);
+      } else {
+        setMessage("Failed to update order status");
+      }
+    } catch (error) {
+      console.error("Error updating order:", error);
+      setMessage("Failed to update order status");
+    }
   };
 
-  const handleAddPackage = () => {
+  const handleAddPackage = async () => {
     if (!newPackage.name || !newPackage.gb || !newPackage.price) {
-      setMessage("❌ Please fill all fields");
+      setMessage("Please fill all fields");
       return;
     }
 
-    const pkg: Package = {
-      id: Date.now().toString(),
-      packageName: newPackage.name,
-      dataValueGB: parseFloat(newPackage.gb),
-      priceGHS: parseFloat(newPackage.price),
-      isEnabled: true,
-    };
+    try {
+      const response = await fetch("/api/datagod/packages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          packageName: newPackage.name,
+          dataValueGB: parseFloat(newPackage.gb),
+          priceGHS: parseFloat(newPackage.price),
+          isEnabled: true,
+        }),
+      });
 
-    const updated = [...packages, pkg].sort((a, b) => a.dataValueGB - b.dataValueGB);
-    setPackages(updated);
-    localStorage.setItem("datagodPackages", JSON.stringify(updated));
-    setNewPackage({ name: "", gb: "", price: "" });
-    setMessage("✅ Package added");
-    setTimeout(() => setMessage(""), 2000);
+      if (response.ok) {
+        await loadPackages();
+        setNewPackage({ name: "", gb: "", price: "" });
+        setMessage("Package added");
+        setTimeout(() => setMessage(""), 2000);
+      } else {
+        setMessage("Failed to add package");
+      }
+    } catch (error) {
+      console.error("Error adding package:", error);
+      setMessage("Failed to add package");
+    }
   };
 
-  const handleDeletePackage = (id: string) => {
-    const updated = packages.filter(p => p.id !== id);
-    setPackages(updated);
-    localStorage.setItem("datagodPackages", JSON.stringify(updated));
-    setMessage("✅ Package deleted");
-    setTimeout(() => setMessage(""), 2000);
+  const handleDeletePackage = async (id: number) => {
+    try {
+      const response = await fetch(`/api/datagod/packages/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        await loadPackages();
+        setMessage("Package deleted");
+        setTimeout(() => setMessage(""), 2000);
+      } else {
+        setMessage("Failed to delete package");
+      }
+    } catch (error) {
+      console.error("Error deleting package:", error);
+      setMessage("Failed to delete package");
+    }
   };
 
-  const handleTogglePackage = (id: string) => {
-    const updated = packages.map(p =>
-      p.id === id ? { ...p, isEnabled: !p.isEnabled } : p
-    );
-    setPackages(updated);
-    localStorage.setItem("datagodPackages", JSON.stringify(updated));
+  const handleTogglePackage = async (id: number, currentEnabled: boolean) => {
+    try {
+      const response = await fetch(`/api/datagod/packages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isEnabled: !currentEnabled }),
+      });
+
+      if (response.ok) {
+        await loadPackages();
+      } else {
+        setMessage("Failed to update package");
+      }
+    } catch (error) {
+      console.error("Error toggling package:", error);
+      setMessage("Failed to update package");
+    }
   };
 
   const exportOrdersToCSV = () => {
     const selectedOrderObjects = orders.filter(o => selectedOrders.has(o.id));
     if (selectedOrderObjects.length === 0) {
-      setMessage("❌ Please select orders to export");
+      setMessage("Please select orders to export");
       return;
     }
 
     const csv = [
       ["Order ID", "Phone", "Package", "Price", "Status", "Date"].join(","),
       ...selectedOrderObjects.map(o =>
-        [o.shortId, o.customerPhone, o.packageDetails.replace("GB", ""), o.packagePrice, o.status, o.createdAt.toLocaleDateString()].join(",")
+        [o.shortId, o.customerPhone, o.packageName, o.packagePrice, o.status, new Date(o.createdAt).toLocaleDateString()].join(",")
       ),
     ].join("\n");
 
@@ -219,7 +274,7 @@ export default function DataGodAdmin() {
     a.href = url;
     a.download = `datagod-orders-${Date.now()}.csv`;
     a.click();
-    setMessage("✅ Orders exported to CSV");
+    setMessage("Orders exported to CSV");
     setTimeout(() => setMessage(""), 2000);
   };
 
@@ -227,7 +282,6 @@ export default function DataGodAdmin() {
 
   return (
     <div style={styles.body}>
-      {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <Button
@@ -243,19 +297,17 @@ export default function DataGodAdmin() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main style={styles.main}>
         {message && (
           <div style={{
             ...styles.message,
-            backgroundColor: message.includes("✅") ? "#d4edda" : "#f8d7da",
-            color: message.includes("✅") ? "#155724" : "#721c24",
+            backgroundColor: message.includes("Failed") || message.includes("Please") ? "#f8d7da" : "#d4edda",
+            color: message.includes("Failed") || message.includes("Please") ? "#721c24" : "#155724",
           }}>
             {message}
           </div>
         )}
 
-        {/* Tabs */}
         <div style={styles.tabs}>
           <button
             onClick={() => setActiveTab("orders")}
@@ -289,10 +341,8 @@ export default function DataGodAdmin() {
           </button>
         </div>
 
-        {/* Orders Tab */}
         {activeTab === "orders" && (
           <div>
-            {/* Filter and Bulk Actions */}
             <Card style={styles.card}>
               <CardHeader>
                 <CardTitle>Order Management</CardTitle>
@@ -331,6 +381,7 @@ export default function DataGodAdmin() {
 
                   <Button
                     onClick={handleBulkStatusChange}
+                    disabled={loading}
                     style={styles.bulkButton}
                   >
                     Update ({selectedOrders.size})
@@ -343,11 +394,19 @@ export default function DataGodAdmin() {
                     <Download size={16} style={{ marginRight: "8px" }} />
                     Export CSV
                   </Button>
+
+                  <Button
+                    onClick={loadOrders}
+                    disabled={loading}
+                    style={styles.refreshButton}
+                  >
+                    <RefreshCw size={16} style={{ marginRight: "8px" }} />
+                    Refresh
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Orders Table */}
             <Card style={styles.card}>
               <CardContent style={{ padding: "20px" }}>
                 <div style={styles.tableWrapper}>
@@ -371,7 +430,13 @@ export default function DataGodAdmin() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOrders.length === 0 ? (
+                      {loading ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                            Loading...
+                          </td>
+                        </tr>
+                      ) : filteredOrders.length === 0 ? (
                         <tr>
                           <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
                             No orders found
@@ -389,7 +454,7 @@ export default function DataGodAdmin() {
                             </td>
                             <td style={styles.tableCell}>{order.shortId}</td>
                             <td style={styles.tableCell}>{order.customerPhone}</td>
-                            <td style={styles.tableCell}>{order.packageDetails}</td>
+                            <td style={styles.tableCell}>{order.packageName}</td>
                             <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
                             <td style={styles.tableCell}>
                               <select
@@ -406,7 +471,7 @@ export default function DataGodAdmin() {
                                 <option value="CANCELLED">Cancelled</option>
                               </select>
                             </td>
-                            <td style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</td>
+                            <td style={styles.tableCell}>{new Date(order.createdAt).toLocaleDateString()}</td>
                             <td style={styles.tableCell}>
                               <button
                                 onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")}
@@ -426,7 +491,6 @@ export default function DataGodAdmin() {
           </div>
         )}
 
-        {/* Packages Tab */}
         {activeTab === "packages" && (
           <div>
             <Card style={styles.card}>
@@ -471,7 +535,13 @@ export default function DataGodAdmin() {
 
             <Card style={styles.card}>
               <CardHeader>
-                <CardTitle>Manage Packages</CardTitle>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <CardTitle>Manage Packages</CardTitle>
+                  <Button onClick={loadPackages} size="sm" variant="outline">
+                    <RefreshCw size={16} style={{ marginRight: "8px" }} />
+                    Refresh
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div style={styles.tableWrapper}>
@@ -486,32 +556,40 @@ export default function DataGodAdmin() {
                       </tr>
                     </thead>
                     <tbody>
-                      {packages.map((pkg) => (
-                        <tr key={pkg.id} style={styles.tableRow}>
-                          <td style={styles.tableCell}>{pkg.packageName}</td>
-                          <td style={styles.tableCell}>{pkg.dataValueGB}</td>
-                          <td style={styles.tableCell}>{pkg.priceGHS}</td>
-                          <td style={styles.tableCell}>
-                            <button
-                              onClick={() => handleTogglePackage(pkg.id)}
-                              style={{
-                                ...styles.statusButton,
-                                backgroundColor: pkg.isEnabled ? "#28a745" : "#dc3545",
-                              }}
-                            >
-                              {pkg.isEnabled ? "✅ Enabled" : "❌ Disabled"}
-                            </button>
-                          </td>
-                          <td style={styles.tableCell}>
-                            <button
-                              onClick={() => handleDeletePackage(pkg.id)}
-                              style={styles.deleteButton}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                      {packages.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                            No packages found
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        packages.map((pkg) => (
+                          <tr key={pkg.id} style={styles.tableRow}>
+                            <td style={styles.tableCell}>{pkg.packageName}</td>
+                            <td style={styles.tableCell}>{pkg.dataValueGB}</td>
+                            <td style={styles.tableCell}>{pkg.priceGHS}</td>
+                            <td style={styles.tableCell}>
+                              <button
+                                onClick={() => handleTogglePackage(pkg.id, pkg.isEnabled)}
+                                style={{
+                                  ...styles.statusButton,
+                                  backgroundColor: pkg.isEnabled ? "#28a745" : "#dc3545",
+                                }}
+                              >
+                                {pkg.isEnabled ? "Enabled" : "Disabled"}
+                              </button>
+                            </td>
+                            <td style={styles.tableCell}>
+                              <button
+                                onClick={() => handleDeletePackage(pkg.id)}
+                                style={styles.deleteButton}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -520,7 +598,6 @@ export default function DataGodAdmin() {
           </div>
         )}
 
-        {/* Settings Tab */}
         {activeTab === "settings" && (
           <Card style={styles.card}>
             <CardHeader>
@@ -552,19 +629,17 @@ export default function DataGodAdmin() {
                 <Button
                   onClick={() => {
                     const updated = { ...settings };
-                    // Save WhatsApp link to global settings
                     const currentWirenet = JSON.parse(localStorage.getItem("wirenetSettings") || "{}");
                     localStorage.setItem("wirenetSettings", JSON.stringify({
                       ...currentWirenet,
                       whatsappLink: updated.whatsAppLink,
                     }));
                     
-                    // Save transaction charge to DataGod settings
                     localStorage.setItem("datagodSettings", JSON.stringify({
                       transactionCharge: updated.transactionCharge,
                     }));
                     
-                    setMessage("✅ Settings saved");
+                    setMessage("Settings saved");
                     setTimeout(() => setMessage(""), 2000);
                   }}
                   style={styles.saveButton}
@@ -613,135 +688,143 @@ const styles: any = {
     margin: "0 auto",
     padding: "32px 20px",
   },
-  message: {
-    padding: "16px",
-    borderRadius: "8px",
-    marginBottom: "20px",
-    fontWeight: "bold",
-  },
   tabs: {
     display: "flex",
-    gap: "20px",
+    gap: "8px",
     marginBottom: "24px",
-    borderBottom: "2px solid #ddd",
+    borderBottom: "1px solid #ddd",
   },
   tab: {
-    padding: "12px 20px",
-    backgroundColor: "transparent",
+    padding: "12px 24px",
     border: "none",
+    background: "none",
     cursor: "pointer",
     fontSize: "1em",
-    color: "#666",
-    transition: "all 0.3s",
+    color: "#333",
   },
   card: {
     marginBottom: "24px",
+    backgroundColor: "white",
     borderRadius: "8px",
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  },
+  message: {
+    padding: "12px 16px",
+    borderRadius: "6px",
+    marginBottom: "16px",
+    fontWeight: "500",
   },
   filterSection: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    display: "flex",
+    flexWrap: "wrap",
     gap: "16px",
     alignItems: "flex-end",
   },
   filterGroup: {
     display: "flex",
-    flexDirection: "column" as const,
+    flexDirection: "column",
+    gap: "4px",
   },
   label: {
     fontSize: "0.875em",
-    fontWeight: "bold",
-    marginBottom: "8px",
+    fontWeight: "500",
+    color: "#555",
   },
   select: {
-    padding: "8px",
+    padding: "8px 12px",
+    borderRadius: "6px",
     border: "1px solid #ddd",
-    borderRadius: "4px",
-    fontSize: "0.9em",
+    fontSize: "0.875em",
+    minWidth: "150px",
   },
   bulkButton: {
-    backgroundColor: "#ffcc00",
-    color: "#1a1a1a",
-    fontWeight: "bold",
-  },
-  exportButton: {
     backgroundColor: "#007bff",
     color: "white",
-    fontWeight: "bold",
+  },
+  exportButton: {
+    backgroundColor: "#28a745",
+    color: "white",
+  },
+  refreshButton: {
+    backgroundColor: "#6c757d",
+    color: "white",
   },
   tableWrapper: {
-    overflowX: "auto" as const,
+    overflowX: "auto",
   },
   table: {
     width: "100%",
-    borderCollapse: "collapse" as const,
+    borderCollapse: "collapse",
+    fontSize: "0.875em",
   },
   tableHeader: {
-    backgroundColor: "#f9f9f9",
-    borderBottom: "2px solid #ddd",
+    backgroundColor: "#f8f9fa",
+    borderBottom: "2px solid #dee2e6",
   },
   tableRow: {
-    borderBottom: "1px solid #ddd",
+    borderBottom: "1px solid #dee2e6",
   },
   tableCell: {
     padding: "12px",
-    textAlign: "left" as const,
+    textAlign: "left",
   },
   statusSelect: {
-    padding: "6px 12px",
-    color: "white",
-    border: "none",
+    padding: "4px 8px",
     borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "0.875em",
+    border: "none",
+    color: "white",
     fontWeight: "bold",
-  },
-  statusButton: {
-    padding: "6px 12px",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "0.875em",
-    fontWeight: "bold",
-  },
-  deleteButton: {
-    padding: "6px 12px",
-    backgroundColor: "#dc3545",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
+    fontSize: "0.75em",
     cursor: "pointer",
   },
   actionButton: {
-    padding: "6px 12px",
+    padding: "4px 12px",
     backgroundColor: "#28a745",
     color: "white",
     border: "none",
     borderRadius: "4px",
     cursor: "pointer",
+    fontWeight: "bold",
   },
   formGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
     gap: "16px",
     marginBottom: "16px",
   },
   addButton: {
-    backgroundColor: "#ffcc00",
-    color: "#1a1a1a",
+    backgroundColor: "#007bff",
+    color: "white",
+  },
+  statusButton: {
+    padding: "4px 12px",
+    border: "none",
+    borderRadius: "4px",
+    color: "white",
     fontWeight: "bold",
+    fontSize: "0.75em",
+    cursor: "pointer",
+  },
+  deleteButton: {
+    padding: "8px",
+    backgroundColor: "#dc3545",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   settingsForm: {
     display: "flex",
-    flexDirection: "column" as const,
+    flexDirection: "column",
     gap: "16px",
+    maxWidth: "400px",
   },
   saveButton: {
-    backgroundColor: "#ffcc00",
-    color: "#1a1a1a",
-    fontWeight: "bold",
-    width: "fit-content",
+    backgroundColor: "#28a745",
+    color: "white",
+    marginTop: "8px",
   },
 };

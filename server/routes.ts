@@ -395,27 +395,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create DataGod Order
   app.post("/api/datagod/orders", async (req, res) => {
     try {
-      const { phoneNumber, packageName, price, reference } = req.body;
+      const { shortId, customerPhone, packageName, packagePrice, status, paymentReference } = req.body;
       
-      if (!phoneNumber || !packageName || !price) {
+      if (!customerPhone || !packageName || !packagePrice) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const orderReference = reference || `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const orderReference = shortId || `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       
       const order = await storage.createDatagodOrder({
         shortId: orderReference,
-        customerPhone: phoneNumber,
+        customerPhone,
         packageName,
-        packagePrice: parseFloat(price),
-        status: "PAID",
-        paymentReference: reference || null,
+        packagePrice: parseFloat(packagePrice),
+        status: status || "PAID",
+        paymentReference: paymentReference || null,
       });
 
       res.json({ success: true, order });
     } catch (error: any) {
       console.error("Error creating DataGod order:", error);
       res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Get DataGod Order Status (Public - for customers to check their order)
+  app.get("/api/datagod/orders/status/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const order = await storage.getDatagodOrderByShortId(shortId);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json({
+        shortId: order.shortId,
+        status: order.status,
+        packageName: order.packageName,
+        createdAt: order.createdAt,
+      });
+    } catch (error) {
+      console.error("Error fetching order status:", error);
+      res.status(500).json({ message: "Failed to fetch order status" });
     }
   });
 
