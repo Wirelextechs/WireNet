@@ -345,12 +345,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orders = await storage.getFastnetOrders();
       
-      // Filter to orders that have a supplier and are still processing
+      // Filter to orders that have a supplier and need status update
       // Skip Hubnet orders as it doesn't support polling (uses webhooks instead)
+      // Include FAILED orders too in case they were fulfilled but status wasn't updated
       const processingOrders = orders.filter(o => 
         o.supplierUsed && 
         o.supplierUsed !== "hubnet" && 
-        (o.status === "PROCESSING" || o.status === "PAID")
+        (o.status === "PROCESSING" || o.status === "PAID" || o.status === "FAILED")
       );
 
       const results = [];
