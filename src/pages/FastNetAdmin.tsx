@@ -57,10 +57,6 @@ export default function FastNetAdmin() {
   const [settings, setSettings] = useState({ transactionCharge: "1.3" });
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadOrders();
-    }, 5000);
-    return () => clearInterval(interval);
     loadOrders();
     loadPackages();
     loadSettings();
