@@ -226,6 +226,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get FastNet Order Status (Public - for customers to check their order)
+  app.get("/api/fastnet/orders/status/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const order = await storage.getFastnetOrderByShortId(shortId);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json({
+        shortId: order.shortId,
+        status: order.status,
+        packageDetails: order.packageDetails,
+        createdAt: order.createdAt,
+      });
+    } catch (error) {
+      console.error("Error fetching order status:", error);
+      res.status(500).json({ message: "Failed to fetch order status" });
+    }
+  });
+
   // Get Wallet Balances (Admin only)
   app.get("/api/fastnet/balances", isAuthenticated, isAdmin, async (req, res) => {
     try {
