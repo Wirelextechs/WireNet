@@ -397,10 +397,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const statusResult = await supplierManager.checkOrderStatus(supplier, statusReference);
           
+          let normalizedStatus = order.status;
+          let wasUpdated = false;
+          
           if (statusResult.success && statusResult.status) {
-            const normalizedStatus = normalizeSupplierStatus(statusResult.status);
+            normalizedStatus = normalizeSupplierStatus(statusResult.status);
+            console.log(`📊 Order ${order.shortId}: Supplier says "${statusResult.status}" -> normalized to "${normalizedStatus}", current status: "${order.status}"`);
+            
             if (normalizedStatus !== order.status) {
+              console.log(`🔄 Updating order ${order.shortId} from ${order.status} to ${normalizedStatus}`);
               await storage.updateFastnetOrderStatus(order.id, normalizedStatus, supplier, JSON.stringify(statusResult.data || {}));
+              wasUpdated = true;
+            } else {
+              console.log(`⏸️ Order ${order.shortId} already has status ${order.status}, no update needed`);
             }
           }
           
@@ -409,7 +418,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             shortId: order.shortId,
             success: statusResult.success,
             previousStatus: order.status,
-            newStatus: statusResult.status,
+            supplierStatus: statusResult.status,
+            normalizedStatus: normalizedStatus,
+            wasUpdated: wasUpdated,
           });
         } catch (err: any) {
           results.push({
@@ -610,17 +621,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
  * Normalize supplier status to our internal status format
  */
 function normalizeSupplierStatus(supplierStatus: string): string {
-  const status = supplierStatus.toLowerCase();
+  const status = supplierStatus.toLowerCase().trim();
   
-  if (status === "success" || status === "completed" || status === "delivered" || status === "fulfilled") {
+  console.log(`🔄 Normalizing supplier status: "${supplierStatus}" -> "${status}"`);
+  
+  // Success/completed statuses -> FULFILLED
+  if (status === "success" || status === "completed" || status === "delivered" || 
+      status === "fulfilled" || status === "sent" || status === "done" || 
+      status === "successful" || status === "approved" || status === "1") {
+    console.log(`✅ Status "${status}" normalized to FULFILLED`);
     return "FULFILLED";
   }
-  if (status === "pending" || status === "processing" || status === "queued") {
+  
+  // Pending/processing statuses -> PROCESSING
+  if (status === "pending" || status === "processing" || status === "queued" ||
+      status === "initiated" || status === "waiting" || status === "0") {
+    console.log(`⏳ Status "${status}" normalized to PROCESSING`);
     return "PROCESSING";
   }
-  if (status === "failed" || status === "error" || status === "rejected") {
+  
+  // Failed statuses -> FAILED
+  if (status === "failed" || status === "error" || status === "rejected" ||
+      status === "cancelled" || status === "canceled" || status === "declined" || status === "2") {
+    console.log(`❌ Status "${status}" normalized to FAILED`);
     return "FAILED";
   }
   
+  console.log(`⚠️ Unknown status "${status}" - defaulting to PROCESSING`);
   return "PROCESSING"; // Default to processing for unknown statuses
 }
