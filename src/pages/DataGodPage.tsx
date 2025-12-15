@@ -203,13 +203,14 @@ export default function DataGodPage() {
       );
 
       await Promise.all(orderPromises);
-
-      alert(`Payment successful! ${cart.length} orders created.`);
       setCart([]);
+      
+      // Redirect to success page with first order ID
+      const firstOrderId = `${reference}-1`;
+      navigate(`/order/success/${firstOrderId}?service=datagod`);
     } catch (error) {
       console.error("Purchase error:", error);
       alert("Error creating orders");
-    } finally {
       setPurchasing(false);
     }
   };

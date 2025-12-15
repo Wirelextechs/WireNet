@@ -155,6 +155,7 @@ export default function FastNetPage() {
           let successCount = 0;
           
           const processOrders = async () => {
+            let firstOrderId = "";
             for (const item of cartItems) {
               try {
                 const orderResponse = await fetch("/api/fastnet/purchase", {
@@ -169,16 +170,27 @@ export default function FastNetPage() {
                 });
                 if (orderResponse.ok) {
                   successCount++;
+                  try {
+                    const orderData = await orderResponse.json();
+                    if (!firstOrderId && orderData.shortId) {
+                      firstOrderId = orderData.shortId;
+                    }
+                  } catch {
+                    // Response may not be JSON, continue
+                  }
                 }
               } catch (error) {
                 console.error("Error creating order:", error);
               }
             }
-            alert(`Payment successful! ${successCount} order(s) created.`);
             setCart([]);
             setPhoneNumber("");
             setSelectedPackage(null);
             setPurchasing(false);
+            
+            // Redirect to success page - use reference as fallback
+            const orderId = firstOrderId || response.reference;
+            navigate(`/order/success/${orderId}?service=fastnet`);
           };
           
           processOrders();

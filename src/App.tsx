@@ -8,6 +8,7 @@ import DataGodPage from "@/pages/DataGodPage";
 import FastNetPage from "@/pages/FastNetPage";
 import DataGodAdmin from "@/pages/DataGodAdmin";
 import FastNetAdmin from "@/pages/FastNetAdmin";
+import OrderSuccess from "@/pages/OrderSuccess";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ function AppContent() {
       <Route path="/fastnet" component={FastNetPage} />
       <Route path="/admin/datagod" component={DataGodAdmin} />
       <Route path="/admin/fastnet" component={FastNetAdmin} />
+      <Route path="/order/success/:orderId" component={OrderSuccess} />
     </Router>
   );
 }
