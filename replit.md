@@ -34,15 +34,26 @@ Key server files:
 ### Data Storage
 - **Database**: PostgreSQL via Drizzle ORM
 - **Schema Location**: `shared/db-schema.ts`
-- **Tables**: fastnet_orders, settings, admin_users
+- **Tables**: fastnet_orders, settings, admin_users, datagod_orders, datagod_packages
 - **Fallback**: Can work with in-memory storage if DATABASE_URL not set
 
+### Settings Management
+All platform settings are stored in the database and synced across devices via the `/api/settings` API:
+- **whatsappLink**: WhatsApp contact link
+- **datagodEnabled**: Toggle for DataGod service visibility
+- **fastnetEnabled**: Toggle for FastNet service visibility
+- **datagodTransactionCharge**: Transaction fee percentage for DataGod (default: 1.3%)
+- **fastnetTransactionCharge**: Transaction fee percentage for FastNet (default: 1.3%)
+- **fastnetActiveSupplier**: Active data supplier (dataxpress, hubnet, or dakazina)
+
+The settings are loaded from the API by:
+- Admin dashboards (AdminDashboard, DataGodAdmin, FastNetAdmin)
+- Storefront pages (Storefront, DataGodPage, FastNetPage)
+
 ### Package Management
-- **Storage**: Browser localStorage (key: `fastnetPackages`)
-- **Format**: Packages are stored with `dataAmount` including the "GB" suffix (e.g., "5GB")
-- **Default Packages**: If localStorage is empty, default packages are initialized (1GB, 2GB, 5GB, 10GB, 20GB, 50GB)
-- **Admin Management**: Admins can add/edit/disable packages via the FastNet Admin dashboard
-- **Storefront**: FastNetPage loads enabled packages from localStorage and displays them for purchase
+- **FastNet**: Packages stored in Supabase via `packagesAPI` from `src/lib/supabase.ts`
+- **DataGod**: Packages stored in PostgreSQL via `/api/datagod/packages` API
+- **Admin Management**: Admins can add/edit/disable packages via respective admin dashboards
 
 ### Order Fulfillment System
 The platform integrates with three data bundle suppliers:
