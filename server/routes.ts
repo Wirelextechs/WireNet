@@ -377,8 +377,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // DataGod API Endpoints
+  // ============================================
+
+  // Get DataGod Orders (Admin only)
+  app.get("/api/datagod/orders", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const orders = await storage.getDatagodOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching DataGod orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Create DataGod Order
+  app.post("/api/datagod/orders", async (req, res) => {
+    try {
+      const { phoneNumber, packageName, price, reference } = req.body;
+      
+      if (!phoneNumber || !packageName || !price) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const orderReference = reference || `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      const order = await storage.createDatagodOrder({
+        shortId: orderReference,
+        customerPhone: phoneNumber,
+        packageName,
+        packagePrice: parseFloat(price),
+        status: "PAID",
+        paymentReference: reference || null,
+      });
+
+      res.json({ success: true, order });
+    } catch (error: any) {
+      console.error("Error creating DataGod order:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // Update DataGod Order Status (Admin only)
+  app.patch("/api/datagod/orders/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const updated = await storage.updateDatagodOrderStatus(id, status);
+      if (!updated) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating DataGod order:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  // Get DataGod Packages (Public - for storefront)
+  app.get("/api/datagod/packages", async (_req, res) => {
+    try {
+      const packages = await storage.getEnabledDatagodPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching DataGod packages:", error);
+      res.status(500).json({ message: "Failed to fetch packages" });
+    }
+  });
+
+  // Get All DataGod Packages (Admin only - includes disabled)
+  app.get("/api/datagod/packages/all", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const packages = await storage.getDatagodPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching DataGod packages:", error);
+      res.status(500).json({ message: "Failed to fetch packages" });
+    }
+  });
+
+  // Create DataGod Package (Admin only)
+  app.post("/api/datagod/packages", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { packageName, dataValueGB, priceGHS, isEnabled } = req.body;
+
+      if (!packageName || !dataValueGB || !priceGHS) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const pkg = await storage.createDatagodPackage({
+        packageName,
+        dataValueGB: parseFloat(dataValueGB),
+        priceGHS: parseFloat(priceGHS),
+        isEnabled: isEnabled !== false,
+      });
+
+      res.json(pkg);
+    } catch (error) {
+      console.error("Error creating DataGod package:", error);
+      res.status(500).json({ message: "Failed to create package" });
+    }
+  });
+
+  // Update DataGod Package (Admin only)
+  app.patch("/api/datagod/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      const updated = await storage.updateDatagodPackage(id, updates);
+      if (!updated) {
+        return res.status(404).json({ message: "Package not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating DataGod package:", error);
+      res.status(500).json({ message: "Failed to update package" });
+    }
+  });
+
+  // Delete DataGod Package (Admin only)
+  app.delete("/api/datagod/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteDatagodPackage(id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Package not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting DataGod package:", error);
+      res.status(500).json({ message: "Failed to delete package" });
+    }
+  });
+
   // Health check
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
