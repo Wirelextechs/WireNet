@@ -255,9 +255,26 @@ export async function checkTransactionStatus(
     }
 
     const result = await response.json();
+    console.log(`📋 DataKazina transaction response:`, JSON.stringify(result, null, 2));
+    
+    // Handle various response formats from DataKazina
+    // The status might be in different fields depending on the response structure
+    let transactionStatus = result.status;
+    
+    // Check if status is nested in data or transaction object
+    if (result.data?.status) {
+      transactionStatus = result.data.status;
+    } else if (result.transaction?.status) {
+      transactionStatus = result.transaction.status;
+    } else if (result.transaction_status) {
+      transactionStatus = result.transaction_status;
+    }
+    
+    console.log(`📋 Extracted transaction status: "${transactionStatus}"`);
+    
     return {
       success: true,
-      status: result.status,
+      status: transactionStatus,
       data: result,
     };
   } catch (error) {
