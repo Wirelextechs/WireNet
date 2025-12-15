@@ -137,31 +137,48 @@ export default function FastNetAdmin() {
     }
   };
 
-  const loadSettings = () => {
+  const loadSettings = async () => {
     try {
+      // Load local settings (transaction charge)
       const saved = localStorage.getItem("fastnetSettings");
       if (saved) {
         const parsed = JSON.parse(saved);
-        setActiveSupplier(parsed.activeSupplier || "dataxpress");
         setSettings({ transactionCharge: parsed.transactionCharge || "1.3" });
+      }
+      
+      // Load active supplier from server (source of truth)
+      const response = await fetch("/api/fastnet/supplier", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.supplier) {
+          setActiveSupplier(data.supplier);
+        }
       }
     } catch (error) {
       console.error("Error loading settings:", error);
     }
   };
 
-  const handleSupplierChange = (supplier: Supplier) => {
-    setActiveSupplier(supplier);
-    const currentSettings = JSON.parse(localStorage.getItem("fastnetSettings") || "{}");
-    localStorage.setItem("fastnetSettings", JSON.stringify({ ...currentSettings, activeSupplier: supplier }));
-    
-    fetch("/api/fastnet/supplier", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ supplier }),
-    }).catch(console.error);
-
-    setMessage(`✅ Active supplier changed to ${supplier.toUpperCase()}`);
+  const handleSupplierChange = async (supplier: Supplier) => {
+    try {
+      const response = await fetch("/api/fastnet/supplier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ supplier }),
+      });
+      
+      if (response.ok) {
+        setActiveSupplier(supplier);
+        setMessage(`✅ Active supplier changed to ${supplier.toUpperCase()}`);
+      } else {
+        const errorData = await response.json();
+        setMessage(`❌ Failed to change supplier: ${errorData.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error changing supplier:", error);
+      setMessage("❌ Failed to change supplier - network error");
+    }
     setTimeout(() => setMessage(""), 3000);
   };
 

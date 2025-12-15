@@ -175,38 +175,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         // Update order with fulfillment result
+        // Note: API success means order was ACCEPTED, not DELIVERED
+        // Orders start as PROCESSING - use "Refresh Status" to check for FULFILLED
         if (fulfillmentResult.success) {
           await storage.updateFastnetOrderStatus(
             order.id, 
-            "FULFILLED", 
+            "PROCESSING", 
             fulfillmentResult.supplier,
             JSON.stringify(fulfillmentResult.data || {})
           );
         } else {
           await storage.updateFastnetOrderStatus(
             order.id, 
-            "PROCESSING",
+            "FAILED",
             fulfillmentResult.supplier,
             fulfillmentResult.message
           );
         }
       } catch (fulfillError: any) {
         console.error("Fulfillment error (order still created):", fulfillError);
+        // Fulfillment threw an error - no supplier accepted the order
         await storage.updateFastnetOrderStatus(
           order.id, 
-          "PROCESSING",
+          "FAILED",
           undefined,
           fulfillError.message
         );
         fulfillmentResult = { success: false, message: fulfillError.message };
       }
 
-      // Always return success since order was created (payment was successful)
+      // Return response based on fulfillment result
+      // Note: Order record is always created (payment was successful), but fulfillment may have failed
       res.json({ 
-        success: true, 
-        message: fulfillmentResult.success ? "Order fulfilled successfully" : "Order created, fulfillment pending",
+        success: fulfillmentResult.success,
+        message: fulfillmentResult.success 
+          ? "Order submitted to supplier successfully" 
+          : `Order created but fulfillment failed: ${fulfillmentResult.message}`,
         orderId: order.shortId,
-        fulfilled: fulfillmentResult.success,
+        status: fulfillmentResult.success ? "PROCESSING" : "FAILED",
         data: fulfillmentResult 
       });
     } catch (error: any) {
@@ -235,6 +241,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Active Supplier (Admin only)
+  app.get("/api/fastnet/supplier", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const supplier = await supplierManager.getActiveSupplierName();
+      res.json({ supplier });
+    } catch (error) {
+      console.error("Error getting supplier:", error);
+      res.status(500).json({ message: "Failed to get supplier" });
+    }
+  });
+
   // Set Active Supplier (Admin only)
   app.post("/api/fastnet/supplier", isAuthenticated, isAdmin, async (req, res) => {
     try {
@@ -244,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await supplierManager.setActiveSupplier(supplier);
-      res.json({ success: true, message: `Active supplier set to ${supplier}` });
+      res.json({ success: true, supplier, message: `Active supplier set to ${supplier}` });
     } catch (error) {
       console.error("Error setting supplier:", error);
       res.status(500).json({ message: "Failed to set supplier" });
