@@ -51,11 +51,12 @@ export default function AdminDashboard() {
         setSettings({
           datagodEnabled: data.datagodEnabled,
           fastnetEnabled: data.fastnetEnabled,
-          afaEnabled: true,
+          afaEnabled: data.afaEnabled !== false,
           whatsappLink: data.whatsappLink || "",
-          afaLink: "",
+          afaLink: data.afaLink || "",
         });
         setWhatsappLink(data.whatsappLink || "");
+        setAfaLink(data.afaLink || "");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -100,11 +101,23 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleToggleAfa = () => {
-    const newSettings = { ...settings, afaEnabled: !settings.afaEnabled };
-    setSettings(newSettings);
-    setMessage("AFA toggle updated!");
-    setTimeout(() => setMessage(""), 2000);
+  const handleToggleAfa = async () => {
+    try {
+      const newValue = !settings.afaEnabled;
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ afaEnabled: newValue }),
+      });
+      if (response.ok) {
+        setSettings({ ...settings, afaEnabled: newValue });
+        setMessage("AFA toggle updated!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      console.error("Error updating AFA toggle:", error);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -118,8 +131,10 @@ export default function AdminDashboard() {
         credentials: "include",
         body: JSON.stringify({
           whatsappLink,
+          afaLink,
           datagodEnabled: settings.datagodEnabled,
           fastnetEnabled: settings.fastnetEnabled,
+          afaEnabled: settings.afaEnabled,
         }),
       });
 
@@ -128,8 +143,10 @@ export default function AdminDashboard() {
         setSettings({
           ...settings,
           whatsappLink: updated.whatsappLink,
+          afaLink: updated.afaLink,
           datagodEnabled: updated.datagodEnabled,
           fastnetEnabled: updated.fastnetEnabled,
+          afaEnabled: updated.afaEnabled,
         });
         setMessage("Settings saved successfully!");
         setTimeout(() => setMessage(""), 3000);

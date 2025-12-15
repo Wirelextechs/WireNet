@@ -12,6 +12,8 @@ interface Settings {
   whatsappLink?: string;
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
+  afaEnabled: boolean;
+  afaLink?: string;
   datagodTransactionCharge?: string;
   fastnetTransactionCharge?: string;
   fastnetActiveSupplier?: string;
@@ -40,6 +42,8 @@ class Storage {
       whatsappLink: settingsMap["whatsappLink"] || "",
       datagodEnabled: settingsMap["datagodEnabled"] !== "false",
       fastnetEnabled: settingsMap["fastnetEnabled"] !== "false",
+      afaEnabled: settingsMap["afaEnabled"] !== "false",
+      afaLink: settingsMap["afaLink"] || "",
       datagodTransactionCharge: settingsMap["datagodTransactionCharge"] || "1.3",
       fastnetTransactionCharge: settingsMap["fastnetTransactionCharge"] || "1.3",
       fastnetActiveSupplier: settingsMap["fastnetActiveSupplier"] || "dataxpress",
@@ -57,6 +61,12 @@ class Storage {
     }
     if (data.fastnetEnabled !== undefined) {
       await this.upsertSetting("fastnetEnabled", String(data.fastnetEnabled));
+    }
+    if (data.afaEnabled !== undefined) {
+      await this.upsertSetting("afaEnabled", String(data.afaEnabled));
+    }
+    if (data.afaLink !== undefined) {
+      await this.upsertSetting("afaLink", data.afaLink);
     }
     if (data.datagodTransactionCharge !== undefined) {
       await this.upsertSetting("datagodTransactionCharge", data.datagodTransactionCharge);

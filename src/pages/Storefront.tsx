@@ -39,7 +39,7 @@ export default function Storefront() {
           whatsappLink: data.whatsappLink || "",
           datagodEnabled: data.datagodEnabled !== false,
           fastnetEnabled: data.fastnetEnabled !== false,
-          afaEnabled: true,
+          afaEnabled: data.afaEnabled !== false,
           afaLink: data.afaLink || "",
         });
       }
