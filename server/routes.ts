@@ -678,7 +678,8 @@ function normalizeSupplierStatus(supplierStatus: string): string {
   }
   
   // Failed statuses -> FAILED
-  if (status === "failed" || status === "error" || status === "rejected" ||
+  // NOTE: We do NOT normalize "error" to FAILED because some suppliers return "error" messages even when the transaction is accepted.
+  if (status === "failed" || status === "rejected" ||
       status === "cancelled" || status === "canceled" || status === "declined" || status === "2") {
     console.log(`❌ Status "${status}" normalized to FAILED`);
     return "FAILED";
