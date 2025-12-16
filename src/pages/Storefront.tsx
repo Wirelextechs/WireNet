@@ -8,6 +8,8 @@ interface Settings {
   whatsappLink?: string;
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
+  atEnabled: boolean;
+  telecelEnabled: boolean;
   afaEnabled: boolean;
   afaLink?: string;
 }
@@ -16,6 +18,8 @@ export default function Storefront() {
   const [settings, setSettings] = useState<Settings>({
     datagodEnabled: true,
     fastnetEnabled: true,
+    atEnabled: true,
+    telecelEnabled: true,
     afaEnabled: true,
     whatsappLink: "",
     afaLink: "",
@@ -39,6 +43,8 @@ export default function Storefront() {
           whatsappLink: data.whatsappLink || "",
           datagodEnabled: data.datagodEnabled !== false,
           fastnetEnabled: data.fastnetEnabled !== false,
+          atEnabled: data.atEnabled !== false,
+          telecelEnabled: data.telecelEnabled !== false,
           afaEnabled: data.afaEnabled !== false,
           afaLink: data.afaLink || "",
         });
@@ -162,6 +168,52 @@ export default function Storefront() {
             </Card>
           )}
 
+          {/* AT ISHARE Category */}
+          {settings.atEnabled && (
+            <Card style={styles.categoryCard}>
+              <CardHeader>
+                <CardTitle style={{...styles.categoryTitle, color: "#dc2626"}}>📱 AT ISHARE</CardTitle>
+                <CardDescription>
+                  Affordable data for AT subscribers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p style={styles.categoryDescription}>
+                  Access high-speed data with instant delivery. Dedicated support for all AT ISHARE packages and competitive pricing.
+                </p>
+                <Button
+                  style={{...styles.shopButton, backgroundColor: "#dc2626"}}
+                  onClick={() => navigate("/at")}
+                >
+                  Shop AT ISHARE
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* TELECEL Category */}
+          {settings.telecelEnabled && (
+            <Card style={styles.categoryCard}>
+              <CardHeader>
+                <CardTitle style={{...styles.categoryTitle, color: "#0369a1"}}>📡 TELECEL</CardTitle>
+                <CardDescription>
+                  Fast and reliable Telecel data
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p style={styles.categoryDescription}>
+                  Get instant access to Telecel data bundles with flexible packages. Quick delivery and excellent customer support.
+                </p>
+                <Button
+                  style={{...styles.shopButton, backgroundColor: "#0369a1"}}
+                  onClick={() => navigate("/telecel")}
+                >
+                  Shop TELECEL
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* MTN AFA Registration Category */}
           {settings.afaEnabled && (
             <Card style={styles.categoryCard}>
@@ -187,7 +239,7 @@ export default function Storefront() {
         </div>
 
         {/* Empty State */}
-        {!settings.datagodEnabled && !settings.fastnetEnabled && !settings.afaEnabled && (
+        {!settings.datagodEnabled && !settings.fastnetEnabled && !settings.atEnabled && !settings.telecelEnabled && !settings.afaEnabled && (
           <Card style={styles.emptyStateCard}>
             <CardContent style={styles.emptyStateContent}>
               <p style={styles.emptyStateText}>

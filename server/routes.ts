@@ -90,17 +90,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { whatsappLink, datagodEnabled, fastnetEnabled, afaEnabled, afaLink, datagodTransactionCharge, fastnetTransactionCharge, fastnetActiveSupplier } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier } = req.body;
 
       const updated = await storage.updateSettings({
         whatsappLink,
         datagodEnabled,
         fastnetEnabled,
+        atEnabled,
+        telecelEnabled,
         afaEnabled,
         afaLink,
         datagodTransactionCharge,
         fastnetTransactionCharge,
+        atTransactionCharge,
+        telecelTransactionCharge,
         fastnetActiveSupplier,
+        atActiveSupplier,
+        telecelActiveSupplier,
       });
 
       res.json(updated);
@@ -636,6 +642,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting DataGod package:", error);
       res.status(500).json({ message: "Failed to delete package" });
+    }
+  });
+
+  // --- AT ISHARE Order Routes ---
+  
+  // Purchase AT data
+  app.post("/api/at/purchase", async (req, res) => {
+    try {
+      const { phoneNumber, dataAmount, price, reference } = req.body;
+      
+      if (!phoneNumber || !dataAmount || !price) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const orderReference = reference || `AT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      const order = await storage.createAtOrder({
+        shortId: orderReference,
+        customerPhone: phoneNumber,
+        packageDetails: dataAmount,
+        packagePrice: typeof price === 'string' ? parseInt(price) : price,
+        status: "PROCESSING",
+        paymentReference: reference || null,
+      });
+
+      console.log(`📝 AT Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      let fulfillmentResult;
+      try {
+        fulfillmentResult = await supplierManager.purchaseDataBundle(
+          phoneNumber,
+          dataAmount,
+          price,
+          orderReference,
+          "codecraft",
+          "at_ishare"
+        );
+
+        if (fulfillmentResult.success) {
+          await storage.updateAtOrderStatus(
+            order.id, 
+            "PROCESSING", 
+            fulfillmentResult.supplier,
+            JSON.stringify(fulfillmentResult.data || {})
+          );
+        } else {
+          await storage.updateAtOrderStatus(
+            order.id, 
+            "PAID",
+            fulfillmentResult.supplier,
+            fulfillmentResult.message
+          );
+        }
+      } catch (fulfillError: any) {
+        console.error("AT Fulfillment error:", fulfillError);
+        await storage.updateAtOrderStatus(
+          order.id, 
+          "PAID",
+          undefined,
+          fulfillError.message
+        );
+        fulfillmentResult = { success: false, message: fulfillError.message };
+      }
+
+      res.json({ 
+        success: fulfillmentResult.success,
+        message: fulfillmentResult.success 
+          ? "AT order submitted successfully" 
+          : `Order created but fulfillment failed: ${fulfillmentResult.message}`,
+        orderId: order.shortId,
+        status: fulfillmentResult.success ? "PROCESSING" : "PAID",
+      });
+    } catch (error: any) {
+      console.error("AT purchase error:", error);
+      res.status(500).json({ message: error.message || "Failed to create order" });
+    }
+  });
+
+  // Get AT order status
+  app.get("/api/at/orders/status/:shortId", async (req, res) => {
+    try {
+      const order = await storage.getAtOrderByShortId(req.params.shortId);
+      if (order) {
+        res.json(order);
+      } else {
+        res.status(404).json({ message: "Order not found" });
+      }
+    } catch (error) {
+      console.error("Error fetching AT order:", error);
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  // --- TELECEL Order Routes ---
+  
+  // Purchase TELECEL data
+  app.post("/api/telecel/purchase", async (req, res) => {
+    try {
+      const { phoneNumber, dataAmount, price, reference } = req.body;
+      
+      if (!phoneNumber || !dataAmount || !price) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const orderReference = reference || `TC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      const order = await storage.createTelecelOrder({
+        shortId: orderReference,
+        customerPhone: phoneNumber,
+        packageDetails: dataAmount,
+        packagePrice: typeof price === 'string' ? parseInt(price) : price,
+        status: "PROCESSING",
+        paymentReference: reference || null,
+      });
+
+      console.log(`📝 TELECEL Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      let fulfillmentResult;
+      try {
+        fulfillmentResult = await supplierManager.purchaseDataBundle(
+          phoneNumber,
+          dataAmount,
+          price,
+          orderReference,
+          "codecraft",
+          "telecel"
+        );
+
+        if (fulfillmentResult.success) {
+          await storage.updateTelecelOrderStatus(
+            order.id, 
+            "PROCESSING", 
+            fulfillmentResult.supplier,
+            JSON.stringify(fulfillmentResult.data || {})
+          );
+        } else {
+          await storage.updateTelecelOrderStatus(
+            order.id, 
+            "PAID",
+            fulfillmentResult.supplier,
+            fulfillmentResult.message
+          );
+        }
+      } catch (fulfillError: any) {
+        console.error("TELECEL Fulfillment error:", fulfillError);
+        await storage.updateTelecelOrderStatus(
+          order.id, 
+          "PAID",
+          undefined,
+          fulfillError.message
+        );
+        fulfillmentResult = { success: false, message: fulfillError.message };
+      }
+
+      res.json({ 
+        success: fulfillmentResult.success,
+        message: fulfillmentResult.success 
+          ? "TELECEL order submitted successfully" 
+          : `Order created but fulfillment failed: ${fulfillmentResult.message}`,
+        orderId: order.shortId,
+        status: fulfillmentResult.success ? "PROCESSING" : "PAID",
+      });
+    } catch (error: any) {
+      console.error("TELECEL purchase error:", error);
+      res.status(500).json({ message: error.message || "Failed to create order" });
+    }
+  });
+
+  // Get TELECEL order status
+  app.get("/api/telecel/orders/status/:shortId", async (req, res) => {
+    try {
+      const order = await storage.getTelecelOrderByShortId(req.params.shortId);
+      if (order) {
+        res.json(order);
+      } else {
+        res.status(404).json({ message: "Order not found" });
+      }
+    } catch (error) {
+      console.error("Error fetching TELECEL order:", error);
+      res.status(500).json({ message: "Failed to fetch order" });
     }
   });
 

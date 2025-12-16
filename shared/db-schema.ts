@@ -71,3 +71,50 @@ export const datagodPackages = pgTable("datagod_packages", {
 
 export type DatagodPackage = typeof datagodPackages.$inferSelect;
 export type InsertDatagodPackage = typeof datagodPackages.$inferInsert;
+// AT ISHARE Orders
+export const atOrders = pgTable("at_orders", {
+  id: serial("id").primaryKey(),
+  shortId: varchar("short_id", { length: 50 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 20 }).notNull(),
+  packageDetails: varchar("package_details", { length: 50 }).notNull(),
+  packagePrice: integer("package_price").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("PAID"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  supplierUsed: varchar("supplier_used", { length: 50 }),
+  supplierResponse: text("supplier_response"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAtOrderSchema = createInsertSchema(atOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AtOrder = typeof atOrders.$inferSelect;
+export type InsertAtOrder = typeof atOrders.$inferInsert;
+
+// TELECEL Orders
+export const telecelOrders = pgTable("telecel_orders", {
+  id: serial("id").primaryKey(),
+  shortId: varchar("short_id", { length: 50 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 20 }).notNull(),
+  packageDetails: varchar("package_details", { length: 50 }).notNull(),
+  packagePrice: integer("package_price").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("PAID"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  supplierUsed: varchar("supplier_used", { length: 50 }),
+  supplierResponse: text("supplier_response"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTelecelOrderSchema = createInsertSchema(telecelOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type TelecelOrder = typeof telecelOrders.$inferSelect;
+export type InsertTelecelOrder = typeof telecelOrders.$inferInsert;

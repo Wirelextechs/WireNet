@@ -1,9 +1,12 @@
 import { db } from "./db.js";
 import { 
   fastnetOrders, settings, adminUsers, datagodOrders, datagodPackages,
+  atOrders, telecelOrders,
   type FastnetOrder, type InsertFastnetOrder,
   type DatagodOrder, type InsertDatagodOrder,
-  type DatagodPackage, type InsertDatagodPackage
+  type DatagodPackage, type InsertDatagodPackage,
+  type AtOrder, type InsertAtOrder,
+  type TelecelOrder, type InsertTelecelOrder
 } from "../shared/db-schema.js";
 import { eq, desc } from "drizzle-orm";
 
@@ -12,6 +15,8 @@ interface Settings {
   whatsappLink?: string;
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
+  atEnabled: boolean;
+  telecelEnabled: boolean;
   afaEnabled: boolean;
   afaLink?: string;
   datagodTransactionCharge?: string;
@@ -42,11 +47,17 @@ class Storage {
       whatsappLink: settingsMap["whatsappLink"] || "",
       datagodEnabled: settingsMap["datagodEnabled"] !== "false",
       fastnetEnabled: settingsMap["fastnetEnabled"] !== "false",
+      atEnabled: settingsMap["atEnabled"] !== "false",
+      telecelEnabled: settingsMap["telecelEnabled"] !== "false",
       afaEnabled: settingsMap["afaEnabled"] !== "false",
       afaLink: settingsMap["afaLink"] || "",
       datagodTransactionCharge: settingsMap["datagodTransactionCharge"] || "1.3",
       fastnetTransactionCharge: settingsMap["fastnetTransactionCharge"] || "1.3",
+      atTransactionCharge: settingsMap["atTransactionCharge"] || "1.3",
+      telecelTransactionCharge: settingsMap["telecelTransactionCharge"] || "1.3",
       fastnetActiveSupplier: settingsMap["fastnetActiveSupplier"] || "dataxpress",
+      atActiveSupplier: settingsMap["atActiveSupplier"] || "codecraft",
+      telecelActiveSupplier: settingsMap["telecelActiveSupplier"] || "codecraft",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -244,6 +255,98 @@ class Storage {
   async deleteDatagodPackage(id: number): Promise<boolean> {
     const result = await db.delete(datagodPackages).where(eq(datagodPackages.id, id)).returning();
     return result.length > 0;
+  }
+
+  // AT ISHARE Orders
+  async createAtOrder(data: {
+    shortId: string;
+    customerPhone: string;
+    packageDetails: string;
+    packagePrice: number;
+    status?: string;
+    paymentReference?: string;
+  }): Promise<AtOrder> {
+    const result = await db.insert(atOrders).values({
+      shortId: data.shortId,
+      customerPhone: data.customerPhone,
+      packageDetails: data.packageDetails,
+      packagePrice: data.packagePrice,
+      status: data.status || "PAID",
+      paymentReference: data.paymentReference || null,
+    }).returning();
+    return result[0];
+  }
+
+  async getAtOrders(): Promise<AtOrder[]> {
+    return await db.select().from(atOrders).orderBy(desc(atOrders.createdAt));
+  }
+
+  async updateAtOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<AtOrder | null> {
+    const updateData: Partial<InsertAtOrder> & { updatedAt: Date } = {
+      status,
+      updatedAt: new Date(),
+    };
+    
+    if (supplierUsed) updateData.supplierUsed = supplierUsed;
+    if (supplierResponse) updateData.supplierResponse = supplierResponse;
+
+    const result = await db.update(atOrders)
+      .set(updateData)
+      .where(eq(atOrders.id, id))
+      .returning();
+    
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getAtOrderByShortId(shortId: string): Promise<AtOrder | null> {
+    const result = await db.select().from(atOrders).where(eq(atOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  // TELECEL Orders
+  async createTelecelOrder(data: {
+    shortId: string;
+    customerPhone: string;
+    packageDetails: string;
+    packagePrice: number;
+    status?: string;
+    paymentReference?: string;
+  }): Promise<TelecelOrder> {
+    const result = await db.insert(telecelOrders).values({
+      shortId: data.shortId,
+      customerPhone: data.customerPhone,
+      packageDetails: data.packageDetails,
+      packagePrice: data.packagePrice,
+      status: data.status || "PAID",
+      paymentReference: data.paymentReference || null,
+    }).returning();
+    return result[0];
+  }
+
+  async getTelecelOrders(): Promise<TelecelOrder[]> {
+    return await db.select().from(telecelOrders).orderBy(desc(telecelOrders.createdAt));
+  }
+
+  async updateTelecelOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<TelecelOrder | null> {
+    const updateData: Partial<InsertTelecelOrder> & { updatedAt: Date } = {
+      status,
+      updatedAt: new Date(),
+    };
+    
+    if (supplierUsed) updateData.supplierUsed = supplierUsed;
+    if (supplierResponse) updateData.supplierResponse = supplierResponse;
+
+    const result = await db.update(telecelOrders)
+      .set(updateData)
+      .where(eq(telecelOrders.id, id))
+      .returning();
+    
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getTelecelOrderByShortId(shortId: string): Promise<TelecelOrder | null> {
+    const result = await db.select().from(telecelOrders).where(eq(telecelOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] : null;
   }
 }
 

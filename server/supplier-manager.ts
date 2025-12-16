@@ -1,14 +1,15 @@
 /**
  * Supplier Manager - Central routing for multi-supplier fulfillment
- * Routes orders to the active supplier (DataXpress, Hubnet, or DataKazina)
+ * Routes orders to the active supplier (DataXpress, Hubnet, DataKazina, or Code Craft)
  */
 
 import * as dataxpress from "./dataxpress.js";
 import * as hubnet from "./hubnet.js";
 import * as dakazina from "./dakazina.js";
+import * as codecraft from "./codecraft.js";
 import { storage } from "./storage.js";
 
-export type SupplierName = "dataxpress" | "hubnet" | "dakazina";
+export type SupplierName = "dataxpress" | "hubnet" | "dakazina" | "codecraft";
 
 /**
  * Get the currently active supplier from settings
@@ -40,13 +41,15 @@ async function getActiveSupplier(): Promise<SupplierName> {
  * @param price Wholesale cost
  * @param orderReference Order reference
  * @param supplier Optional: specific supplier to use (defaults to active supplier)
+ * @param network Optional: network type for suppliers that support multiple networks (e.g., "at_ishare", "telecel")
  */
 export async function purchaseDataBundle(
   phoneNumber: string,
   dataAmount: string,
   price: number,
   orderReference: string,
-  supplier?: SupplierName
+  supplier?: SupplierName,
+  network?: string
 ): Promise<{ success: boolean; message: string; data?: any; supplier: SupplierName }> {
   const targetSupplier = supplier || await getActiveSupplier();
   
@@ -57,6 +60,8 @@ export async function purchaseDataBundle(
     result = await hubnet.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference);
   } else if (targetSupplier === "dakazina") {
     result = await dakazina.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference);
+  } else if (targetSupplier === "codecraft") {
+    result = await codecraft.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference, network || "mtn");
   } else {
     result = await dataxpress.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference);
   }
@@ -82,6 +87,8 @@ export async function getWalletBalance(
     return await hubnet.getWalletBalance();
   } else if (supplier === "dakazina") {
     return await dakazina.getWalletBalance();
+  } else if (supplier === "codecraft") {
+    return await codecraft.getWalletBalance();
   } else {
     return await dataxpress.getWalletBalance();
   }
@@ -98,6 +105,8 @@ export async function getCostPrice(
     return await hubnet.getCostPrice(dataAmount);
   } else if (supplier === "dakazina") {
     return await dakazina.getCostPrice(dataAmount);
+  } else if (supplier === "codecraft") {
+    return await codecraft.getCostPrice(dataAmount);
   } else {
     return await dataxpress.getCostPrice(dataAmount);
   }

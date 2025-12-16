@@ -6,6 +6,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
 import DataGodPage from "@/pages/DataGodPage";
 import FastNetPage from "@/pages/FastNetPage";
+import AtPage from "@/pages/AtPage";
+import TelecelPage from "@/pages/TelecelPage";
 import DataGodAdmin from "@/pages/DataGodAdmin";
 import FastNetAdmin from "@/pages/FastNetAdmin";
 import OrderSuccess from "@/pages/OrderSuccess";
@@ -34,6 +36,8 @@ function AppContent() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/datagod" component={DataGodPage} />
       <Route path="/fastnet" component={FastNetPage} />
+      <Route path="/at" component={AtPage} />
+      <Route path="/telecel" component={TelecelPage} />
       <Route path="/admin/datagod" component={DataGodAdmin} />
       <Route path="/admin/fastnet" component={FastNetAdmin} />
       <Route path="/order/success/:orderId" component={OrderSuccess} />
