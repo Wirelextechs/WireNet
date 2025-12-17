@@ -133,9 +133,13 @@ export default function TelecelPage() {
     return /^0\d{9}$/.test(phone);
   };
 
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const addToCart = () => {
-    if (!phoneNumber || !selectedPackage) {
-      alert("Please enter phone number and select a package");
+    if (!phoneNumber || !selectedPackage || !customerEmail) {
+      alert("Please enter phone number, email, and select a package");
       return;
     }
     
@@ -144,15 +148,23 @@ export default function TelecelPage() {
       return;
     }
 
+    if (!isValidEmail(customerEmail)) {
+      alert("Please enter a valid email address");
+      return;
+    }
+
     const newItem: CartItem = {
       id: Date.now().toString(),
       pkg: selectedPackage,
       phoneNumber: phoneNumber,
+      email: customerEmail,
     };
     setCart([...cart, newItem]);
     setPhoneNumber("");
     setSelectedPackage(null);
+    setCustomerEmail("");
     setPhoneError("");
+    setEmailError("");
   };
 
   const removeFromCart = (id: string) => {
@@ -187,7 +199,7 @@ export default function TelecelPage() {
     try {
       const handler = (window as any).PaystackPop.setup({
         key: publicKey,
-        email: "customer@wirenet.com",
+        email: cart[0]?.email || "customer@wirenet.com",
         amount: Math.ceil(totalAmount * 100),
         currency: "GHS",
         ref: `TC-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -228,6 +240,7 @@ export default function TelecelPage() {
             setCart([]);
             setPhoneNumber("");
             setSelectedPackage(null);
+            setCustomerEmail("");
             setPurchasing(false);
             
             // Redirect to success page - use reference as fallback
@@ -349,6 +362,29 @@ export default function TelecelPage() {
           </div>
 
           <div style={styles.purchaseCard}>
+            <h3>Email Address</h3>
+            <Input
+              type="email"
+              placeholder="your@email.com"
+              value={customerEmail}
+              onChange={(e) => {
+                setCustomerEmail(e.target.value);
+                if (e.target.value && !isValidEmail(e.target.value)) {
+                  setEmailError("Invalid email address");
+                } else {
+                  setEmailError("");
+                }
+              }}
+              style={{
+                ...styles.input,
+                borderColor: emailError ? "red" : "#ccc"
+              }}
+            />
+            {emailError && <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>{emailError}</p>}
+            <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>For Paystack receipts</p>
+          </div>
+
+          <div style={styles.purchaseCard}>
             <h3>Selected Package</h3>
             {selectedPackage ? (
               <div style={styles.selectedPackageInfo}>
@@ -365,11 +401,11 @@ export default function TelecelPage() {
             <h3>Add to Cart</h3>
             <Button
               onClick={addToCart}
-              disabled={!phoneNumber || !selectedPackage || !!phoneError}
+              disabled={!phoneNumber || !selectedPackage || !customerEmail || !!phoneError || !!emailError}
               style={{
                 ...styles.buyButton,
                 backgroundColor: "#0369a1",
-                opacity: !phoneNumber || !selectedPackage || !!phoneError ? 0.5 : 1,
+                opacity: !phoneNumber || !selectedPackage || !customerEmail || !!phoneError || !!emailError ? 0.5 : 1,
               }}
             >
               <ShoppingCart size={18} style={{ marginRight: "8px" }} />
