@@ -746,6 +746,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public: Get AT packages (for storefront)
+  app.get("/api/at/packages/public", async (_req, res) => {
+    try {
+      const packages = await storage.getAtPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching AT packages:", error);
+      res.status(500).json({ message: "Failed to fetch packages" });
+    }
+  });
+
   // Admin: Create AT package
   app.post("/api/at/packages", isAuthenticated, isAdmin, async (req, res) => {
     try {
@@ -895,6 +906,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching TELECEL orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Public: Get TELECEL packages (for storefront)
+  app.get("/api/telecel/packages/public", async (_req, res) => {
+    try {
+      const packages = await storage.getTelecelPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching TELECEL packages:", error);
+      res.status(500).json({ message: "Failed to fetch packages" });
     }
   });
 

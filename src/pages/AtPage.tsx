@@ -55,12 +55,13 @@ export default function AtPage() {
   const loadPackages = async () => {
     try {
       setLoading(true);
-      const data = await packagesAPI.getByCategory("at");
-      if (data && data.length > 0) {
+      const response = await fetch("/api/at/packages/public");
+      if (response.ok) {
+        const data = await response.json();
         setPackages(data);
       }
     } catch (error) {
-      console.error("Error loading packages from Supabase:", error);
+      console.error("Error loading packages:", error);
     } finally {
       setLoading(false);
     }
