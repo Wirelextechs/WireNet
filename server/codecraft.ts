@@ -142,7 +142,8 @@ export async function purchaseDataBundle(
     console.log(`Code Craft Response [${httpCode}]:`, result);
 
     // Handle various status codes from Code Craft
-    if (httpCode === 200 && result.status === "Successful") {
+    // Check httpCode === 200 AND message === "Successful"
+    if (httpCode === 200 && (result.message === "Successful" || result.status === "Successful")) {
       console.log(`✅ Code Craft order successful:`, result);
       return {
         success: true,
