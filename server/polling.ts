@@ -71,7 +71,8 @@ async function checkCategoryOrders(category: "at" | "telecel") {
         if (statusResult.success && statusResult.status) {
           const newStatus = normalizeStatus(statusResult.status);
           
-          console.log(`📊 Order ${order.shortId}: Code Craft status = ${statusResult.status} → normalized = ${newStatus}`);
+          console.log(`📊 Order ${order.shortId}: Code Craft status = "${statusResult.status}" (type: ${typeof statusResult.status}) → normalized = ${newStatus}`);
+          console.log(`📋 Current order status in DB: ${order.status}`);
           
           if (newStatus !== "PROCESSING") {
             console.log(`✅ Updating order ${order.shortId}: ${order.status} → ${newStatus}`);
@@ -83,7 +84,7 @@ async function checkCategoryOrders(category: "at" | "telecel") {
               await storage.updateTelecelOrderStatus(order.id, newStatus);
             }
           } else {
-            console.log(`⏳ Order ${order.shortId} still PROCESSING`);
+            console.log(`⏳ Order ${order.shortId} still PROCESSING - status didn't map to FULFILLED/FAILED`);
           }
         } else {
           console.warn(`⚠️  Failed to get status for order ${order.shortId}: ${statusResult.message}`);
@@ -97,25 +98,38 @@ async function checkCategoryOrders(category: "at" | "telecel") {
   }
 }
 
-function normalizeStatus(coderaftStatus: string): "FULFILLED" | "PROCESSING" | "FAILED" {
-  const status = coderaftStatus.toLowerCase();
+function normalizeStatus(coderaftStatus: string | number): "FULFILLED" | "PROCESSING" | "FAILED" {
+  // Convert to string if it's a number
+  const statusStr = String(coderaftStatus).toLowerCase().trim();
   
-  // Fulfilled statuses
-  if (status.includes("delivered") || 
-      status.includes("successful") || 
-      status.includes("fulfilled") || 
-      status.includes("complete") ||
-      status.includes("crediting") ||
-      status.includes("credited")) {
+  console.log(`🔍 Normalizing status: "${coderaftStatus}" (type: ${typeof coderaftStatus}, normalized: "${statusStr}")`);
+  
+  // FULFILLED statuses - text versions
+  if (statusStr.includes("delivered") || 
+      statusStr.includes("successful") || 
+      statusStr.includes("fulfilled") || 
+      statusStr.includes("complete") ||
+      statusStr.includes("crediting") ||
+      statusStr.includes("credited") ||
+      statusStr.includes("success") ||
+      statusStr === "1" ||  // Code Craft numeric: 1 = Fulfilled
+      statusStr === "delivered" ||
+      statusStr === "completed") {
+    console.log(`✅ Mapped to FULFILLED`);
     return "FULFILLED";
   } 
-  // Failed statuses
-  else if (status.includes("failed") || 
-           status.includes("error") || 
-           status.includes("cancelled")) {
+  // FAILED statuses
+  else if (statusStr.includes("failed") || 
+           statusStr.includes("error") || 
+           statusStr.includes("cancelled") ||
+           statusStr.includes("cancel") ||
+           statusStr === "0" ||  // Code Craft numeric: 0 = Failed
+           statusStr === "failed") {
+    console.log(`❌ Mapped to FAILED`);
     return "FAILED";
   }
   
+  console.log(`⏳ Mapped to PROCESSING (unknown status)`);
   return "PROCESSING";
 }
 

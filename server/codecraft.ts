@@ -238,6 +238,7 @@ export async function checkOrderStatus(
 
     if (result.status === "success" && result.code === 200) {
       console.log(`✅ Order status retrieved:`, result.order_details);
+      console.log(`📊 Raw order_status value: "${result.order_details?.order_status}" (type: ${typeof result.order_details?.order_status})`);
       return {
         success: true,
         status: result.order_details?.order_status || "Unknown",
