@@ -17,6 +17,7 @@ interface CartItem {
   id: string;
   pkg: Package;
   phoneNumber: string;
+  email: string;
 }
 
 export default function TelecelPage() {
@@ -32,6 +33,8 @@ export default function TelecelPage() {
   const [statusReport, setStatusReport] = useState<any>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     loadPackages();

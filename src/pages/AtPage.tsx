@@ -17,6 +17,8 @@ interface CartItem {
   id: string;
   pkg: Package;
   phoneNumber: string;
+  email: string;
+  email: string;
 }
 
 export default function AtPage() {
@@ -32,6 +34,8 @@ export default function AtPage() {
   const [statusReport, setStatusReport] = useState<any>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     loadPackages();
