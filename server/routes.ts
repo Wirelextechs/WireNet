@@ -498,9 +498,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create DataGod Order
   app.post("/api/datagod/orders", async (req, res) => {
     try {
-      const { shortId, customerPhone, packageName, packagePrice, status, paymentReference } = req.body;
+      const { shortId, customerPhone, customerEmail, packageName, packagePrice, status, paymentReference } = req.body;
       
-      console.log("📝 DataGod order creation request:", { shortId, customerPhone, packageName, packagePrice, status, paymentReference });
+      console.log("📝 DataGod order creation request:", { shortId, customerPhone, customerEmail, packageName, packagePrice, status, paymentReference });
       
       if (!customerPhone || !packageName || !packagePrice) {
         console.error("❌ Missing required fields:", { customerPhone, packageName, packagePrice });

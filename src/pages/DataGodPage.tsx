@@ -16,6 +16,7 @@ interface CartItem {
   id: string;
   pkg: Package;
   phoneNumber: string;
+  email: string;
 }
 
 interface Settings {
@@ -42,6 +43,8 @@ export default function DataGodPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [transactionCharge, setTransactionCharge] = useState(1.3);
   const [phoneError, setPhoneError] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     fetchSettings();
@@ -150,9 +153,13 @@ export default function DataGodPage() {
     return /^0\d{9}$/.test(phone);
   };
 
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const addToCart = () => {
-    if (!phoneNumber || !selectedPackage) {
-      alert("Please enter phone number and select a package");
+    if (!phoneNumber || !selectedPackage || !customerEmail) {
+      alert("Please enter phone number, email, and select a package");
       return;
     }
 
@@ -161,16 +168,24 @@ export default function DataGodPage() {
       return;
     }
 
+    if (!isValidEmail(customerEmail)) {
+      alert("Please enter a valid email address");
+      return;
+    }
+
     const newItem: CartItem = {
       id: Date.now().toString(),
       pkg: selectedPackage,
       phoneNumber: phoneNumber,
+      email: customerEmail,
     };
 
     setCart([...cart, newItem]);
     setPhoneNumber("");
     setSelectedPackage(null);
+    setCustomerEmail("");
     setPhoneError("");
+    setEmailError("");
   };
 
   const removeFromCart = (id: string) => {
@@ -197,7 +212,7 @@ export default function DataGodPage() {
 
     const handler = (window as any).PaystackPop.setup({
       key: publicKey,
-      email: "customer@wirenet.com",
+      email: cart[0]?.email || "customer@wirenet.com",
       amount: Math.ceil(totalAmount * 100),
       currency: "GHS",
       ref: `DG-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -231,6 +246,7 @@ export default function DataGodPage() {
           body: JSON.stringify({
             shortId: `${reference}-${index + 1}`,
             customerPhone: item.phoneNumber,
+            customerEmail: item.email,
             packageName: item.pkg.packageName,
             packagePrice: item.pkg.priceGHS,
             status: "PAID",
@@ -358,6 +374,29 @@ export default function DataGodPage() {
           </div>
 
           <div style={styles.purchaseCard}>
+            <h3>Email Address</h3>
+            <Input
+              type="email"
+              placeholder="your@email.com"
+              value={customerEmail}
+              onChange={(e) => {
+                setCustomerEmail(e.target.value);
+                if (e.target.value && !isValidEmail(e.target.value)) {
+                  setEmailError("Invalid email address");
+                } else {
+                  setEmailError("");
+                }
+              }}
+              style={{
+                ...styles.input,
+                borderColor: emailError ? "red" : "#ccc"
+              }}
+            />
+            {emailError && <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>{emailError}</p>}
+            <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>For Paystack receipts</p>
+          </div>
+
+          <div style={styles.purchaseCard}>
             <h3>Selected Package</h3>
             {selectedPackage ? (
               <div style={styles.selectedPackageInfo}>
@@ -373,10 +412,10 @@ export default function DataGodPage() {
             <h3>Add to Cart</h3>
             <Button
               onClick={addToCart}
-              disabled={!phoneNumber || !selectedPackage || !!phoneError}
+              disabled={!phoneNumber || !selectedPackage || !customerEmail || !!phoneError || !!emailError}
               style={{
                 ...styles.buyButton,
-                opacity: !phoneNumber || !selectedPackage || !!phoneError ? 0.5 : 1,
+                opacity: !phoneNumber || !selectedPackage || !customerEmail || !!phoneError || !!emailError ? 0.5 : 1,
               }}
             >
               Add More +
