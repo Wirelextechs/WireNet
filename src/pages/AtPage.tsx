@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MessageCircle, ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ interface CartItem {
 
 export default function AtPage() {
   const [, navigate] = useLocation();
+  const purchaseSectionRef = useRef<HTMLDivElement>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -331,7 +332,12 @@ export default function AtPage() {
             {packages.map((pkg) => (
               <div
                 key={pkg.id}
-                onClick={() => setSelectedPackage(pkg)}
+                onClick={() => {
+                  setSelectedPackage(pkg);
+                  setTimeout(() => {
+                    purchaseSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }, 100);
+                }}
                 style={{
                   ...styles.packageCard,
                   ...(selectedPackage?.id === pkg.id ? {...styles.packageCardSelected, borderColor: "#dc2626", backgroundColor: "#fee2e2"} : {}),
@@ -346,7 +352,7 @@ export default function AtPage() {
         )}
 
         <h2 style={styles.sectionTitle}>Purchase Data</h2>
-        <div style={styles.purchaseSection}>
+        <div style={styles.purchaseSection} ref={purchaseSectionRef}>
           <div style={styles.purchaseCard}>
             <h3>Phone Number</h3>
             <Input
