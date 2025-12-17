@@ -301,6 +301,11 @@ class Storage {
     return await db.select().from(atOrders).orderBy(desc(atOrders.createdAt));
   }
 
+  async getAtOrderById(id: number): Promise<AtOrder | null> {
+    const result = await db.select().from(atOrders).where(eq(atOrders.id, id)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
   async updateAtOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<AtOrder | null> {
     const updateData: Partial<InsertAtOrder> & { updatedAt: Date } = {
       status,
@@ -345,6 +350,11 @@ class Storage {
 
   async getTelecelOrders(): Promise<TelecelOrder[]> {
     return await db.select().from(telecelOrders).orderBy(desc(telecelOrders.createdAt));
+  }
+
+  async getTelecelOrderById(id: number): Promise<TelecelOrder | null> {
+    const result = await db.select().from(telecelOrders).where(eq(telecelOrders.id, id)).limit(1);
+    return result.length > 0 ? result[0] : null;
   }
 
   async updateTelecelOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<TelecelOrder | null> {

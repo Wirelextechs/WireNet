@@ -24,11 +24,15 @@ export async function startStatusPolling() {
 
 export async function pollOrderStatuses() {
   try {
+    console.log("🔍 Starting automatic order status check...");
+    
     // Check AT orders
     await checkCategoryOrders("at");
     
     // Check TELECEL orders
     await checkCategoryOrders("telecel");
+    
+    console.log("✅ Order status check completed");
   } catch (error) {
     console.error("❌ Error during order status polling:", error);
   }
@@ -36,49 +40,69 @@ export async function pollOrderStatuses() {
 
 async function checkCategoryOrders(category: "at" | "telecel") {
   try {
-    const tableName = category === "at" ? "at_orders" : "telecel_orders";
-    
-    // Get all PROCESSING orders
-    const { rows: orders } = await storage.db.query(
-      `SELECT id, short_id, supplier_reference FROM ${tableName} WHERE status = $1 ORDER BY created_at DESC LIMIT 50`,
-      ["PROCESSING"]
-    );
+    // Get all orders for this category
+    const allOrders = category === "at" 
+      ? await storage.getAtOrders() 
+      : await storage.getTelecelOrders();
 
-    if (orders.length === 0) return;
+    // Filter for PROCESSING orders only
+    const processingOrders = allOrders.filter(o => o.status === "PROCESSING");
 
-    console.log(`📋 Checking ${orders.length} PROCESSING ${category.toUpperCase()} orders...`);
+    if (processingOrders.length === 0) {
+      console.log(`ℹ️  No PROCESSING ${category.toUpperCase()} orders to check`);
+      return;
+    }
 
-    for (const order of orders) {
+    console.log(`📋 Checking ${processingOrders.length} PROCESSING ${category.toUpperCase()} orders...`);
+
+    for (const order of processingOrders) {
       try {
-        const statusResult = await supplierManager.checkOrderStatus(category, order.supplier_reference);
+        const supplierRef = order.supplierReference || order.supplier_reference;
+        
+        if (!supplierRef) {
+          console.warn(`⚠️  Order ${order.shortId} has no supplier reference, skipping`);
+          continue;
+        }
+
+        console.log(`🔍 Checking order ${order.shortId} with reference ${supplierRef}...`);
+        
+        const statusResult = await supplierManager.checkOrderStatus(category, supplierRef);
 
         if (statusResult.success && statusResult.status) {
           const newStatus = normalizeStatus(statusResult.status);
           
+          console.log(`📊 Order ${order.shortId}: Code Craft status = ${statusResult.status} → normalized = ${newStatus}`);
+          
           if (newStatus !== "PROCESSING") {
-            console.log(`✅ Order ${order.short_id}: ${statusResult.status} → updating to ${newStatus}`);
+            console.log(`✅ Updating order ${order.shortId}: ${order.status} → ${newStatus}`);
             
-            await storage.db.query(
-              `UPDATE ${tableName} SET status = $1, updated_at = NOW() WHERE id = $2`,
-              [newStatus, order.id]
-            );
+            // Update using storage methods
+            if (category === "at") {
+              await storage.updateAtOrderStatus(order.id, newStatus);
+            } else {
+              await storage.updateTelecelOrderStatus(order.id, newStatus);
+            }
+          } else {
+            console.log(`⏳ Order ${order.shortId} still PROCESSING`);
           }
+        } else {
+          console.warn(`⚠️  Failed to get status for order ${order.shortId}: ${statusResult.message}`);
         }
       } catch (err) {
-        console.error(`Error checking order ${order.short_id}:`, err);
+        console.error(`❌ Error checking order ${order.shortId}:`, err);
       }
     }
   } catch (error) {
-    console.error(`Error checking ${category} orders:`, error);
+    console.error(`❌ Error checking ${category} orders:`, error);
   }
 }
 
 function normalizeStatus(coderaftStatus: string): "FULFILLED" | "PROCESSING" | "FAILED" {
   const status = coderaftStatus.toLowerCase();
   
-  if (status.includes("delivered") || status.includes("successful") || status.includes("fulfilled")) {
+  if (status.includes("delivered") || status.includes("successful") || status.includes("fulfilled") || status.includes("complete")) {
     return "FULFILLED";
-  } else if (status.includes("failed") || status.includes("error")) {
+  } else if (status.includes("failed") || status.includes("error") || status.includes("cancelled")) {
     return "FAILED";
   }
   
@@ -93,33 +117,38 @@ export async function checkSingleOrderStatus(
   orderId: string
 ): Promise<{ success: boolean; message: string; newStatus?: string }> {
   try {
-    const tableName = category === "at" ? "at_orders" : "telecel_orders";
-    
-    const { rows } = await storage.db.query(
-      `SELECT id, short_id, supplier_reference, status FROM ${tableName} WHERE id = $1`,
-      [orderId]
-    );
+    // Get the order
+    const order = category === "at"
+      ? await storage.getAtOrderById(parseInt(orderId))
+      : await storage.getTelecelOrderById(parseInt(orderId));
 
-    if (rows.length === 0) {
+    if (!order) {
       return { success: false, message: "Order not found" };
     }
+    
+    const supplierRef = order.supplierReference || order.supplier_reference;
+    
+    if (!supplierRef) {
+      return { success: false, message: "Order has no supplier reference" };
+    }
 
-    const order = rows[0];
+    console.log(`🔍 Manual status check for order ${order.shortId}...`);
     
-    console.log(`🔍 Manual status check for order ${order.short_id}...`);
-    
-    const statusResult = await supplierManager.checkOrderStatus(category, order.supplier_reference);
+    const statusResult = await supplierManager.checkOrderStatus(category, supplierRef);
 
     if (statusResult.success && statusResult.status) {
       const newStatus = normalizeStatus(statusResult.status);
       
+      console.log(`📊 Order ${order.shortId}: ${order.status} → ${newStatus}`);
+      
       if (newStatus !== order.status) {
-        await storage.db.query(
-          `UPDATE ${tableName} SET status = $1, updated_at = NOW() WHERE id = $2`,
-          [newStatus, orderId]
-        );
+        if (category === "at") {
+          await storage.updateAtOrderStatus(order.id, newStatus);
+        } else {
+          await storage.updateTelecelOrderStatus(order.id, newStatus);
+        }
         
-        console.log(`✅ Order ${order.short_id}: Updated from ${order.status} to ${newStatus}`);
+        console.log(`✅ Order ${order.shortId}: Updated to ${newStatus}`);
         return {
           success: true,
           message: `Order updated to ${newStatus}`,
