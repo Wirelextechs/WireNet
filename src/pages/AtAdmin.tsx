@@ -34,6 +34,7 @@ export default function AtAdmin() {
   const [message, setMessage] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [settings, setSettings] = useState({ transactionCharge: "1.3" });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -105,6 +106,47 @@ export default function AtAdmin() {
       setMessage("❌ Failed to save settings");
     }
     setTimeout(() => setMessage(""), 2000);
+  };
+
+  const refreshAllOrderStatus = async () => {
+    setIsRefreshing(true);
+    setMessage("🔄 Refreshing order statuses...");
+    try {
+      const response = await fetch("/api/at/orders/refresh/all", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (response.ok) {
+        setMessage("✅ Order statuses updated");
+        loadOrders();
+      } else {
+        setMessage("❌ Failed to refresh statuses");
+      }
+    } catch (error) {
+      setMessage("❌ Error refreshing statuses");
+    } finally {
+      setIsRefreshing(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  const refreshSingleOrderStatus = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/at/orders/${orderId}/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setMessage(`✅ ${result.message}`);
+        loadOrders();
+      } else {
+        setMessage("❌ Failed to refresh order");
+      }
+    } catch (error) {
+      setMessage("❌ Error refreshing order");
+    }
+    setTimeout(() => setMessage(""), 3000);
   };
 
   const addPackage = async () => {
@@ -232,7 +274,17 @@ export default function AtAdmin() {
       {activeTab === "orders" && (
         <Card style={styles.card}>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Recent Orders</span>
+              <Button 
+                onClick={refreshAllOrderStatus} 
+                disabled={isRefreshing}
+                style={{ ...styles.refreshButton, opacity: isRefreshing ? 0.6 : 1 }}
+              >
+                <RefreshCw size={18} style={{ marginRight: "5px" }} />
+                {isRefreshing ? "Refreshing..." : "Refresh All"}
+              </Button>
+            </CardTitle>
             <div style={styles.filterContainer}>
               <select
                 value={filterStatus}
@@ -259,6 +311,7 @@ export default function AtAdmin() {
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Price</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Status</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Date</div>
+                  <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Action</div>
                 </div>
                 {filteredOrders.map((order) => (
                   <div key={order.id} style={styles.tableRow}>
@@ -275,6 +328,15 @@ export default function AtAdmin() {
                       </span>
                     </div>
                     <div style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</div>
+                    <div style={styles.tableCell}>
+                      <Button 
+                        onClick={() => refreshSingleOrderStatus(order.id)}
+                        style={styles.actionButton}
+                        title="Refresh this order's status"
+                      >
+                        <RefreshCw size={16} />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -456,7 +518,7 @@ const styles: any = {
   },
   tableHeader: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
+    gridTemplateColumns: "repeat(7, 1fr)",
     gap: "15px",
     padding: "15px",
     backgroundColor: "#f9f9f9",
@@ -466,7 +528,7 @@ const styles: any = {
   },
   tableRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
+    gridTemplateColumns: "repeat(7, 1fr)",
     gap: "15px",
     padding: "15px",
     borderBottom: "1px solid #ddd",
@@ -551,5 +613,18 @@ const styles: any = {
     backgroundColor: "#dc2626",
     color: "white",
     width: "fit-content",
+  },
+  refreshButton: {
+    backgroundColor: "#dc2626",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    gap: "5px",
+  },
+  actionButton: {
+    backgroundColor: "#dc2626",
+    color: "white",
+    padding: "4px 8px",
+    fontSize: "0.75em",
   },
 };

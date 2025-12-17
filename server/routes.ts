@@ -6,6 +6,7 @@ import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { Pool } from "pg";
 import * as supplierManager from "./supplier-manager.js";
+import * as polling from "./polling.js";
 
 const PgStore = pgSession(session);
 
@@ -746,6 +747,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Refresh single AT order status
+  app.post("/api/at/orders/:id/refresh", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await polling.checkSingleOrderStatus("at", req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error refreshing AT order status:", error);
+      res.status(500).json({ success: false, message: "Failed to refresh order status" });
+    }
+  });
+
+  // Admin: Refresh all AT orders
+  app.post("/api/at/orders/refresh/all", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      await polling.pollOrderStatuses();
+      res.json({ success: true, message: "All orders status updated" });
+    } catch (error) {
+      console.error("Error refreshing AT orders:", error);
+      res.status(500).json({ success: false, message: "Failed to refresh orders" });
+    }
+  });
+
   // Public: Get AT packages (for storefront)
   app.get("/api/at/packages/public", async (_req, res) => {
     try {
@@ -906,6 +929,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching TELECEL orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Admin: Refresh single TELECEL order status
+  app.post("/api/telecel/orders/:id/refresh", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const result = await polling.checkSingleOrderStatus("telecel", req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error refreshing TELECEL order status:", error);
+      res.status(500).json({ success: false, message: "Failed to refresh order status" });
+    }
+  });
+
+  // Admin: Refresh all TELECEL orders
+  app.post("/api/telecel/orders/refresh/all", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      await polling.pollOrderStatuses();
+      res.json({ success: true, message: "All orders status updated" });
+    } catch (error) {
+      console.error("Error refreshing TELECEL orders:", error);
+      res.status(500).json({ success: false, message: "Failed to refresh orders" });
     }
   });
 
