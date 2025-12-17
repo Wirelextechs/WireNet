@@ -9,6 +9,8 @@ interface Settings {
   whatsappLink?: string;
   datagodEnabled: boolean;
   fastnetEnabled: boolean;
+  atEnabled: boolean;
+  telecelEnabled: boolean;
   afaEnabled: boolean;
   afaLink?: string;
 }
@@ -19,6 +21,8 @@ export default function AdminDashboard() {
   const [settings, setSettings] = useState<Settings>({
     datagodEnabled: true,
     fastnetEnabled: true,
+    atEnabled: true,
+    telecelEnabled: true,
     afaEnabled: true,
     whatsappLink: "",
     afaLink: "",
@@ -51,6 +55,8 @@ export default function AdminDashboard() {
         setSettings({
           datagodEnabled: data.datagodEnabled,
           fastnetEnabled: data.fastnetEnabled,
+          atEnabled: data.atEnabled !== false,
+          telecelEnabled: data.telecelEnabled !== false,
           afaEnabled: data.afaEnabled !== false,
           whatsappLink: data.whatsappLink || "",
           afaLink: data.afaLink || "",
@@ -120,6 +126,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleAt = async () => {
+    try {
+      const newValue = !settings.atEnabled;
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ atEnabled: newValue }),
+      });
+      if (response.ok) {
+        setSettings({ ...settings, atEnabled: newValue });
+        setMessage("AT ISHARE toggle updated!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      console.error("Error updating AT toggle:", error);
+    }
+  };
+
+  const handleToggleTelecel = async () => {
+    try {
+      const newValue = !settings.telecelEnabled;
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ telecelEnabled: newValue }),
+      });
+      if (response.ok) {
+        setSettings({ ...settings, telecelEnabled: newValue });
+        setMessage("TELECEL toggle updated!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      console.error("Error updating TELECEL toggle:", error);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setLoading(true);
     setMessage("");
@@ -134,6 +178,8 @@ export default function AdminDashboard() {
           afaLink,
           datagodEnabled: settings.datagodEnabled,
           fastnetEnabled: settings.fastnetEnabled,
+          atEnabled: settings.atEnabled,
+          telecelEnabled: settings.telecelEnabled,
           afaEnabled: settings.afaEnabled,
         }),
       });
@@ -146,6 +192,8 @@ export default function AdminDashboard() {
           afaLink: updated.afaLink,
           datagodEnabled: updated.datagodEnabled,
           fastnetEnabled: updated.fastnetEnabled,
+          atEnabled: updated.atEnabled,
+          telecelEnabled: updated.telecelEnabled,
           afaEnabled: updated.afaEnabled,
         });
         setMessage("Settings saved successfully!");
@@ -240,6 +288,22 @@ export default function AdminDashboard() {
             <span className="text-2xl">⚡</span>
             <span>FastNet Admin</span>
           </Button>
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex flex-col items-center gap-2 bg-red-50 hover:bg-red-100 border-red-200"
+            onClick={() => navigate("/admin/at")}
+          >
+            <span className="text-2xl">📱</span>
+            <span>AT ISHARE Admin</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex flex-col items-center gap-2 bg-cyan-50 hover:bg-cyan-100 border-cyan-200"
+            onClick={() => navigate("/admin/telecel")}
+          >
+            <span className="text-2xl">📡</span>
+            <span>TELECEL Admin</span>
+          </Button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -293,6 +357,52 @@ export default function AdminDashboard() {
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                       settings.fastnetEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* AT ISHARE Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded bg-red-50/50">
+                <div>
+                  <h3 className="font-semibold text-red-700">AT ISHARE</h3>
+                  <p className="text-sm text-gray-600">High-speed data bundles</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {settings.atEnabled ? "✅ Visible" : "❌ Hidden"}
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleAt}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    settings.atEnabled ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      settings.atEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* TELECEL Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded bg-cyan-50/50">
+                <div>
+                  <h3 className="font-semibold text-cyan-700">TELECEL</h3>
+                  <p className="text-sm text-gray-600">Reliable data bundles</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {settings.telecelEnabled ? "✅ Visible" : "❌ Hidden"}
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleTelecel}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    settings.telecelEnabled ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      settings.telecelEnabled ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>

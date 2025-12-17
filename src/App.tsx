@@ -10,6 +10,8 @@ import AtPage from "@/pages/AtPage";
 import TelecelPage from "@/pages/TelecelPage";
 import DataGodAdmin from "@/pages/DataGodAdmin";
 import FastNetAdmin from "@/pages/FastNetAdmin";
+import AtAdmin from "@/pages/AtAdmin";
+import TelecelAdmin from "@/pages/TelecelAdmin";
 import OrderSuccess from "@/pages/OrderSuccess";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -40,6 +42,8 @@ function AppContent() {
       <Route path="/telecel" component={TelecelPage} />
       <Route path="/admin/datagod" component={DataGodAdmin} />
       <Route path="/admin/fastnet" component={FastNetAdmin} />
+      <Route path="/admin/at" component={AtAdmin} />
+      <Route path="/admin/telecel" component={TelecelAdmin} />
       <Route path="/order/success/:orderId" component={OrderSuccess} />
     </Router>
   );
