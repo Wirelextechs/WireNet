@@ -735,6 +735,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Get all AT orders
+  app.get("/api/at/orders", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const orders = await storage.getAtOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching AT orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Admin: Create AT package
+  app.post("/api/at/packages", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { dataAmount, price, deliveryTime } = req.body;
+      
+      if (!dataAmount || !price || !deliveryTime) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Store AT package in settings as JSON
+      const settings = await storage.getSettings();
+      const packagesKey = "atPackages";
+      const existingPackages = settings?.atPackages ? JSON.parse(settings.atPackages as any) : [];
+      
+      const newPackage = {
+        id: `at-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        dataAmount,
+        price: parseFloat(price as string),
+        deliveryTime,
+        isEnabled: true,
+      };
+      
+      existingPackages.push(newPackage);
+      await storage.upsertSetting(packagesKey, JSON.stringify(existingPackages));
+
+      res.json(newPackage);
+    } catch (error) {
+      console.error("Error creating AT package:", error);
+      res.status(500).json({ message: "Failed to create package" });
+    }
+  });
+
+  // Admin: Get AT packages
+  app.get("/api/at/packages", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      const packages = settings?.atPackages ? JSON.parse(settings.atPackages as any) : [];
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching AT packages:", error);
+      res.status(500).json({ message: "Failed to fetch packages" });
+    }
+  });
+
+  // Admin: Delete AT package
+  app.delete("/api/at/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const settings = await storage.getSettings();
+      const packagesKey = "atPackages";
+      const packages = settings?.atPackages ? JSON.parse(settings.atPackages as any) : [];
+      
+      const filtered = packages.filter((p: any) => p.id !== id);
+      await storage.upsertSetting(packagesKey, JSON.stringify(filtered));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting AT package:", error);
+      res.status(500).json({ message: "Failed to delete package" });
+    }
+  });
+
   // --- TELECEL Order Routes ---
   
   // Purchase TELECEL data
@@ -822,6 +895,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching TELECEL order:", error);
       res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  // Admin: Get all TELECEL orders
+  app.get("/api/telecel/orders", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const orders = await storage.getTelecelOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching TELECEL orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Admin: Create TELECEL package
+  app.post("/api/telecel/packages", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { dataAmount, price, deliveryTime } = req.body;
+      
+      if (!dataAmount || !price || !deliveryTime) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Store TELECEL package in settings as JSON
+      const settings = await storage.getSettings();
+      const packagesKey = "telecelPackages";
+      const existingPackages = settings?.telecelPackages ? JSON.parse(settings.telecelPackages as any) : [];
+      
+      const newPackage = {
+        id: `telecel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        dataAmount,
+        price: parseFloat(price as string),
+        deliveryTime,
+        isEnabled: true,
+      };
+      
+      existingPackages.push(newPackage);
+      await storage.upsertSetting(packagesKey, JSON.stringify(existingPackages));
+
+      res.json(newPackage);
+    } catch (error) {
+      console.error("Error creating TELECEL package:", error);
+      res.status(500).json({ message: "Failed to create package" });
+    }
+  });
+
+  // Admin: Get TELECEL packages
+  app.get("/api/telecel/packages", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      const packages = settings?.telecelPackages ? JSON.parse(settings.telecelPackages as any) : [];
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching TELECEL packages:", error);
+      res.status(500).json({ message: "Failed to fetch packages" });
+    }
+  });
+
+  // Admin: Delete TELECEL package
+  app.delete("/api/telecel/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const settings = await storage.getSettings();
+      const packagesKey = "telecelPackages";
+      const packages = settings?.telecelPackages ? JSON.parse(settings.telecelPackages as any) : [];
+      
+      const filtered = packages.filter((p: any) => p.id !== id);
+      await storage.upsertSetting(packagesKey, JSON.stringify(filtered));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting TELECEL package:", error);
+      res.status(500).json({ message: "Failed to delete package" });
     }
   });
 

@@ -43,7 +43,7 @@ export default function TelecelAdmin() {
 
   const loadOrders = async () => {
     try {
-      const response = await fetch("/api/telecel/orders");
+      const response = await fetch("/api/telecel/orders", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         setOrders(data.map((o: any) => ({ 
@@ -64,8 +64,9 @@ export default function TelecelAdmin() {
 
   const loadPackages = async () => {
     try {
-      const data = await packagesAPI.getAll("telecel");
-      if (data && data.length > 0) {
+      const response = await fetch("/api/telecel/packages", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
         setPackages(data);
       }
     } catch (error) {

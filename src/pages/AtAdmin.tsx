@@ -43,7 +43,7 @@ export default function AtAdmin() {
 
   const loadOrders = async () => {
     try {
-      const response = await fetch("/api/at/orders");
+      const response = await fetch("/api/at/orders", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         setOrders(data.map((o: any) => ({ 
@@ -64,8 +64,9 @@ export default function AtAdmin() {
 
   const loadPackages = async () => {
     try {
-      const data = await packagesAPI.getAll("at");
-      if (data && data.length > 0) {
+      const response = await fetch("/api/at/packages", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
         setPackages(data);
       }
     } catch (error) {

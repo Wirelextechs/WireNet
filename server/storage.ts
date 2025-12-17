@@ -73,6 +73,12 @@ class Storage {
     if (data.fastnetEnabled !== undefined) {
       await this.upsertSetting("fastnetEnabled", String(data.fastnetEnabled));
     }
+    if (data.atEnabled !== undefined) {
+      await this.upsertSetting("atEnabled", String(data.atEnabled));
+    }
+    if (data.telecelEnabled !== undefined) {
+      await this.upsertSetting("telecelEnabled", String(data.telecelEnabled));
+    }
     if (data.afaEnabled !== undefined) {
       await this.upsertSetting("afaEnabled", String(data.afaEnabled));
     }
@@ -85,8 +91,20 @@ class Storage {
     if (data.fastnetTransactionCharge !== undefined) {
       await this.upsertSetting("fastnetTransactionCharge", data.fastnetTransactionCharge);
     }
+    if (data.atTransactionCharge !== undefined) {
+      await this.upsertSetting("atTransactionCharge", data.atTransactionCharge);
+    }
+    if (data.telecelTransactionCharge !== undefined) {
+      await this.upsertSetting("telecelTransactionCharge", data.telecelTransactionCharge);
+    }
     if (data.fastnetActiveSupplier !== undefined) {
       await this.upsertSetting("fastnetActiveSupplier", data.fastnetActiveSupplier);
+    }
+    if (data.atActiveSupplier !== undefined) {
+      await this.upsertSetting("atActiveSupplier", data.atActiveSupplier);
+    }
+    if (data.telecelActiveSupplier !== undefined) {
+      await this.upsertSetting("telecelActiveSupplier", data.telecelActiveSupplier);
     }
 
     return (await this.getSettings())!;
