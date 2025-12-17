@@ -100,9 +100,19 @@ async function checkCategoryOrders(category: "at" | "telecel") {
 function normalizeStatus(coderaftStatus: string): "FULFILLED" | "PROCESSING" | "FAILED" {
   const status = coderaftStatus.toLowerCase();
   
-  if (status.includes("delivered") || status.includes("successful") || status.includes("fulfilled") || status.includes("complete")) {
+  // Fulfilled statuses
+  if (status.includes("delivered") || 
+      status.includes("successful") || 
+      status.includes("fulfilled") || 
+      status.includes("complete") ||
+      status.includes("crediting") ||
+      status.includes("credited")) {
     return "FULFILLED";
-  } else if (status.includes("failed") || status.includes("error") || status.includes("cancelled")) {
+  } 
+  // Failed statuses
+  else if (status.includes("failed") || 
+           status.includes("error") || 
+           status.includes("cancelled")) {
     return "FAILED";
   }
   
