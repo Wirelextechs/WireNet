@@ -7,8 +7,10 @@
 const CODECRAFT_BASE_URL = "https://api.codecraftnetwork.com/api";
 const API_KEY = process.env.CODECRAFT_API_KEY;
 
+console.log(`🔑 Code Craft API Key Status: ${API_KEY ? '✅ SET' : '❌ NOT SET'}`);
 if (!API_KEY) {
   console.warn("⚠️  CODECRAFT_API_KEY not set - Code Craft order fulfillment will be disabled");
+  console.warn("Please set CODECRAFT_API_KEY environment variable on Vercel");
 }
 
 interface CodeCraftOrderRequest {
@@ -97,9 +99,10 @@ export async function purchaseDataBundle(
   network: string = "mtn"
 ): Promise<{ success: boolean; message: string; data?: any }> {
   if (!API_KEY) {
+    console.error(`❌ Code Craft API key not configured. Cannot fulfill order ${orderReference}`);
     return {
       success: false,
-      message: "Code Craft API key not configured",
+      message: "Code Craft API key not configured on server",
     };
   }
 
@@ -122,6 +125,7 @@ export async function purchaseDataBundle(
       network: networkName,
       supplierCost: price,
       ref: orderReference,
+      url: `${CODECRAFT_BASE_URL}/initiate.php`,
     });
 
     const response = await fetch(`${CODECRAFT_BASE_URL}/initiate.php`, {
