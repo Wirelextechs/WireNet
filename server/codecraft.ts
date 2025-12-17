@@ -63,24 +63,24 @@ function mapNetworkName(network: string): "MTN" | "AT" | "TELECEL" {
 /**
  * Extract gig amount from data amount string
  * Code Craft expects gig numbers (e.g., "1", "2", "5", "10")
- * Maps our "1GB", "5GB" format to their gig format
+ * Maps our "1GB", "5GB" format to their gig format (case-insensitive)
  */
 function extractGigAmount(dataAmount: string): string {
-  // Handle formats like "1GB", "500MB", etc.
-  const gbMatch = dataAmount.match(/^(\d+)GB$/);
+  // Handle formats like "1GB", "5GB", "1gb", "5gb", etc. (case-insensitive)
+  const gbMatch = dataAmount.match(/^(\d+)GB$/i);
   if (gbMatch) {
     return gbMatch[1]; // Return "1", "5", etc.
   }
   
-  // Handle formats like "500MB" 
-  const mbMatch = dataAmount.match(/^(\d+)MB$/);
+  // Handle formats like "500MB", "500mb" etc. (case-insensitive)
+  const mbMatch = dataAmount.match(/^(\d+)MB$/i);
   if (mbMatch) {
     const mb = parseInt(mbMatch[1]);
     const gb = mb / 1024;
     return gb.toString();
   }
   
-  throw new Error(`Invalid data amount format: ${dataAmount}`);
+  throw new Error(`Invalid data amount format: ${dataAmount}. Expected format: "1GB", "5GB", "500MB", etc.`);
 }
 
 /**
