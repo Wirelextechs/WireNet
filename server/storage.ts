@@ -285,6 +285,7 @@ class Storage {
     packagePrice: number;
     status?: string;
     paymentReference?: string;
+    supplierReference?: string;
   }): Promise<AtOrder> {
     const result = await db.insert(atOrders).values({
       shortId: data.shortId,
@@ -293,6 +294,7 @@ class Storage {
       packagePrice: data.packagePrice,
       status: data.status || "PAID",
       paymentReference: data.paymentReference || null,
+      supplierReference: data.supplierReference || null,
     }).returning();
     return result[0];
   }
@@ -306,7 +308,7 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
-  async updateAtOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<AtOrder | null> {
+  async updateAtOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, supplierReference?: string): Promise<AtOrder | null> {
     const updateData: Partial<InsertAtOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -314,6 +316,7 @@ class Storage {
     
     if (supplierUsed) updateData.supplierUsed = supplierUsed;
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
+    if (supplierReference) updateData.supplierReference = supplierReference;
 
     const result = await db.update(atOrders)
       .set(updateData)
@@ -336,6 +339,7 @@ class Storage {
     packagePrice: number;
     status?: string;
     paymentReference?: string;
+    supplierReference?: string;
   }): Promise<TelecelOrder> {
     const result = await db.insert(telecelOrders).values({
       shortId: data.shortId,
@@ -344,6 +348,7 @@ class Storage {
       packagePrice: data.packagePrice,
       status: data.status || "PAID",
       paymentReference: data.paymentReference || null,
+      supplierReference: data.supplierReference || null,
     }).returning();
     return result[0];
   }
@@ -357,7 +362,7 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
-  async updateTelecelOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<TelecelOrder | null> {
+  async updateTelecelOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, supplierReference?: string): Promise<TelecelOrder | null> {
     const updateData: Partial<InsertTelecelOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -365,6 +370,7 @@ class Storage {
     
     if (supplierUsed) updateData.supplierUsed = supplierUsed;
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
+    if (supplierReference) updateData.supplierReference = supplierReference;
 
     const result = await db.update(telecelOrders)
       .set(updateData)

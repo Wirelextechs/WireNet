@@ -682,12 +682,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         if (fulfillmentResult.success) {
+          // Extract supplier reference from Code Craft response
+          const supplierRef = fulfillmentResult.data?.reference_id || null;
+          
           await storage.updateAtOrderStatus(
             order.id, 
             "PROCESSING", 
             fulfillmentResult.supplier,
-            JSON.stringify(fulfillmentResult.data || {})
+            JSON.stringify(fulfillmentResult.data || {}),
+            supplierRef
           );
+          
+          if (supplierRef) {
+            console.log(`✅ AT Order ${order.shortId} fulfilled with supplier reference: ${supplierRef}`);
+          }
         } else {
           await storage.updateAtOrderStatus(
             order.id, 
@@ -867,12 +875,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         if (fulfillmentResult.success) {
+          // Extract supplier reference from Code Craft response
+          const supplierRef = fulfillmentResult.data?.reference_id || null;
+          
           await storage.updateTelecelOrderStatus(
             order.id, 
             "PROCESSING", 
             fulfillmentResult.supplier,
-            JSON.stringify(fulfillmentResult.data || {})
+            JSON.stringify(fulfillmentResult.data || {}),
+            supplierRef
           );
+          
+          if (supplierRef) {
+            console.log(`✅ TELECEL Order ${order.shortId} fulfilled with supplier reference: ${supplierRef}`);
+          }
         } else {
           await storage.updateTelecelOrderStatus(
             order.id, 
