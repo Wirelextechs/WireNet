@@ -118,3 +118,31 @@ export const insertTelecelOrderSchema = createInsertSchema(telecelOrders).omit({
 
 export type TelecelOrder = typeof telecelOrders.$inferSelect;
 export type InsertTelecelOrder = typeof telecelOrders.$inferInsert;
+
+// AT ISHARE Packages
+export const atPackages = pgTable("at_packages", {
+  id: serial("id").primaryKey(),
+  dataAmount: varchar("data_amount", { length: 50 }).notNull(),
+  price: real("price").notNull(),
+  deliveryTime: varchar("delivery_time", { length: 100 }).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AtPackage = typeof atPackages.$inferSelect;
+export type InsertAtPackage = typeof atPackages.$inferInsert;
+
+// TELECEL Packages
+export const telecelPackages = pgTable("telecel_packages", {
+  id: serial("id").primaryKey(),
+  dataAmount: varchar("data_amount", { length: 50 }).notNull(),
+  price: real("price").notNull(),
+  deliveryTime: varchar("delivery_time", { length: 100 }).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type TelecelPackage = typeof telecelPackages.$inferSelect;
+export type InsertTelecelPackage = typeof telecelPackages.$inferInsert;

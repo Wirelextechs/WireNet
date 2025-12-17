@@ -1,12 +1,14 @@
 import { db } from "./db.js";
 import { 
   fastnetOrders, settings, adminUsers, datagodOrders, datagodPackages,
-  atOrders, telecelOrders,
+  atOrders, telecelOrders, atPackages, telecelPackages,
   type FastnetOrder, type InsertFastnetOrder,
   type DatagodOrder, type InsertDatagodOrder,
   type DatagodPackage, type InsertDatagodPackage,
   type AtOrder, type InsertAtOrder,
-  type TelecelOrder, type InsertTelecelOrder
+  type TelecelOrder, type InsertTelecelOrder,
+  type AtPackage, type InsertAtPackage,
+  type TelecelPackage, type InsertTelecelPackage
 } from "../shared/db-schema.js";
 import { eq, desc } from "drizzle-orm";
 
@@ -365,6 +367,36 @@ class Storage {
   async getTelecelOrderByShortId(shortId: string): Promise<TelecelOrder | null> {
     const result = await db.select().from(telecelOrders).where(eq(telecelOrders.shortId, shortId)).limit(1);
     return result.length > 0 ? result[0] : null;
+  }
+
+  // AT Packages
+  async createAtPackage(data: InsertAtPackage): Promise<AtPackage> {
+    const result = await db.insert(atPackages).values(data).returning();
+    return result[0];
+  }
+
+  async getAtPackages(): Promise<AtPackage[]> {
+    return await db.select().from(atPackages).orderBy(atPackages.createdAt);
+  }
+
+  async deleteAtPackage(id: number): Promise<boolean> {
+    const result = await db.delete(atPackages).where(eq(atPackages.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // TELECEL Packages
+  async createTelecelPackage(data: InsertTelecelPackage): Promise<TelecelPackage> {
+    const result = await db.insert(telecelPackages).values(data).returning();
+    return result[0];
+  }
+
+  async getTelecelPackages(): Promise<TelecelPackage[]> {
+    return await db.select().from(telecelPackages).orderBy(telecelPackages.createdAt);
+  }
+
+  async deleteTelecelPackage(id: number): Promise<boolean> {
+    const result = await db.delete(telecelPackages).where(eq(telecelPackages.id, id)).returning();
+    return result.length > 0;
   }
 }
 

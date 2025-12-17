@@ -755,23 +755,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // Store AT package in settings as JSON
-      const settings = await storage.getSettings();
-      const packagesKey = "atPackages";
-      const existingPackages = settings?.atPackages ? JSON.parse(settings.atPackages as any) : [];
-      
-      const newPackage = {
-        id: `at-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      const pkg = await storage.createAtPackage({
         dataAmount,
         price: parseFloat(price as string),
         deliveryTime,
         isEnabled: true,
-      };
-      
-      existingPackages.push(newPackage);
-      await storage.upsertSetting(packagesKey, JSON.stringify(existingPackages));
+      });
 
-      res.json(newPackage);
+      res.json(pkg);
     } catch (error) {
       console.error("Error creating AT package:", error);
       res.status(500).json({ message: "Failed to create package" });
@@ -781,8 +772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Get AT packages
   app.get("/api/at/packages", isAuthenticated, isAdmin, async (_req, res) => {
     try {
-      const settings = await storage.getSettings();
-      const packages = settings?.atPackages ? JSON.parse(settings.atPackages as any) : [];
+      const packages = await storage.getAtPackages();
       res.json(packages);
     } catch (error) {
       console.error("Error fetching AT packages:", error);
@@ -793,13 +783,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Delete AT package
   app.delete("/api/at/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { id } = req.params;
-      const settings = await storage.getSettings();
-      const packagesKey = "atPackages";
-      const packages = settings?.atPackages ? JSON.parse(settings.atPackages as any) : [];
-      
-      const filtered = packages.filter((p: any) => p.id !== id);
-      await storage.upsertSetting(packagesKey, JSON.stringify(filtered));
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteAtPackage(id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Package not found" });
+      }
 
       res.json({ success: true });
     } catch (error) {
@@ -918,23 +907,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // Store TELECEL package in settings as JSON
-      const settings = await storage.getSettings();
-      const packagesKey = "telecelPackages";
-      const existingPackages = settings?.telecelPackages ? JSON.parse(settings.telecelPackages as any) : [];
-      
-      const newPackage = {
-        id: `telecel-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      const pkg = await storage.createTelecelPackage({
         dataAmount,
         price: parseFloat(price as string),
         deliveryTime,
         isEnabled: true,
-      };
-      
-      existingPackages.push(newPackage);
-      await storage.upsertSetting(packagesKey, JSON.stringify(existingPackages));
+      });
 
-      res.json(newPackage);
+      res.json(pkg);
     } catch (error) {
       console.error("Error creating TELECEL package:", error);
       res.status(500).json({ message: "Failed to create package" });
@@ -944,8 +924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Get TELECEL packages
   app.get("/api/telecel/packages", isAuthenticated, isAdmin, async (_req, res) => {
     try {
-      const settings = await storage.getSettings();
-      const packages = settings?.telecelPackages ? JSON.parse(settings.telecelPackages as any) : [];
+      const packages = await storage.getTelecelPackages();
       res.json(packages);
     } catch (error) {
       console.error("Error fetching TELECEL packages:", error);
@@ -956,13 +935,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Delete TELECEL package
   app.delete("/api/telecel/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { id } = req.params;
-      const settings = await storage.getSettings();
-      const packagesKey = "telecelPackages";
-      const packages = settings?.telecelPackages ? JSON.parse(settings.telecelPackages as any) : [];
-      
-      const filtered = packages.filter((p: any) => p.id !== id);
-      await storage.upsertSetting(packagesKey, JSON.stringify(filtered));
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteTelecelPackage(id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Package not found" });
+      }
 
       res.json({ success: true });
     } catch (error) {
