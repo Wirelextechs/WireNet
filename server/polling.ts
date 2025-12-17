@@ -104,27 +104,34 @@ function normalizeStatus(coderaftStatus: string | number): "FULFILLED" | "PROCES
   
   console.log(`🔍 Normalizing status: "${coderaftStatus}" (type: ${typeof coderaftStatus}, normalized: "${statusStr}")`);
   
-  // FULFILLED statuses - text versions
-  if (statusStr.includes("delivered") || 
-      statusStr.includes("successful") || 
-      statusStr.includes("fulfilled") || 
-      statusStr.includes("complete") ||
-      statusStr.includes("crediting") ||
-      statusStr.includes("credited") ||
-      statusStr.includes("success") ||
-      statusStr === "1" ||  // Code Craft numeric: 1 = Fulfilled
-      statusStr === "delivered" ||
-      statusStr === "completed") {
+  // FULFILLED statuses - based on Code Craft API documentation
+  // API returns: "Successful", "Crediting successful", "Data successfully delivered"
+  if (statusStr.includes("successful") ||     // "Successful" or "Crediting successful"
+      statusStr.includes("delivered") ||      // "Data successfully delivered"
+      statusStr.includes("completed") ||      // "Completed"
+      statusStr.includes("fulfilled") ||      // "Fulfilled"
+      statusStr.includes("credited") ||       // "Credited"
+      statusStr === "1" ||                    // Numeric code: 1 = Fulfilled
+      statusStr === "200") {                  // HTTP 200 = Success
     console.log(`✅ Mapped to FULFILLED`);
     return "FULFILLED";
   } 
-  // FAILED statuses
+  // FAILED statuses - based on Code Craft documentation
+  // API code 100, 101, 102, 103, 500, 555 = failures
   else if (statusStr.includes("failed") || 
            statusStr.includes("error") || 
            statusStr.includes("cancelled") ||
            statusStr.includes("cancel") ||
-           statusStr === "0" ||  // Code Craft numeric: 0 = Failed
-           statusStr === "failed") {
+           statusStr.includes("out of stock") ||
+           statusStr.includes("low wallet") ||
+           statusStr.includes("not found") ||
+           statusStr === "0" ||                // Numeric code: 0 = Failed
+           statusStr === "100" ||              // Low wallet balance
+           statusStr === "101" ||              // Out of stock
+           statusStr === "102" ||              // Agent not found
+           statusStr === "103" ||              // Price not found
+           statusStr === "500" ||              // Different error messages
+           statusStr === "555") {              // Network not found
     console.log(`❌ Mapped to FAILED`);
     return "FAILED";
   }
