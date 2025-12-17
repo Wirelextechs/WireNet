@@ -31,6 +31,7 @@ export default function TelecelAdmin() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [newPackage, setNewPackage] = useState({ amount: "", price: "", delivery: "" });
+  const [editingPackage, setEditingPackage] = useState<any>(null);
   const [message, setMessage] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [settings, setSettings] = useState({ transactionCharge: "1.3" });
@@ -195,6 +196,45 @@ export default function TelecelAdmin() {
       }
     } catch (error) {
       setMessage("❌ Error deleting package");
+    }
+  };
+
+  const startEditingPackage = (pkg: Package) => {
+    setEditingPackage({
+      id: pkg.id,
+      dataAmount: pkg.dataAmount,
+      price: String(pkg.price),
+      deliveryTime: pkg.deliveryTime,
+    });
+  };
+
+  const savePackageEdit = async () => {
+    if (!editingPackage.dataAmount || !editingPackage.price || !editingPackage.deliveryTime) {
+      setMessage("❌ Fill all fields");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/telecel/packages/${editingPackage.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          dataAmount: editingPackage.dataAmount,
+          price: parseFloat(editingPackage.price),
+          deliveryTime: editingPackage.deliveryTime,
+        }),
+      });
+
+      if (response.ok) {
+        setMessage("✅ Package updated");
+        setEditingPackage(null);
+        loadPackages();
+      } else {
+        setMessage("❌ Failed to update package");
+      }
+    } catch (error) {
+      setMessage("❌ Error updating package");
     }
   };
 
@@ -396,18 +436,66 @@ export default function TelecelAdmin() {
                         <p style={styles.packagePrice}>GH₵{pkg.price}</p>
                         <p style={styles.packageDelivery}>{pkg.deliveryTime}</p>
                       </div>
-                      <Button
-                        onClick={() => deletePackage(pkg.id)}
-                        style={styles.deleteButton}
-                      >
-                        <Trash2 size={16} />
-                      </Button>
+                      <div style={styles.actionButtons}>
+                        <Button
+                          onClick={() => startEditingPackage(pkg)}
+                          style={{ ...styles.editButton, marginRight: "8px" }}
+                          title="Edit this package"
+                        >
+                          ✎ Edit
+                        </Button>
+                        <Button
+                          onClick={() => deletePackage(pkg.id)}
+                          style={styles.deleteButton}
+                          title="Delete this package"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {editingPackage && (
+            <Card style={styles.card}>
+              <CardHeader>
+                <CardTitle>Edit Package</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div style={styles.formGrid}>
+                  <Input
+                    type="text"
+                    placeholder="Amount (e.g., 1GB)"
+                    value={editingPackage.dataAmount}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, dataAmount: e.target.value })}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Price (GH₵)"
+                    value={editingPackage.price}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, price: e.target.value })}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Delivery Time (e.g., Instant)"
+                    value={editingPackage.deliveryTime}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, deliveryTime: e.target.value })}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+                  <Button onClick={savePackageEdit} style={styles.saveButton}>
+                    Save Changes
+                  </Button>
+                  <Button onClick={() => setEditingPackage(null)} style={styles.cancelButton}>
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -573,6 +661,10 @@ const styles: any = {
     borderRadius: "4px",
     border: "1px solid #ddd",
   },
+  actionButtons: {
+    display: "flex",
+    gap: "5px",
+  },
   packageName: {
     fontSize: "1.2em",
     fontWeight: "bold",
@@ -592,6 +684,16 @@ const styles: any = {
   },
   deleteButton: {
     backgroundColor: "#dc3545",
+    color: "white",
+  },
+  editButton: {
+    backgroundColor: "#28a745",
+    color: "white",
+    padding: "4px 8px",
+    fontSize: "0.75em",
+  },
+  cancelButton: {
+    backgroundColor: "#6c757d",
     color: "white",
   },
   settingsForm: {

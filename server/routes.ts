@@ -822,6 +822,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Update AT package
+  app.patch("/api/at/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      const updated = await storage.updateAtPackage(id, updates);
+      if (!updated) {
+        return res.status(404).json({ message: "Package not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating AT package:", error);
+      res.status(500).json({ message: "Failed to update package" });
+    }
+  });
+
   // Admin: Delete AT package
   app.delete("/api/at/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
@@ -1012,6 +1030,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching TELECEL packages:", error);
       res.status(500).json({ message: "Failed to fetch packages" });
+    }
+  });
+
+  // Admin: Update TELECEL package
+  app.patch("/api/telecel/packages/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      const updated = await storage.updateTelecelPackage(id, updates);
+      if (!updated) {
+        return res.status(404).json({ message: "Package not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating TELECEL package:", error);
+      res.status(500).json({ message: "Failed to update package" });
     }
   });
 

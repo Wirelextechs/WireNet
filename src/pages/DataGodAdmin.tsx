@@ -36,6 +36,7 @@ export default function DataGodAdmin() {
   const [bulkStatus, setBulkStatus] = useState("");
   const [message, setMessage] = useState("");
   const [newPackage, setNewPackage] = useState({ name: "", gb: "", price: "" });
+  const [editingPackage, setEditingPackage] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -242,6 +243,45 @@ export default function DataGodAdmin() {
     } catch (error) {
       console.error("Error toggling package:", error);
       setMessage("Failed to update package");
+    }
+  };
+
+  const startEditingPackage = (pkg: Package) => {
+    setEditingPackage({
+      id: pkg.id,
+      packageName: pkg.packageName,
+      dataValueGB: String(pkg.dataValueGB),
+      priceGHS: String(pkg.priceGHS),
+    });
+  };
+
+  const savePackageEdit = async () => {
+    if (!editingPackage.packageName || !editingPackage.dataValueGB || !editingPackage.priceGHS) {
+      setMessage("❌ Fill all fields");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/datagod/packages/${editingPackage.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          packageName: editingPackage.packageName,
+          dataValueGB: parseFloat(editingPackage.dataValueGB),
+          priceGHS: parseFloat(editingPackage.priceGHS),
+        }),
+      });
+
+      if (response.ok) {
+        setMessage("✅ Package updated");
+        setEditingPackage(null);
+        loadPackages();
+      } else {
+        setMessage("❌ Failed to update package");
+      }
+    } catch (error) {
+      setMessage("❌ Error updating package");
     }
   };
 
@@ -571,12 +611,22 @@ export default function DataGodAdmin() {
                               </button>
                             </td>
                             <td style={styles.tableCell}>
-                              <button
-                                onClick={() => handleDeletePackage(pkg.id)}
-                                style={styles.deleteButton}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              <div style={{ display: "flex", gap: "5px" }}>
+                                <button
+                                  onClick={() => startEditingPackage(pkg)}
+                                  style={{ ...styles.editButton, flex: 1 }}
+                                  title="Edit this package"
+                                >
+                                  ✎ Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePackage(pkg.id)}
+                                  style={styles.deleteButton}
+                                  title="Delete this package"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -586,6 +636,44 @@ export default function DataGodAdmin() {
                 </div>
               </CardContent>
             </Card>
+
+            {editingPackage && (
+              <Card style={styles.card}>
+                <CardHeader>
+                  <CardTitle>Edit Package</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div style={styles.formGrid}>
+                    <Input
+                      type="text"
+                      placeholder="Package Name"
+                      value={editingPackage.packageName}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, packageName: e.target.value })}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Data (GB)"
+                      value={editingPackage.dataValueGB}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, dataValueGB: e.target.value })}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Price (GH₵)"
+                      value={editingPackage.priceGHS}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, priceGHS: e.target.value })}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+                    <Button onClick={savePackageEdit} style={styles.saveButton}>
+                      Save Changes
+                    </Button>
+                    <Button onClick={() => setEditingPackage(null)} style={styles.cancelButton}>
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -813,6 +901,25 @@ const styles: any = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+  },
+  editButton: {
+    padding: "8px",
+    backgroundColor: "#28a745",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "0.75em",
+  },
+  cancelButton: {
+    backgroundColor: "#6c757d",
+    color: "white",
+  },
+  formGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "15px",
+    marginBottom: "20px",
   },
   settingsForm: {
     display: "flex",

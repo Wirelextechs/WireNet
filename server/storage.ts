@@ -395,6 +395,14 @@ class Storage {
     return await db.select().from(atPackages).orderBy(atPackages.createdAt);
   }
 
+  async updateAtPackage(id: number, data: Partial<InsertAtPackage>): Promise<AtPackage | null> {
+    const result = await db.update(atPackages)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(atPackages.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
   async deleteAtPackage(id: number): Promise<boolean> {
     const result = await db.delete(atPackages).where(eq(atPackages.id, id)).returning();
     return result.length > 0;
@@ -408,6 +416,14 @@ class Storage {
 
   async getTelecelPackages(): Promise<TelecelPackage[]> {
     return await db.select().from(telecelPackages).orderBy(telecelPackages.createdAt);
+  }
+
+  async updateTelecelPackage(id: number, data: Partial<InsertTelecelPackage>): Promise<TelecelPackage | null> {
+    const result = await db.update(telecelPackages)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(telecelPackages.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
   }
 
   async deleteTelecelPackage(id: number): Promise<boolean> {
