@@ -38,6 +38,7 @@ export default function FastNetAdmin() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [newPackage, setNewPackage] = useState({ amount: "", price: "", delivery: "" });
+  const [editingPackage, setEditingPackage] = useState<any>(null);
   const [message, setMessage] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -374,6 +375,38 @@ export default function FastNetAdmin() {
       console.error("Error toggling package:", error);
       setMessage("❌ Failed to update package");
       setTimeout(() => setMessage(""), 2000);
+    }
+  };
+
+  const startEditingPackage = (pkg: Package) => {
+    setEditingPackage({
+      id: pkg.id,
+      dataAmount: pkg.dataAmount,
+      price: String(pkg.price),
+      deliveryTime: pkg.deliveryTime,
+    });
+  };
+
+  const savePackageEdit = async () => {
+    if (!editingPackage.dataAmount || !editingPackage.price || !editingPackage.deliveryTime) {
+      setMessage("❌ Fill all fields");
+      return;
+    }
+
+    try {
+      await packagesAPI.update(editingPackage.id, {
+        category: 'fastnet',
+        data_amount: parseInt(editingPackage.dataAmount.replace(/\D/g, '')),
+        price: parseFloat(editingPackage.price),
+        delivery_time: editingPackage.deliveryTime,
+      });
+
+      setMessage("✅ Package updated");
+      setEditingPackage(null);
+      loadPackages();
+    } catch (error) {
+      console.error("Error updating package:", error);
+      setMessage("❌ Failed to update package");
     }
   };
 

@@ -500,7 +500,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { shortId, customerPhone, packageName, packagePrice, status, paymentReference } = req.body;
       
+      console.log("📝 DataGod order creation request:", { shortId, customerPhone, packageName, packagePrice, status, paymentReference });
+      
       if (!customerPhone || !packageName || !packagePrice) {
+        console.error("❌ Missing required fields:", { customerPhone, packageName, packagePrice });
         return res.status(400).json({ message: "Missing required fields" });
       }
 
@@ -515,9 +518,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentReference: paymentReference || null,
       });
 
+      console.log("✅ DataGod order created:", order);
       res.json({ success: true, order });
     } catch (error: any) {
-      console.error("Error creating DataGod order:", error);
+      console.error("❌ Error creating DataGod order:", error);
       res.status(500).json({ success: false, message: error.message });
     }
   });

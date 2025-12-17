@@ -237,9 +237,19 @@ export default function DataGodPage() {
             paymentReference: reference,
           }),
         })
+        .then(res => {
+          if (!res.ok) {
+            console.error(`Order creation failed with status ${res.status}`);
+            return res.json().then(data => {
+              throw new Error(data.message || `HTTP ${res.status}`);
+            });
+          }
+          return res.json();
+        })
       );
 
-      await Promise.all(orderPromises);
+      const results = await Promise.all(orderPromises);
+      console.log("All orders created successfully:", results);
       setCart([]);
       
       // Redirect to success page with first order ID
@@ -247,7 +257,7 @@ export default function DataGodPage() {
       navigate(`/order/success/${firstOrderId}?service=datagod`);
     } catch (error) {
       console.error("Purchase error:", error);
-      alert("Error creating orders");
+      alert("Error creating orders: " + (error instanceof Error ? error.message : "Unknown error"));
       setPurchasing(false);
     }
   };
