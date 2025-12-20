@@ -64,6 +64,13 @@ export default function AdminDashboard() {
       const response = await fetch("/api/settings");
       if (response.ok) {
         const data = await response.json();
+        console.log("📊 Loaded settings:", data);
+        console.log("🔔 Announcement fields:", {
+          text: data.announcementText,
+          link: data.announcementLink,
+          severity: data.announcementSeverity,
+          active: data.announcementActive
+        });
         setSettings({
           datagodEnabled: data.datagodEnabled,
           fastnetEnabled: data.fastnetEnabled,
