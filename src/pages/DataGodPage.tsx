@@ -3,6 +3,7 @@ import { MessageCircle, ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
+import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
 
 interface Package {
   id: number;
@@ -46,6 +47,12 @@ export default function DataGodPage() {
   const [phoneError, setPhoneError] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [announcement, setAnnouncement] = useState<{ text: string; link: string; severity: AnnouncementSeverity; active: boolean }>({
+    text: "",
+    link: "",
+    severity: "info",
+    active: false,
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -66,6 +73,12 @@ export default function DataGodPage() {
         if (data.datagodTransactionCharge) {
           setTransactionCharge(parseFloat(data.datagodTransactionCharge));
         }
+        setAnnouncement({
+          text: data.announcementText || "",
+          link: data.announcementLink || "",
+          severity: (data.announcementSeverity as AnnouncementSeverity) || "info",
+          active: data.announcementActive !== false,
+        });
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -303,6 +316,15 @@ export default function DataGodPage() {
 
       <div style={styles.contactBar}>
         Contact us for support | WhatsApp: Chat with us
+      </div>
+
+      <div style={{ maxWidth: "1200px", margin: "16px auto 0", padding: "0 16px" }}>
+        <AnnouncementBanner
+          text={announcement.text}
+          link={announcement.link}
+          severity={announcement.severity}
+          active={announcement.active}
+        />
       </div>
 
       <main style={styles.main}>

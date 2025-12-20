@@ -21,6 +21,10 @@ interface Settings {
   telecelEnabled: boolean;
   afaEnabled: boolean;
   afaLink?: string;
+  announcementText?: string;
+  announcementLink?: string;
+  announcementSeverity?: "info" | "success" | "warning" | "error";
+  announcementActive?: boolean;
   datagodTransactionCharge?: string;
   fastnetTransactionCharge?: string;
   fastnetActiveSupplier?: string;
@@ -53,6 +57,10 @@ class Storage {
       telecelEnabled: settingsMap["telecelEnabled"] !== "false",
       afaEnabled: settingsMap["afaEnabled"] !== "false",
       afaLink: settingsMap["afaLink"] || "",
+      announcementText: settingsMap["announcementText"] || "",
+      announcementLink: settingsMap["announcementLink"] || "",
+      announcementSeverity: (settingsMap["announcementSeverity"] as Settings["announcementSeverity"]) || "info",
+      announcementActive: settingsMap["announcementActive"] !== "false",
       datagodTransactionCharge: settingsMap["datagodTransactionCharge"] || "1.3",
       fastnetTransactionCharge: settingsMap["fastnetTransactionCharge"] || "1.3",
       atTransactionCharge: settingsMap["atTransactionCharge"] || "1.3",
@@ -86,6 +94,18 @@ class Storage {
     }
     if (data.afaLink !== undefined) {
       await this.upsertSetting("afaLink", data.afaLink);
+    }
+    if (data.announcementText !== undefined) {
+      await this.upsertSetting("announcementText", data.announcementText);
+    }
+    if (data.announcementLink !== undefined) {
+      await this.upsertSetting("announcementLink", data.announcementLink);
+    }
+    if (data.announcementSeverity !== undefined) {
+      await this.upsertSetting("announcementSeverity", data.announcementSeverity);
+    }
+    if (data.announcementActive !== undefined) {
+      await this.upsertSetting("announcementActive", String(data.announcementActive));
     }
     if (data.datagodTransactionCharge !== undefined) {
       await this.upsertSetting("datagodTransactionCharge", data.datagodTransactionCharge);

@@ -13,6 +13,10 @@ interface Settings {
   telecelEnabled: boolean;
   afaEnabled: boolean;
   afaLink?: string;
+  announcementText?: string;
+  announcementLink?: string;
+  announcementSeverity?: "info" | "success" | "warning" | "error";
+  announcementActive?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -26,9 +30,17 @@ export default function AdminDashboard() {
     afaEnabled: true,
     whatsappLink: "",
     afaLink: "",
+    announcementText: "",
+    announcementLink: "",
+    announcementSeverity: "info",
+    announcementActive: false,
   });
   const [whatsappLink, setWhatsappLink] = useState("");
   const [afaLink, setAfaLink] = useState("");
+  const [announcementText, setAnnouncementText] = useState("");
+  const [announcementLink, setAnnouncementLink] = useState("");
+  const [announcementSeverity, setAnnouncementSeverity] = useState<"info" | "success" | "warning" | "error">("info");
+  const [announcementActive, setAnnouncementActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -60,9 +72,17 @@ export default function AdminDashboard() {
           afaEnabled: data.afaEnabled !== false,
           whatsappLink: data.whatsappLink || "",
           afaLink: data.afaLink || "",
+          announcementText: data.announcementText || "",
+          announcementLink: data.announcementLink || "",
+          announcementSeverity: data.announcementSeverity || "info",
+          announcementActive: data.announcementActive !== false,
         });
         setWhatsappLink(data.whatsappLink || "");
         setAfaLink(data.afaLink || "");
+        setAnnouncementText(data.announcementText || "");
+        setAnnouncementLink(data.announcementLink || "");
+        setAnnouncementSeverity(data.announcementSeverity || "info");
+        setAnnouncementActive(data.announcementActive !== false);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -176,6 +196,10 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           whatsappLink,
           afaLink,
+          announcementText,
+          announcementLink,
+          announcementSeverity,
+          announcementActive,
           datagodEnabled: settings.datagodEnabled,
           fastnetEnabled: settings.fastnetEnabled,
           atEnabled: settings.atEnabled,
@@ -190,12 +214,20 @@ export default function AdminDashboard() {
           ...settings,
           whatsappLink: updated.whatsappLink,
           afaLink: updated.afaLink,
+          announcementText: updated.announcementText || "",
+          announcementLink: updated.announcementLink || "",
+          announcementSeverity: updated.announcementSeverity || "info",
+          announcementActive: updated.announcementActive !== false,
           datagodEnabled: updated.datagodEnabled,
           fastnetEnabled: updated.fastnetEnabled,
           atEnabled: updated.atEnabled,
           telecelEnabled: updated.telecelEnabled,
           afaEnabled: updated.afaEnabled,
         });
+        setAnnouncementText(updated.announcementText || "");
+        setAnnouncementLink(updated.announcementLink || "");
+        setAnnouncementSeverity(updated.announcementSeverity || "info");
+        setAnnouncementActive(updated.announcementActive !== false);
         setMessage("Settings saved successfully!");
         setTimeout(() => setMessage(""), 3000);
       } else {
@@ -477,6 +509,83 @@ export default function AdminDashboard() {
                 className="w-full"
               >
                 {loading ? "Saving..." : "Save Settings"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Announcement Banner</CardTitle>
+              <CardDescription>
+                Configure the banner shown on category pages (customers can dismiss per session)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded bg-slate-50">
+                <div>
+                  <h3 className="font-semibold">Banner Visibility</h3>
+                  <p className="text-sm text-gray-600">Show or hide on all category pages</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {announcementActive ? "✅ Active" : "❌ Hidden"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAnnouncementActive(!announcementActive)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    announcementActive ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      announcementActive ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Banner Text</label>
+                <textarea
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={3}
+                  placeholder="What should customers know?"
+                  value={announcementText}
+                  onChange={(e) => setAnnouncementText(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">Supports multiple lines; will wrap automatically.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Severity</label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={announcementSeverity}
+                    onChange={(e) => setAnnouncementSeverity(e.target.value as any)}
+                  >
+                    <option value="info">Info (blue)</option>
+                    <option value="success">Success (green)</option>
+                    <option value="warning">Warning (amber)</option>
+                    <option value="error">Alert (red)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Optional Link</label>
+                  <Input
+                    type="url"
+                    placeholder="https://example.com"
+                    value={announcementLink}
+                    onChange={(e) => setAnnouncementLink(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">CTA shown only when link is provided.</p>
+                </div>
+              </div>
+
+              <Button onClick={handleSaveSettings} disabled={loading} className="w-full">
+                {loading ? "Saving..." : "Save Announcement"}
               </Button>
             </CardContent>
           </Card>

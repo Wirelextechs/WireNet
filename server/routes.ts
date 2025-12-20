@@ -91,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier } = req.body;
 
       const updated = await storage.updateSettings({
         whatsappLink,
@@ -101,6 +101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         telecelEnabled,
         afaEnabled,
         afaLink,
+        announcementText,
+        announcementLink,
+        announcementSeverity,
+        announcementActive,
         datagodTransactionCharge,
         fastnetTransactionCharge,
         atTransactionCharge,

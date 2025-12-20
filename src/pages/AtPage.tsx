@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { packagesAPI } from "@/lib/supabase";
+import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
 
 interface Package {
   id: string;
@@ -17,7 +18,6 @@ interface CartItem {
   id: string;
   pkg: Package;
   phoneNumber: string;
-  email: string;
   email: string;
 }
 
@@ -37,6 +37,12 @@ export default function AtPage() {
   const [phoneError, setPhoneError] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [announcement, setAnnouncement] = useState<{ text: string; link: string; severity: AnnouncementSeverity; active: boolean }>({
+    text: "",
+    link: "",
+    severity: "info",
+    active: false,
+  });
 
   useEffect(() => {
     loadPackages();
@@ -51,6 +57,12 @@ export default function AtPage() {
         if (data.atTransactionCharge) {
           setTransactionCharge(parseFloat(data.atTransactionCharge));
         }
+        setAnnouncement({
+          text: data.announcementText || "",
+          link: data.announcementLink || "",
+          severity: (data.announcementSeverity as AnnouncementSeverity) || "info",
+          active: data.announcementActive !== false,
+        });
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -291,6 +303,15 @@ export default function AtPage() {
       <div style={styles.contactBar}>
         📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
         💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
+      </div>
+
+      <div style={{ maxWidth: "1200px", margin: "16px auto 0", padding: "0 16px" }}>
+        <AnnouncementBanner
+          text={announcement.text}
+          link={announcement.link}
+          severity={announcement.severity}
+          active={announcement.active}
+        />
       </div>
 
       <main style={styles.main}>

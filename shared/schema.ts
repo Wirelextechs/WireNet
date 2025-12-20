@@ -10,6 +10,10 @@ export const settingsSchema = z.object({
   whatsappLink: z.string().url().optional(),
   datagodEnabled: z.boolean().default(true),
   fastnetEnabled: z.boolean().default(true),
+  announcementText: z.string().default(""),
+  announcementLink: z.string().url().optional(),
+  announcementSeverity: z.enum(["info", "success", "warning", "error"]).default("info"),
+  announcementActive: z.boolean().default(false),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });
