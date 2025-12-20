@@ -60,7 +60,7 @@ class Storage {
       announcementText: settingsMap["announcementText"] || "",
       announcementLink: settingsMap["announcementLink"] || "",
       announcementSeverity: (settingsMap["announcementSeverity"] as Settings["announcementSeverity"]) || "info",
-      announcementActive: settingsMap["announcementActive"] !== "false",
+      announcementActive: settingsMap["announcementActive"] === "true",
       datagodTransactionCharge: settingsMap["datagodTransactionCharge"] || "1.3",
       fastnetTransactionCharge: settingsMap["fastnetTransactionCharge"] || "1.3",
       atTransactionCharge: settingsMap["atTransactionCharge"] || "1.3",

@@ -77,7 +77,7 @@ export default function DataGodPage() {
           text: data.announcementText || "",
           link: data.announcementLink || "",
           severity: (data.announcementSeverity as AnnouncementSeverity) || "info",
-          active: data.announcementActive !== false,
+          active: data.announcementActive === true,
         });
       }
     } catch (error) {

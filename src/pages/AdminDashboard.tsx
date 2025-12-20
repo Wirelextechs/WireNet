@@ -75,14 +75,14 @@ export default function AdminDashboard() {
           announcementText: data.announcementText || "",
           announcementLink: data.announcementLink || "",
           announcementSeverity: data.announcementSeverity || "info",
-          announcementActive: data.announcementActive !== false,
+          announcementActive: data.announcementActive === true,
         });
         setWhatsappLink(data.whatsappLink || "");
         setAfaLink(data.afaLink || "");
         setAnnouncementText(data.announcementText || "");
         setAnnouncementLink(data.announcementLink || "");
         setAnnouncementSeverity(data.announcementSeverity || "info");
-        setAnnouncementActive(data.announcementActive !== false);
+        setAnnouncementActive(data.announcementActive === true);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -217,7 +217,7 @@ export default function AdminDashboard() {
           announcementText: updated.announcementText || "",
           announcementLink: updated.announcementLink || "",
           announcementSeverity: updated.announcementSeverity || "info",
-          announcementActive: updated.announcementActive !== false,
+          announcementActive: updated.announcementActive === true,
           datagodEnabled: updated.datagodEnabled,
           fastnetEnabled: updated.fastnetEnabled,
           atEnabled: updated.atEnabled,
@@ -227,7 +227,7 @@ export default function AdminDashboard() {
         setAnnouncementText(updated.announcementText || "");
         setAnnouncementLink(updated.announcementLink || "");
         setAnnouncementSeverity(updated.announcementSeverity || "info");
-        setAnnouncementActive(updated.announcementActive !== false);
+        setAnnouncementActive(updated.announcementActive === true);
         setMessage("Settings saved successfully!");
         setTimeout(() => setMessage(""), 3000);
       } else {
