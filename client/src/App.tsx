@@ -4,6 +4,15 @@ import { Toaster } from "@/components/ui/toaster";
 import Storefront from "@/pages/Storefront";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminLogin from "@/pages/AdminLogin";
+import DataGodPage from "@/pages/DataGodPage";
+import FastNetPage from "@/pages/FastNetPage";
+import AtPage from "@/pages/AtPage";
+import TelecelPage from "@/pages/TelecelPage";
+import DataGodAdmin from "@/pages/DataGodAdmin";
+import FastNetAdmin from "@/pages/FastNetAdmin";
+import AtAdmin from "@/pages/AtAdmin";
+import TelecelAdmin from "@/pages/TelecelAdmin";
+import OrderSuccess from "@/pages/OrderSuccess";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -27,6 +36,15 @@ function AppContent() {
       <Route path="/" component={Storefront} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/datagod" component={DataGodPage} />
+      <Route path="/fastnet" component={FastNetPage} />
+      <Route path="/at" component={AtPage} />
+      <Route path="/telecel" component={TelecelPage} />
+      <Route path="/admin/datagod" component={DataGodAdmin} />
+      <Route path="/admin/fastnet" component={FastNetAdmin} />
+      <Route path="/admin/at" component={AtAdmin} />
+      <Route path="/admin/telecel" component={TelecelAdmin} />
+      <Route path="/order/success/:orderId" component={OrderSuccess} />
     </Router>
   );
 }
