@@ -8,6 +8,7 @@ import { Pool } from "pg";
 import crypto from "crypto";
 import * as supplierManager from "./supplier-manager.js";
 import * as polling from "./polling.js";
+import { sendOrderNotification, checkSMSBalance } from "./sms.js";
 
 const PgStore = pgSession(session);
 
@@ -260,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhone } = req.body;
 
       const updated = await storage.updateSettings({
         whatsappLink,
@@ -281,12 +282,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fastnetActiveSupplier,
         atActiveSupplier,
         telecelActiveSupplier,
+        smsEnabled,
+        smsNotificationPhone,
       });
 
       res.json(updated);
     } catch (error) {
       console.error("Error updating settings:", error);
       res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+  // Check SMS balance (Admin only)
+  app.get("/api/sms/balance", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const result = await checkSMSBalance();
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking SMS balance:", error);
+      res.status(500).json({ success: false, message: "Failed to check SMS balance" });
     }
   });
 
@@ -348,6 +362,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`📝 Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      // Send SMS notification (don't await - fire and forget)
+      storage.getSettings().then(settings => {
+        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+          sendOrderNotification(
+            settings.smsNotificationPhone,
+            "FastNet",
+            order.shortId,
+            phoneNumber,
+            dataAmount
+          ).catch(err => console.error("SMS notification error:", err));
+        }
+      });
 
       // Try to fulfill with supplier
       let fulfillmentResult;
@@ -730,6 +757,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log("✅ DataGod order created via purchase:", order);
+
+      // Send SMS notification (don't await - fire and forget)
+      storage.getSettings().then(settings => {
+        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+          sendOrderNotification(
+            settings.smsNotificationPhone,
+            "DataGod",
+            order.shortId,
+            phoneNumber,
+            dataAmount
+          ).catch(err => console.error("SMS notification error:", err));
+        }
+      });
+
       res.json({ success: true, shortId: order.shortId, order });
     } catch (error: any) {
       console.error("❌ Error creating DataGod order:", error);
@@ -898,6 +939,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`📝 AT Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      // Send SMS notification (don't await - fire and forget)
+      storage.getSettings().then(settings => {
+        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+          sendOrderNotification(
+            settings.smsNotificationPhone,
+            "AT iShare",
+            order.shortId,
+            phoneNumber,
+            dataAmount
+          ).catch(err => console.error("SMS notification error:", err));
+        }
+      });
 
       let fulfillmentResult;
       try {
@@ -1109,6 +1163,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`📝 TELECEL Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      // Send SMS notification (don't await - fire and forget)
+      storage.getSettings().then(settings => {
+        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+          sendOrderNotification(
+            settings.smsNotificationPhone,
+            "Telecel",
+            order.shortId,
+            phoneNumber,
+            dataAmount
+          ).catch(err => console.error("SMS notification error:", err));
+        }
+      });
 
       let fulfillmentResult;
       try {

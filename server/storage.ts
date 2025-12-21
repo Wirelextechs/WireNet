@@ -27,7 +27,14 @@ interface Settings {
   announcementActive?: boolean;
   datagodTransactionCharge?: string;
   fastnetTransactionCharge?: string;
+  atTransactionCharge?: string;
+  telecelTransactionCharge?: string;
   fastnetActiveSupplier?: string;
+  atActiveSupplier?: string;
+  telecelActiveSupplier?: string;
+  // SMS notification settings
+  smsEnabled?: boolean;
+  smsNotificationPhone?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -151,6 +158,8 @@ class Storage {
       fastnetActiveSupplier: settingsMap["fastnetActiveSupplier"] || "dataxpress",
       atActiveSupplier: settingsMap["atActiveSupplier"] || "codecraft",
       telecelActiveSupplier: settingsMap["telecelActiveSupplier"] || "codecraft",
+      smsEnabled: settingsMap["smsEnabled"] === "true",
+      smsNotificationPhone: settingsMap["smsNotificationPhone"] || "",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -210,6 +219,12 @@ class Storage {
     }
     if (data.telecelActiveSupplier !== undefined) {
       await this.upsertSetting("telecelActiveSupplier", data.telecelActiveSupplier);
+    }
+    if (data.smsEnabled !== undefined) {
+      await this.upsertSetting("smsEnabled", String(data.smsEnabled));
+    }
+    if (data.smsNotificationPhone !== undefined) {
+      await this.upsertSetting("smsNotificationPhone", data.smsNotificationPhone);
     }
 
     return (await this.getSettings())!;

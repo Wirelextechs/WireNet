@@ -17,6 +17,8 @@ interface Settings {
   announcementLink?: string;
   announcementSeverity?: "info" | "success" | "warning" | "error";
   announcementActive?: boolean;
+  smsEnabled?: boolean;
+  smsNotificationPhone?: string;
 }
 
 export default function AdminDashboard() {
@@ -34,6 +36,8 @@ export default function AdminDashboard() {
     announcementLink: "",
     announcementSeverity: "info",
     announcementActive: false,
+    smsEnabled: false,
+    smsNotificationPhone: "",
   });
   const [whatsappLink, setWhatsappLink] = useState("");
   const [afaLink, setAfaLink] = useState("");
@@ -41,6 +45,9 @@ export default function AdminDashboard() {
   const [announcementLink, setAnnouncementLink] = useState("");
   const [announcementSeverity, setAnnouncementSeverity] = useState<"info" | "success" | "warning" | "error">("info");
   const [announcementActive, setAnnouncementActive] = useState(false);
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [smsNotificationPhone, setSmsNotificationPhone] = useState("");
+  const [smsBalance, setSmsBalance] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,6 +90,8 @@ export default function AdminDashboard() {
           announcementLink: data.announcementLink || "",
           announcementSeverity: data.announcementSeverity || "info",
           announcementActive: data.announcementActive === true,
+          smsEnabled: data.smsEnabled === true,
+          smsNotificationPhone: data.smsNotificationPhone || "",
         });
         setWhatsappLink(data.whatsappLink || "");
         setAfaLink(data.afaLink || "");
@@ -90,6 +99,21 @@ export default function AdminDashboard() {
         setAnnouncementLink(data.announcementLink || "");
         setAnnouncementSeverity(data.announcementSeverity || "info");
         setAnnouncementActive(data.announcementActive === true);
+        setSmsEnabled(data.smsEnabled === true);
+        setSmsNotificationPhone(data.smsNotificationPhone || "");
+      }
+      
+      // Check SMS balance
+      try {
+        const balanceRes = await fetch("/api/sms/balance", { credentials: "include" });
+        if (balanceRes.ok) {
+          const balanceData = await balanceRes.json();
+          if (balanceData.success) {
+            setSmsBalance(balanceData.balance);
+          }
+        }
+      } catch (e) {
+        console.error("Could not fetch SMS balance:", e);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -212,6 +236,8 @@ export default function AdminDashboard() {
           atEnabled: settings.atEnabled,
           telecelEnabled: settings.telecelEnabled,
           afaEnabled: settings.afaEnabled,
+          smsEnabled,
+          smsNotificationPhone,
         }),
       });
 
@@ -516,6 +542,65 @@ export default function AdminDashboard() {
                 className="w-full"
               >
                 {loading ? "Saving..." : "Save Settings"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* SMS Notifications Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                📱 SMS Notifications
+              </CardTitle>
+              <CardDescription>
+                Receive SMS alerts when new orders come in
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded bg-slate-50">
+                <div>
+                  <h3 className="font-semibold">SMS Alerts</h3>
+                  <p className="text-sm text-gray-600">Enable/disable order notifications</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {smsEnabled ? "✅ Enabled" : "❌ Disabled"}
+                  </p>
+                </div>
+                <Button
+                  variant={smsEnabled ? "destructive" : "default"}
+                  onClick={() => setSmsEnabled(!smsEnabled)}
+                  size="sm"
+                >
+                  {smsEnabled ? "Disable" : "Enable"}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notification Phone Number</label>
+                <Input
+                  type="tel"
+                  placeholder="0xxxxxxxxx"
+                  value={smsNotificationPhone}
+                  onChange={(e) => setSmsNotificationPhone(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Phone number to receive order alerts (Ghana format)
+                </p>
+              </div>
+
+              {smsBalance && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded">
+                  <p className="text-sm text-green-800">
+                    <span className="font-semibold">SMS Balance:</span> {smsBalance} credits
+                  </p>
+                </div>
+              )}
+
+              <Button
+                onClick={handleSaveSettings}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? "Saving..." : "Save SMS Settings"}
               </Button>
             </CardContent>
           </Card>
