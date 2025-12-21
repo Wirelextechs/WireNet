@@ -231,6 +231,15 @@ export default function DataGodPage() {
       currency: "GHS",
       ref: `DG-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       metadata: {
+        wirenet: {
+          service: "datagod",
+          items: cart.map((item) => ({
+            phoneNumber: item.phoneNumber,
+            email: item.email,
+            packageName: item.pkg.packageName,
+            price: item.pkg.priceGHS,
+          })),
+        },
         custom_fields: [
           {
             display_name: "Items Count",

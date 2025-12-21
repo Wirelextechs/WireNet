@@ -4,7 +4,13 @@ import { setupVite, serveStatic, log } from "./vite";
 import { startStatusPolling } from "./polling.js";
 
 const app = express();
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {

@@ -5,7 +5,13 @@ import { registerRoutes } from "../server/routes.js";
 process.env.NODE_ENV = "production";
 
 const app = express();
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: false }));
 
 // Version/health helper (useful for verifying deployments)

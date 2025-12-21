@@ -5,6 +5,7 @@ import { isAuthenticated, isAdmin, login } from "./auth.js";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { Pool } from "pg";
+import crypto from "crypto";
 import * as supplierManager from "./supplier-manager.js";
 import * as polling from "./polling.js";
 
@@ -29,6 +30,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "unknown",
       time: new Date().toISOString(),
     });
+  });
+
+  // Paystack webhook (used to recover/create orders even if client callback fails)
+  app.post("/api/paystack/webhook", async (req: any, res) => {
+    try {
+      const secret = process.env.PAYSTACK_SECRET_KEY;
+      if (!secret) {
+        console.error("PAYSTACK_SECRET_KEY is not set; cannot verify webhook");
+        return res.status(500).send("Webhook not configured");
+      }
+
+      const signature = req.headers["x-paystack-signature"] as string | undefined;
+      const rawBody: Buffer | undefined = req.rawBody;
+      if (!signature || !rawBody) {
+        return res.status(400).send("Missing signature or raw body");
+      }
+
+      const computed = crypto.createHmac("sha512", secret).update(rawBody).digest("hex");
+      if (computed !== signature) {
+        return res.status(400).send("Invalid signature");
+      }
+
+      const event = req.body?.event;
+      if (event !== "charge.success") {
+        return res.status(200).json({ ok: true, ignored: true, event });
+      }
+
+      const reference: string | undefined = req.body?.data?.reference;
+      if (!reference) {
+        return res.status(200).json({ ok: true, ignored: true, reason: "missing_reference" });
+      }
+
+      const metadata = req.body?.data?.metadata;
+      const wirenetMeta = metadata?.wirenet;
+      const service: string | undefined = wirenetMeta?.service;
+      const items: any[] | undefined = wirenetMeta?.items;
+
+      if (!service || !Array.isArray(items) || items.length === 0) {
+        console.warn("Paystack webhook missing wirenet metadata; cannot recover orders", { reference, service });
+        return res.status(200).json({ ok: true, ignored: true, reason: "missing_metadata" });
+      }
+
+      let created = 0;
+
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index] || {};
+        const phoneNumber = String(item.phoneNumber || "");
+        const email = item.email ? String(item.email) : undefined;
+
+        if (service === "fastnet") {
+          const dataAmount = String(item.dataAmount || "");
+          const price = Number(item.price);
+          if (!phoneNumber || !dataAmount || !Number.isFinite(price)) continue;
+
+          const existing = await storage.findFastnetOrderByPaymentAndItem({
+            paymentReference: reference,
+            customerPhone: phoneNumber,
+            packageDetails: dataAmount,
+            packagePrice: price,
+          });
+          if (existing) continue;
+
+          const shortId = `${reference}-${index + 1}`;
+          await storage.createFastnetOrder({
+            shortId,
+            customerPhone: phoneNumber,
+            packageDetails: dataAmount,
+            packagePrice: price,
+            status: "PROCESSING",
+            paymentReference: reference,
+          });
+          created++;
+        }
+
+        if (service === "at") {
+          const dataAmount = String(item.dataAmount || "");
+          const price = Number(item.price);
+          if (!phoneNumber || !dataAmount || !Number.isFinite(price)) continue;
+
+          const existing = await storage.findAtOrderByPaymentAndItem({
+            paymentReference: reference,
+            customerPhone: phoneNumber,
+            packageDetails: dataAmount,
+            packagePrice: price,
+          });
+          if (existing) continue;
+
+          const shortId = `${reference}-${index + 1}`;
+          await storage.createAtOrder({
+            shortId,
+            customerPhone: phoneNumber,
+            packageDetails: dataAmount,
+            packagePrice: price,
+            status: "PROCESSING",
+            paymentReference: reference,
+          });
+          created++;
+        }
+
+        if (service === "telecel") {
+          const dataAmount = String(item.dataAmount || "");
+          const price = Number(item.price);
+          if (!phoneNumber || !dataAmount || !Number.isFinite(price)) continue;
+
+          const existing = await storage.findTelecelOrderByPaymentAndItem({
+            paymentReference: reference,
+            customerPhone: phoneNumber,
+            packageDetails: dataAmount,
+            packagePrice: price,
+          });
+          if (existing) continue;
+
+          const shortId = `${reference}-${index + 1}`;
+          await storage.createTelecelOrder({
+            shortId,
+            customerPhone: phoneNumber,
+            packageDetails: dataAmount,
+            packagePrice: price,
+            status: "PROCESSING",
+            paymentReference: reference,
+          });
+          created++;
+        }
+
+        if (service === "datagod") {
+          const packageName = String(item.packageName || "");
+          const price = Number(item.price);
+          if (!phoneNumber || !packageName || !Number.isFinite(price)) continue;
+
+          const existing = await storage.findDatagodOrderByPaymentAndItem({
+            paymentReference: reference,
+            customerPhone: phoneNumber,
+            packageName,
+            packagePrice: price,
+          });
+          if (existing) continue;
+
+          const shortId = `${reference}-${index + 1}`;
+          await storage.createDatagodOrder({
+            shortId,
+            customerPhone: phoneNumber,
+            packageName,
+            packagePrice: price,
+            status: "PAID",
+            paymentReference: reference,
+          });
+          created++;
+        }
+      }
+
+      return res.status(200).json({ ok: true, reference, created });
+    } catch (error) {
+      console.error("Paystack webhook error:", error);
+      return res.status(500).send("Webhook error");
+    }
   });
 
   // Session middleware with PostgreSQL store

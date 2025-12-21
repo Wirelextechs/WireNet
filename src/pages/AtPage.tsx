@@ -217,6 +217,17 @@ export default function AtPage() {
         amount: Math.ceil(totalAmount * 100),
         currency: "GHS",
         ref: `AT-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        metadata: {
+          wirenet: {
+            service: "at",
+            items: cart.map((item) => ({
+              phoneNumber: item.phoneNumber,
+              email: item.email,
+              dataAmount: item.pkg.dataAmount,
+              price: item.pkg.price,
+            })),
+          },
+        },
         callback: function(response: any) {
           console.log("Payment successful:", response.reference);
           const cartItems = [...cart];

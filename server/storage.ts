@@ -10,7 +10,7 @@ import {
   type AtPackage, type InsertAtPackage,
   type TelecelPackage, type InsertTelecelPackage
 } from "../shared/db-schema.js";
-import { eq, desc } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 interface Settings {
   id: string;
@@ -40,6 +40,89 @@ interface AdminUser {
 }
 
 class Storage {
+  async findFastnetOrderByPaymentAndItem(data: {
+    paymentReference: string;
+    customerPhone: string;
+    packageDetails: string;
+    packagePrice: number;
+  }): Promise<FastnetOrder | null> {
+    const result = await db
+      .select()
+      .from(fastnetOrders)
+      .where(
+        and(
+          eq(fastnetOrders.paymentReference, data.paymentReference),
+          eq(fastnetOrders.customerPhone, data.customerPhone),
+          eq(fastnetOrders.packageDetails, data.packageDetails),
+          eq(fastnetOrders.packagePrice, data.packagePrice)
+        )
+      )
+      .limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async findAtOrderByPaymentAndItem(data: {
+    paymentReference: string;
+    customerPhone: string;
+    packageDetails: string;
+    packagePrice: number;
+  }): Promise<AtOrder | null> {
+    const result = await db
+      .select()
+      .from(atOrders)
+      .where(
+        and(
+          eq(atOrders.paymentReference, data.paymentReference),
+          eq(atOrders.customerPhone, data.customerPhone),
+          eq(atOrders.packageDetails, data.packageDetails),
+          eq(atOrders.packagePrice, data.packagePrice)
+        )
+      )
+      .limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async findTelecelOrderByPaymentAndItem(data: {
+    paymentReference: string;
+    customerPhone: string;
+    packageDetails: string;
+    packagePrice: number;
+  }): Promise<TelecelOrder | null> {
+    const result = await db
+      .select()
+      .from(telecelOrders)
+      .where(
+        and(
+          eq(telecelOrders.paymentReference, data.paymentReference),
+          eq(telecelOrders.customerPhone, data.customerPhone),
+          eq(telecelOrders.packageDetails, data.packageDetails),
+          eq(telecelOrders.packagePrice, data.packagePrice)
+        )
+      )
+      .limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async findDatagodOrderByPaymentAndItem(data: {
+    paymentReference: string;
+    customerPhone: string;
+    packageName: string;
+    packagePrice: number;
+  }): Promise<DatagodOrder | null> {
+    const result = await db
+      .select()
+      .from(datagodOrders)
+      .where(
+        and(
+          eq(datagodOrders.paymentReference, data.paymentReference),
+          eq(datagodOrders.customerPhone, data.customerPhone),
+          eq(datagodOrders.packageName, data.packageName),
+          eq(datagodOrders.packagePrice, data.packagePrice)
+        )
+      )
+      .limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
   async getSettings(): Promise<Settings | null> {
     const allSettings = await db.select().from(settings);
     
