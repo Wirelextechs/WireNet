@@ -263,7 +263,7 @@ export default function AdminDashboard() {
           telecelEnabled: settings.telecelEnabled,
           afaEnabled: settings.afaEnabled,
           smsEnabled,
-          smsNotificationPhone,
+          smsNotificationPhones,
         }),
       });
 
