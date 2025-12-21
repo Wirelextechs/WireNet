@@ -224,13 +224,20 @@ export default function DataGodPage() {
         },
         callback: function(response: any) {
           const cartItems = [...cart];
-          let successCount = 0;
           
-          const processOrders = async () => {
-            let firstOrderId = "";
+          // Navigate immediately - don't make customer wait
+          setCart([]);
+          setPhoneNumber("");
+          setSelectedPackage(null);
+          setCustomerEmail("");
+          setPurchasing(false);
+          navigate(`/order/success/${response.reference}?service=datagod`);
+          
+          // Process orders in background (webhook also handles this as backup)
+          const processOrdersInBackground = async () => {
             for (const item of cartItems) {
               try {
-                const orderResponse = await fetch("/api/datagod/purchase", {
+                await fetch("/api/datagod/purchase", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -240,31 +247,13 @@ export default function DataGodPage() {
                     reference: response.reference,
                   }),
                 });
-                if (orderResponse.ok) {
-                  successCount++;
-                  try {
-                    const orderData = await orderResponse.json();
-                    if (!firstOrderId && orderData.shortId) {
-                      firstOrderId = orderData.shortId;
-                    }
-                  } catch {
-                    // Response may not be JSON
-                  }
-                }
               } catch (error) {
                 console.error("Error creating order:", error);
               }
             }
-            setCart([]);
-            setPhoneNumber("");
-            setSelectedPackage(null);
-            setCustomerEmail("");
-            setPurchasing(false);
-            const orderId = firstOrderId || response.reference;
-            navigate(`/order/success/${orderId}?service=datagod`);
           };
           
-          processOrders();
+          processOrdersInBackground();
         },
         onClose: () => {
           alert("Transaction cancelled");
