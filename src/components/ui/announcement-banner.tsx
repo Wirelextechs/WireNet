@@ -58,13 +58,13 @@ export function AnnouncementBanner({ text, link, severity = "info", active = tru
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(storageKey);
+    const stored = window.sessionStorage.getItem(storageKey);
     setDismissed(stored === "1");
   }, [storageKey]);
 
   const handleDismiss = () => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey, "1");
+      window.sessionStorage.setItem(storageKey, "1");
     }
     setDismissed(true);
   };

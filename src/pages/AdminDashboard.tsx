@@ -191,6 +191,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleAnnouncementActive = async () => {
+    try {
+      const newValue = !announcementActive;
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ announcementActive: newValue }),
+      });
+      if (response.ok) {
+        setAnnouncementActive(newValue);
+        setSettings({ ...settings, announcementActive: newValue });
+        setMessage("Announcement visibility updated!");
+        setTimeout(() => setMessage(""), 2000);
+      } else {
+        setMessage("Failed to update announcement visibility");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error updating announcement visibility:", error);
+      setMessage("Failed to update announcement visibility");
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setLoading(true);
     setMessage("");
@@ -539,7 +564,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setAnnouncementActive(!announcementActive)}
+                  onClick={handleToggleAnnouncementActive}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     announcementActive ? "bg-green-500" : "bg-gray-300"
                   }`}
