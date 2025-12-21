@@ -304,6 +304,11 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
+  async getFastnetOrderByPaymentReference(paymentReference: string): Promise<FastnetOrder | null> {
+    const result = await db.select().from(fastnetOrders).where(eq(fastnetOrders.paymentReference, paymentReference)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
   // DataGod Orders
   async createDatagodOrder(data: {
     shortId: string;
@@ -338,6 +343,11 @@ class Storage {
 
   async getDatagodOrderByShortId(shortId: string): Promise<DatagodOrder | null> {
     const result = await db.select().from(datagodOrders).where(eq(datagodOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getDatagodOrderByPaymentReference(paymentReference: string): Promise<DatagodOrder | null> {
+    const result = await db.select().from(datagodOrders).where(eq(datagodOrders.paymentReference, paymentReference)).limit(1);
     return result.length > 0 ? result[0] : null;
   }
 

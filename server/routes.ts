@@ -410,7 +410,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/fastnet/orders/status/:shortId", async (req, res) => {
     try {
       const { shortId } = req.params;
-      const order = await storage.getFastnetOrderByShortId(shortId);
+      // Try finding by shortId first, then by paymentReference
+      let order = await storage.getFastnetOrderByShortId(shortId);
+      
+      if (!order) {
+        // Try searching by payment reference
+        order = await storage.getFastnetOrderByPaymentReference(shortId);
+      }
       
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
@@ -711,7 +717,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const orderReference = `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Use Paystack reference as shortId so customers can track their order
+      const orderReference = reference || `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       
       const order = await storage.createDatagodOrder({
         shortId: orderReference,
@@ -734,7 +741,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/datagod/orders/status/:shortId", async (req, res) => {
     try {
       const { shortId } = req.params;
-      const order = await storage.getDatagodOrderByShortId(shortId);
+      // Try finding by shortId first, then by paymentReference
+      let order = await storage.getDatagodOrderByShortId(shortId);
+      
+      if (!order) {
+        // Try searching by payment reference
+        order = await storage.getDatagodOrderByPaymentReference(shortId);
+      }
       
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
