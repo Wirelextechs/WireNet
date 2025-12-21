@@ -25,6 +25,7 @@ interface CartItem {
 export default function FastNetPage() {
   const [, navigate] = useLocation();
   const purchaseSectionRef = useRef<HTMLDivElement>(null);
+  const cartSectionRef = useRef<HTMLDivElement>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -173,6 +174,11 @@ export default function FastNetPage() {
     setCustomerEmail("");
     setPhoneError("");
     setEmailError("");
+    
+    // Auto-scroll to cart section
+    setTimeout(() => {
+      cartSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   };
 
   const removeFromCart = (id: string) => {
@@ -537,6 +543,7 @@ export default function FastNetPage() {
         <AnimatePresence>
           {cart.length > 0 && (
             <motion.section
+              ref={cartSectionRef}
               initial={{ opacity: 0, y: 20, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
               exit={{ opacity: 0, y: 20, height: 0 }}

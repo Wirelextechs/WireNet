@@ -285,13 +285,13 @@ export default function Storefront() {
         </AnimatePresence>
       </motion.header>
 
-      <main className="mx-auto max-w-7xl px-4 py-12">
+      <main className="mx-auto max-w-7xl px-3 sm:px-4 py-6 sm:py-12">
         {/* Hero Section */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-6 sm:mb-16"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -305,13 +305,13 @@ export default function Storefront() {
           
           {/* Animated WireNet Logo */}
           <motion.div
-            className="mb-4"
+            className="mb-2 sm:mb-4"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 100, delay: 0.1 }}
           >
             <motion.span 
-              className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight inline-block"
+              className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight inline-block"
               animate={{ 
                 backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
               }}
@@ -332,34 +332,34 @@ export default function Storefront() {
             </motion.span>
           </motion.div>
           
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-6">
             <span className="text-gradient">Instant Data</span>
             <br />
             <span className="text-foreground">At Your Fingertips</span>
           </h1>
           
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+          <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-4 sm:mb-8">
             Experience lightning-fast data delivery with competitive prices.
             Choose your network, select a bundle, and get connected instantly.
           </p>
 
           <motion.div
-            className="flex flex-wrap justify-center gap-4"
+            className="flex flex-wrap justify-center gap-2 sm:gap-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm font-medium">5-20 min delivery</span>
+            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 rounded-full bg-emerald-500/10 text-emerald-600">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-xs sm:text-sm font-medium">5-20 min delivery</span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 text-violet-600">
-              <Zap className="h-4 w-4" />
-              <span className="text-sm font-medium">Instant activation</span>
+            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 rounded-full bg-violet-500/10 text-violet-600">
+              <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-xs sm:text-sm font-medium">Instant activation</span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-medium">Best prices</span>
+            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 rounded-full bg-amber-500/10 text-amber-600">
+              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-xs sm:text-sm font-medium">Best prices</span>
             </div>
           </motion.div>
         </motion.section>
@@ -369,7 +369,7 @@ export default function Storefront() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-6"
         >
           {enabledCategories.map((category, index) => {
             const Icon = category.icon;
@@ -377,35 +377,35 @@ export default function Storefront() {
               <motion.div
                 key={category.id}
                 variants={itemVariants}
-                whileHover={{ y: -8, scale: 1.02 }}
+                whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => category.isExternal ? handleAfaClick() : navigate(category.path)}
                 className={`
-                  relative group cursor-pointer rounded-3xl p-1 
+                  relative group cursor-pointer rounded-2xl sm:rounded-3xl p-[3px] sm:p-1 
                   bg-gradient-to-br ${category.gradient}
-                  ${category.shadowColor} shadow-xl hover:shadow-2xl
+                  ${category.shadowColor} shadow-lg hover:shadow-xl
                   transition-shadow duration-300
                 `}
               >
-                <div className="relative h-full rounded-[1.4rem] bg-white/95 dark:bg-gray-900/95 p-6 backdrop-blur-sm">
+                <div className="relative h-full rounded-[0.9rem] sm:rounded-[1.4rem] bg-white/95 dark:bg-gray-900/95 p-3 sm:p-5 backdrop-blur-sm">
                   {/* Icon */}
                   <div className={`
-                    inline-flex p-3 rounded-2xl mb-4
+                    inline-flex p-2 sm:p-3 rounded-xl sm:rounded-2xl mb-2 sm:mb-4
                     bg-gradient-to-br ${category.gradient}
-                    shadow-lg ${category.shadowColor}
+                    shadow-md sm:shadow-lg ${category.shadowColor}
                   `}>
-                    <Icon className="h-6 w-6 text-white" />
+                    <Icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-xl font-bold mb-2">{category.title}</h3>
-                  <p className="text-muted-foreground mb-3">{category.description}</p>
-                  <p className="text-sm text-muted-foreground/80">{category.details}</p>
+                  <h3 className="text-sm sm:text-xl font-bold mb-1 sm:mb-2">{category.title}</h3>
+                  <p className="text-xs sm:text-base text-muted-foreground mb-1 sm:mb-3 line-clamp-2">{category.description}</p>
+                  <p className="text-[10px] sm:text-sm text-muted-foreground/80 hidden sm:block">{category.details}</p>
 
                   {/* Arrow indicator */}
-                  <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className={`p-2 rounded-full bg-gradient-to-br ${category.gradient}`}>
-                      <ChevronRight className="h-4 w-4 text-white" />
+                  <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={`p-1 sm:p-2 rounded-full bg-gradient-to-br ${category.gradient}`}>
+                      <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                     </div>
                   </div>
 
