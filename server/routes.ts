@@ -304,6 +304,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test SMS sending (Admin only)
+  app.post("/api/sms/test", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ success: false, message: "Phone number required" });
+      }
+      
+      const result = await sendOrderNotification(
+        phone,
+        "TEST",
+        "TEST-123",
+        "0244000000",
+        "Test Package"
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Test SMS error:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to send test SMS" });
+    }
+  });
+
   // --- FastNet Order Fulfillment Routes ---
 
   // Get all FastNet orders (Admin only)

@@ -620,13 +620,44 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              <Button
-                onClick={handleSaveSettings}
-                disabled={loading}
-                className="w-full"
-              >
-                {loading ? "Saving..." : "Save SMS Settings"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSaveSettings}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  {loading ? "Saving..." : "Save SMS Settings"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!smsNotificationPhone) {
+                      alert("Enter a phone number first");
+                      return;
+                    }
+                    setMessage("Sending test SMS...");
+                    try {
+                      const res = await fetch("/api/sms/test", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ phone: smsNotificationPhone }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        setMessage("✅ Test SMS sent! Check your phone.");
+                      } else {
+                        setMessage(`❌ SMS failed: ${data.message}`);
+                      }
+                    } catch (e: any) {
+                      setMessage(`❌ Error: ${e.message}`);
+                    }
+                    setTimeout(() => setMessage(""), 5000);
+                  }}
+                >
+                  📱 Test SMS
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
