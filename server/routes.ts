@@ -747,7 +747,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/datagod/packages", async (_req, res) => {
     try {
       const packages = await storage.getEnabledDatagodPackages();
-      res.json(packages);
+      // Transform to frontend expected format
+      const transformedPackages = packages.map(pkg => ({
+        id: pkg.id.toString(),
+        dataAmount: `${pkg.dataValueGB}GB`,
+        price: pkg.priceGHS,
+        deliveryTime: "Instant",
+        isEnabled: pkg.isEnabled,
+      }));
+      res.json(transformedPackages);
     } catch (error) {
       console.error("Error fetching DataGod packages:", error);
       res.status(500).json({ message: "Failed to fetch packages" });
