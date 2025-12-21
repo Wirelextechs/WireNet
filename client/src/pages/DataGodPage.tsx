@@ -109,8 +109,8 @@ export default function DataGodPage() {
         setStatusReport({
           shortId: order.shortId || order.short_id,
           status: order.status,
-          packageDetails: order.packageDetails || order.package_details,
-          createdAt: new Date(order.createdAt || order.created_at).toLocaleDateString(),
+          packageDetails: order.packageDetails || order.package_details || order.packageName,
+          createdAt: new Date(order.createdAt || order.created_at).toLocaleString(),
         });
       } else {
         setStatusReport(null);

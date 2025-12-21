@@ -560,7 +560,7 @@ export default function FastNetAdmin() {
                             </select>
                           </td>
                           <td style={styles.tableCell}>{order.supplierUsed ? order.supplierUsed.toUpperCase() : "-"}</td>
-                          <td style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</td>
+                          <td style={styles.tableCell}>{new Date(order.createdAt).toLocaleString()}</td>
                           <td style={styles.tableCell}>
                             <div style={{ display: "flex", gap: "5px" }}>
                               <button onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")} style={styles.actionButton} title="Mark Fulfilled">✓</button>

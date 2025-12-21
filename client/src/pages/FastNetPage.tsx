@@ -108,7 +108,7 @@ export default function FastNetPage() {
           shortId: order.shortId || order.short_id,
           status: order.status,
           packageDetails: order.packageDetails || order.package_details,
-          createdAt: new Date(order.createdAt || order.created_at).toLocaleDateString(),
+          createdAt: new Date(order.createdAt || order.created_at).toLocaleString(),
         });
       } else {
         setStatusReport(null);

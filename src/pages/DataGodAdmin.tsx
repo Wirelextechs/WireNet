@@ -295,7 +295,7 @@ export default function DataGodAdmin() {
     const csv = [
       ["Order ID", "Phone", "Package", "Price", "Status", "Date"].join(","),
       ...selectedOrderObjects.map(o =>
-        [o.shortId, o.customerPhone, o.packageName, o.packagePrice, o.status, new Date(o.createdAt).toLocaleDateString()].join(",")
+        [o.shortId, o.customerPhone, o.packageName, o.packagePrice, o.status, new Date(o.createdAt).toLocaleString()].join(",")
       ),
     ].join("\n");
 
@@ -502,7 +502,7 @@ export default function DataGodAdmin() {
                                 <option value="CANCELLED">Cancelled</option>
                               </select>
                             </td>
-                            <td style={styles.tableCell}>{new Date(order.createdAt).toLocaleDateString()}</td>
+                            <td style={styles.tableCell}>{new Date(order.createdAt).toLocaleString()}</td>
                             <td style={styles.tableCell}>
                               <button
                                 onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")}
