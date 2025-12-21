@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, Copy, Home, ArrowRight } from "lucide-react";
+import { CheckCircle, Copy, Home, ArrowRight, Sparkles, Package, Clock, Phone } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
@@ -17,7 +18,6 @@ interface OrderDetails {
 export default function OrderSuccess() {
   const [, navigate] = useLocation();
   
-  // Extract orderId from pathname to avoid query param issues
   const pathname = window.location.pathname;
   const pathParts = pathname.split("/");
   const orderId = pathParts[pathParts.length - 1] || "";
@@ -25,14 +25,12 @@ export default function OrderSuccess() {
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [announcement, setAnnouncement] = useState<{ text: string; link: string; severity: AnnouncementSeverity; active: boolean }>(
-    {
-      text: "",
-      link: "",
-      severity: "info",
-      active: false,
-    }
-  );
+  const [announcement, setAnnouncement] = useState<{ text: string; link: string; severity: AnnouncementSeverity; active: boolean }>({
+    text: "",
+    link: "",
+    severity: "info",
+    active: false,
+  });
   
   const searchParams = new URLSearchParams(window.location.search);
   const service = searchParams.get("service") || "datagod";
@@ -65,9 +63,14 @@ export default function OrderSuccess() {
 
   const fetchOrderDetails = async () => {
     try {
-      const endpoint = service === "fastnet" 
-        ? `/api/fastnet/orders/status/${orderId}`
-        : `/api/datagod/orders/status/${orderId}`;
+      let endpoint = `/api/datagod/orders/status/${orderId}`;
+      if (service === "fastnet") {
+        endpoint = `/api/orders/status/${orderId}`;
+      } else if (service === "at") {
+        endpoint = `/api/at/orders/status/${orderId}`;
+      } else if (service === "telecel") {
+        endpoint = `/api/telecel/orders/status/${orderId}`;
+      }
       
       const response = await fetch(endpoint);
       if (response.ok) {
@@ -99,26 +102,30 @@ export default function OrderSuccess() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case "COMPLETED":
-      case "DELIVERED":
-        return "#28a745";
-      case "PROCESSING":
-      case "PAID":
-        return "#ffc107";
-      case "FAILED":
-        return "#dc3545";
-      default:
-        return "#6c757d";
+  const getServiceColor = () => {
+    switch (service) {
+      case "at": return "from-blue-500 to-indigo-600";
+      case "telecel": return "from-red-500 to-rose-600";
+      case "fastnet": return "from-violet-500 to-fuchsia-600";
+      default: return "from-amber-500 to-orange-600";
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="border-b bg-muted/20">
-          <div className="mx-auto max-w-6xl px-4 py-3">
+  const getServiceName = () => {
+    switch (service) {
+      case "at": return "AT iShare";
+      case "telecel": return "Telecel Data";
+      case "fastnet": return "FastNet";
+      default: return "DataGod";
+    }
+  };
+
+  return (
+    <div className="min-h-screen gradient-mesh">
+      {/* Announcement */}
+      {announcement.active && (
+        <div className={`bg-gradient-to-r ${getServiceColor()} text-white`}>
+          <div className="mx-auto max-w-7xl px-4 py-3">
             <AnnouncementBanner
               text={announcement.text}
               link={announcement.link}
@@ -127,309 +134,202 @@ export default function OrderSuccess() {
             />
           </div>
         </div>
+      )}
 
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="text-lg font-semibold tracking-tight"
-              aria-label="WireNet home"
-            >
-              WireNet
-            </button>
-            <Button variant="ghost" onClick={() => navigate("/")}>Home</Button>
-          </div>
-        </header>
-
-        <div className="mx-auto max-w-6xl px-4 py-10">
-          <div style={styles.loadingBox}>
-            <div style={styles.spinner}></div>
-            <p>Loading order details...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b bg-muted/20">
-        <div className="mx-auto max-w-6xl px-4 py-3">
-          <AnnouncementBanner
-            text={announcement.text}
-            link={announcement.link}
-            severity={announcement.severity}
-            active={announcement.active}
-          />
-        </div>
-      </div>
-
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="text-lg font-semibold tracking-tight"
-            aria-label="WireNet home"
-          >
-            WireNet
-          </button>
-          <Button variant="ghost" onClick={() => navigate("/")}>Home</Button>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <div style={styles.successCard}>
-        <div style={styles.iconContainer}>
-          <CheckCircle size={64} color="#28a745" />
-        </div>
-        
-        <h1 style={styles.title}>Payment Successful!</h1>
-        <p style={styles.subtitle}>Your order has been placed successfully.</p>
-
-        <div style={styles.orderIdSection}>
-          <p style={styles.orderIdLabel}>Your Order ID</p>
-          <div style={styles.orderIdBox}>
-            <span style={styles.orderId}>{orderId}</span>
-            <button onClick={copyOrderId} style={styles.copyButton} title="Copy Order ID">
-              <Copy size={18} />
-            </button>
-          </div>
-          {copied && <p style={styles.copiedText}>Copied!</p>}
-          <p style={styles.orderIdHint}>Save this ID to track your order status</p>
-        </div>
-
-        {order && (
-          <div style={styles.orderDetails}>
-            <h3 style={styles.detailsTitle}>Order Summary</h3>
-            <div style={styles.detailRow}>
-              <span style={styles.detailLabel}>Package:</span>
-              <span style={styles.detailValue}>
-                {order.packageName || order.packageDetails || "N/A"}
-              </span>
+      <main className="flex items-center justify-center min-h-[90vh] px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          {loading ? (
+            <div className="rounded-3xl bg-white/80 backdrop-blur-sm border border-white/30 p-8 text-center shadow-xl">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Loading order details...</p>
             </div>
-            {order.customerPhone && (
-              <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>Phone:</span>
-                <span style={styles.detailValue}>{order.customerPhone}</span>
+          ) : (
+            <div className="rounded-3xl bg-white/80 backdrop-blur-sm border border-white/30 shadow-xl overflow-hidden">
+              {/* Success Header */}
+              <div className={`bg-gradient-to-r ${getServiceColor()} p-8 text-center text-white relative overflow-hidden`}>
+                {/* Floating sparkles */}
+                <motion.div
+                  animate={{ y: [0, -10, 0], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute top-4 left-8"
+                >
+                  <Sparkles className="h-6 w-6 text-white/50" />
+                </motion.div>
+                <motion.div
+                  animate={{ y: [0, -8, 0], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                  className="absolute top-6 right-10"
+                >
+                  <Sparkles className="h-4 w-4 text-white/50" />
+                </motion.div>
+                <motion.div
+                  animate={{ y: [0, -12, 0], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.8, repeat: Infinity, delay: 0.3 }}
+                  className="absolute bottom-8 right-6"
+                >
+                  <Sparkles className="h-5 w-5 text-white/50" />
+                </motion.div>
+
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                  className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 mb-4"
+                >
+                  <CheckCircle className="h-12 w-12 text-white" />
+                </motion.div>
+                <motion.h1
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-2xl font-bold"
+                >
+                  Order Successful! 🎉
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-white/80 mt-2"
+                >
+                  {getServiceName()} purchase confirmed
+                </motion.p>
               </div>
-            )}
-            {order.totalAmount && (
-              <div style={styles.detailRow}>
-                <span style={styles.detailLabel}>Amount:</span>
-                <span style={styles.detailValue}>GH₵{order.totalAmount}</span>
+
+              {/* Order Details */}
+              <div className="p-6 space-y-6">
+                {/* Order ID */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="p-4 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Order ID</p>
+                      <p className="font-mono font-bold text-lg">{order?.shortId || orderId}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={copyOrderId}
+                      className="rounded-xl"
+                    >
+                      <Copy className={`h-4 w-4 ${copied ? "text-emerald-500" : ""}`} />
+                    </Button>
+                  </div>
+                  {copied && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-xs text-emerald-600 mt-1"
+                    >
+                      Copied to clipboard!
+                    </motion.p>
+                  )}
+                </motion.div>
+
+                {/* Details Grid */}
+                {order && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                    className="grid grid-cols-2 gap-3"
+                  >
+                    {order.packageDetails && (
+                      <div className="p-4 rounded-2xl bg-white border border-gray-100">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                          <Package className="h-4 w-4" />
+                          <span className="text-xs">Package</span>
+                        </div>
+                        <p className="font-semibold">{order.packageDetails}</p>
+                      </div>
+                    )}
+                    {order.customerPhone && (
+                      <div className="p-4 rounded-2xl bg-white border border-gray-100">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                          <Phone className="h-4 w-4" />
+                          <span className="text-xs">Phone</span>
+                        </div>
+                        <p className="font-semibold">{order.customerPhone}</p>
+                      </div>
+                    )}
+                    <div className="p-4 rounded-2xl bg-white border border-gray-100">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-xs">Status</span>
+                      </div>
+                      <p className={`font-semibold ${
+                        order.status === "FULFILLED" ? "text-emerald-600" :
+                        order.status === "FAILED" ? "text-red-600" : "text-amber-600"
+                      }`}>
+                        {order.status}
+                      </p>
+                    </div>
+                    {order.totalAmount && (
+                      <div className="p-4 rounded-2xl bg-white border border-gray-100">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                          <span className="text-xs">Amount</span>
+                        </div>
+                        <p className="font-semibold">GH₵{order.totalAmount.toFixed(2)}</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Info Box */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.7 }}
+                  className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100"
+                >
+                  <p className="text-sm text-emerald-800">
+                    <strong>✨ What's next?</strong><br />
+                    Your data will be delivered within the estimated time. Save your Order ID to track the status anytime.
+                  </p>
+                </motion.div>
+
+                {/* Action Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 }}
+                  className="flex gap-3"
+                >
+                  <Button
+                    onClick={() => navigate("/")}
+                    variant="outline"
+                    className="flex-1 rounded-xl"
+                  >
+                    <Home className="h-4 w-4 mr-2" />
+                    Home
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (service === "at") navigate("/at");
+                      else if (service === "telecel") navigate("/telecel");
+                      else if (service === "fastnet") navigate("/fastnet");
+                      else navigate("/datagod");
+                    }}
+                    className={`flex-1 bg-gradient-to-r ${getServiceColor()} text-white rounded-xl`}
+                  >
+                    Buy More
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </motion.div>
               </div>
-            )}
-            <div style={styles.detailRow}>
-              <span style={styles.detailLabel}>Status:</span>
-              <span style={{
-                ...styles.statusBadge,
-                backgroundColor: getStatusColor(order.status),
-              }}>
-                {order.status}
-              </span>
             </div>
-            <div style={styles.detailRow}>
-              <span style={styles.detailLabel}>Date:</span>
-              <span style={styles.detailValue}>
-                {order.createdAt ? new Date(order.createdAt).toLocaleString() : "N/A"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div style={styles.buttonGroup}>
-          <Button
-            onClick={() => navigate("/")}
-            style={styles.homeButton}
-          >
-            <Home size={18} style={{ marginRight: "8px" }} />
-            Home
-          </Button>
-          
-          <Button
-            onClick={() => navigate("/datagod")}
-            style={styles.serviceButton}
-          >
-            DataGod
-            <ArrowRight size={18} style={{ marginLeft: "8px" }} />
-          </Button>
-          
-          <Button
-            onClick={() => navigate("/fastnet")}
-            style={styles.serviceButton}
-          >
-            FastNet
-            <ArrowRight size={18} style={{ marginLeft: "8px" }} />
-          </Button>
-        </div>
-
-        <p style={styles.trackingNote}>
-          You can check your order status anytime on the {service === "fastnet" ? "FastNet" : "DataGod"} page using your Order ID.
-        </p>
-        </div>
-      </div>
+          )}
+        </motion.div>
+      </main>
     </div>
   );
 }
-
-const styles: any = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#f4f4f9",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "20px",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  loadingBox: {
-    textAlign: "center" as const,
-    color: "#666",
-  },
-  spinner: {
-    width: "40px",
-    height: "40px",
-    border: "4px solid #e0e0e0",
-    borderTop: "4px solid #007bff",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
-    margin: "0 auto 15px",
-  },
-  successCard: {
-    backgroundColor: "white",
-    borderRadius: "12px",
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
-    padding: "40px",
-    maxWidth: "500px",
-    width: "100%",
-    textAlign: "center" as const,
-  },
-  iconContainer: {
-    marginBottom: "20px",
-  },
-  title: {
-    fontSize: "2em",
-    color: "#28a745",
-    marginBottom: "10px",
-  },
-  subtitle: {
-    color: "#666",
-    fontSize: "1.1em",
-    marginBottom: "30px",
-  },
-  orderIdSection: {
-    backgroundColor: "#f8f9fa",
-    padding: "20px",
-    borderRadius: "8px",
-    marginBottom: "25px",
-  },
-  orderIdLabel: {
-    fontSize: "0.9em",
-    color: "#666",
-    marginBottom: "10px",
-  },
-  orderIdBox: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "10px",
-    backgroundColor: "white",
-    padding: "12px 20px",
-    borderRadius: "6px",
-    border: "2px solid #007bff",
-  },
-  orderId: {
-    fontSize: "1.3em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-    fontFamily: "monospace",
-    letterSpacing: "1px",
-  },
-  copyButton: {
-    background: "none",
-    border: "none",
-    color: "#007bff",
-    cursor: "pointer",
-    padding: "5px",
-    display: "flex",
-    alignItems: "center",
-  },
-  copiedText: {
-    color: "#28a745",
-    fontSize: "0.85em",
-    marginTop: "8px",
-  },
-  orderIdHint: {
-    fontSize: "0.8em",
-    color: "#999",
-    marginTop: "10px",
-  },
-  orderDetails: {
-    textAlign: "left" as const,
-    backgroundColor: "#f8f9fa",
-    padding: "20px",
-    borderRadius: "8px",
-    marginBottom: "25px",
-  },
-  detailsTitle: {
-    fontSize: "1.1em",
-    marginBottom: "15px",
-    color: "#1a1a1a",
-    borderBottom: "1px solid #ddd",
-    paddingBottom: "10px",
-  },
-  detailRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "10px",
-  },
-  detailLabel: {
-    color: "#666",
-  },
-  detailValue: {
-    fontWeight: "500",
-    color: "#1a1a1a",
-  },
-  statusBadge: {
-    padding: "4px 12px",
-    borderRadius: "20px",
-    color: "white",
-    fontSize: "0.85em",
-    fontWeight: "bold",
-  },
-  buttonGroup: {
-    display: "flex",
-    flexWrap: "wrap" as const,
-    gap: "10px",
-    justifyContent: "center",
-    marginBottom: "20px",
-  },
-  homeButton: {
-    backgroundColor: "#6c757d",
-    color: "white",
-    border: "none",
-    padding: "12px 24px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-  },
-  serviceButton: {
-    backgroundColor: "#007bff",
-    color: "white",
-    border: "none",
-    padding: "12px 24px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-  },
-  trackingNote: {
-    fontSize: "0.85em",
-    color: "#666",
-    fontStyle: "italic",
-  },
-};

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { MessageCircle, ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
+import { MessageCircle, ArrowLeft, ShoppingCart, Trash2, Search, Radio, Zap, Package, Mail, Phone, CheckCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
@@ -126,23 +127,14 @@ export default function TelecelPage() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
-    
-    // Remove all non-digits
     value = value.replace(/\D/g, '');
-
-    // Auto-convert 233 to 0
     if (value.startsWith('233')) {
       value = '0' + value.substring(3);
     }
-
-    // Limit to 10 digits
     if (value.length > 10) {
       value = value.substring(0, 10);
     }
-
     setPhoneNumber(value);
-
-    // Validation
     if (value.length > 0 && (value.length !== 10 || !value.startsWith('0'))) {
       setPhoneError("Number must be 10 digits starting with 0");
     } else {
@@ -163,17 +155,14 @@ export default function TelecelPage() {
       alert("Please enter phone number, email, and select a package");
       return;
     }
-    
     if (!isValidPhone(phoneNumber)) {
-      alert("Please enter a valid 10-digit Telecel number (e.g., 024xxxxxxx)");
+      alert("Please enter a valid 10-digit Telecel number");
       return;
     }
-
     if (!isValidEmail(customerEmail)) {
       alert("Please enter a valid email address");
       return;
     }
-
     const newItem: CartItem = {
       id: Date.now().toString(),
       pkg: selectedPackage,
@@ -201,13 +190,11 @@ export default function TelecelPage() {
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     if (!publicKey) {
       alert("Payment configuration error - Paystack key not found");
-      console.error("VITE_PAYSTACK_PUBLIC_KEY is not set");
       return;
     }
 
     if (!(window as any).PaystackPop) {
       alert("Payment system not loaded. Please refresh the page.");
-      console.error("PaystackPop is not available");
       return;
     }
 
@@ -223,7 +210,7 @@ export default function TelecelPage() {
         email: cart[0]?.email || "customer@wirenet.com",
         amount: Math.ceil(totalAmount * 100),
         currency: "GHS",
-        ref: `TC-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        ref: `TELECEL-BULK-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         metadata: {
           wirenet: {
             service: "telecel",
@@ -236,7 +223,6 @@ export default function TelecelPage() {
           },
         },
         callback: function(response: any) {
-          console.log("Payment successful:", response.reference);
           const cartItems = [...cart];
           let successCount = 0;
           
@@ -262,7 +248,7 @@ export default function TelecelPage() {
                       firstOrderId = orderData.shortId;
                     }
                   } catch {
-                    // Response may not be JSON, continue
+                    // Response may not be JSON
                   }
                 }
               } catch (error) {
@@ -274,8 +260,6 @@ export default function TelecelPage() {
             setSelectedPackage(null);
             setCustomerEmail("");
             setPurchasing(false);
-            
-            // Redirect to success page - use reference as fallback
             const orderId = firstOrderId || response.reference;
             navigate(`/order/success/${orderId}?service=telecel`);
           };
@@ -300,502 +284,361 @@ export default function TelecelPage() {
   const cartCharge = cartSubtotal * (transactionCharge / 100);
   const cartTotal = cartSubtotal + cartCharge;
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b bg-muted/20">
-        <div className="mx-auto max-w-6xl px-4 py-3">
-          <AnnouncementBanner
-            text={announcement.text}
-            link={announcement.link}
-            severity={announcement.severity}
-            active={announcement.active}
-          />
-        </div>
-      </div>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+  };
 
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex max-w-6xl items-start justify-between gap-4 px-4 py-4">
-          <div className="space-y-1">
-            <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate("/")}
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Back to WireNet
-            </Button>
-            <h1 className="text-xl font-semibold tracking-tight">TELECEL - RELIABLE DATA BUNDLES</h1>
-            <p className="text-sm text-muted-foreground">Quick Delivery - Always Connected</p>
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { opacity: 1, scale: 1 }
+  };
+
+  return (
+    <div className="min-h-screen gradient-mesh">
+      {/* Announcement */}
+      <AnimatePresence>
+        {announcement.active && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 text-white overflow-hidden"
+          >
+            <div className="mx-auto max-w-7xl px-4 py-3">
+              <AnnouncementBanner
+                text={announcement.text}
+                link={announcement.link}
+                severity={announcement.severity}
+                active={announcement.active}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="sticky top-0 z-40 glass border-b border-white/10"
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+          <div className="flex items-center gap-4">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </motion.div>
+            <div>
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-rose-600">
+                  <Radio className="h-5 w-5 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">Telecel Data</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">Instant delivery • Best rates</p>
+            </div>
           </div>
 
-          {whatsappLink ? (
-            <div className="hidden items-center gap-2 md:flex">
-              <Button variant="ghost" onClick={handleWhatsAppClick}>WhatsApp</Button>
-            </div>
-          ) : null}
+          {whatsappLink && (
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="hidden md:block">
+              <Button variant="ghost" onClick={handleWhatsAppClick} className="gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Support
+              </Button>
+            </motion.div>
+          )}
         </div>
-      </header>
+      </motion.header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <div style={styles.statusChecker}>
-          <h2 style={styles.statusCheckerH2}>Check Order Status</h2>
-          <div style={styles.statusCheckerForm}>
+      <main className="mx-auto max-w-7xl px-4 py-8 space-y-8">
+        {/* Status Checker */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl bg-gradient-to-br from-red-500/10 via-rose-500/10 to-pink-500/10 border border-red-500/20 p-6"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-rose-600">
+              <Search className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-lg font-bold">Track Your Order</h2>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
             <Input
               type="text"
               placeholder="Enter Order ID"
               value={statusCheckId}
               onChange={(e) => setStatusCheckId(e.target.value)}
-              style={styles.input}
+              className="flex-1 rounded-xl bg-white/50 border-white/20"
             />
             <Button
               onClick={handleStatusCheck}
               disabled={statusLoading}
-              style={{...styles.statusButton, backgroundColor: "#0369a1"}}
+              className="bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl"
             >
               {statusLoading ? "Checking..." : "Check Status"}
             </Button>
           </div>
-          {statusReport && (
-            <div style={styles.statusReport}>
-              <p><strong>Order ID:</strong> {statusReport.shortId}</p>
-              <p><strong>Status:</strong> {statusReport.status}</p>
-              <p><strong>Package:</strong> {statusReport.packageDetails}</p>
-              <p><strong>Date:</strong> {statusReport.createdAt}</p>
-            </div>
-          )}
-        </div>
-
-        <h2 style={styles.sectionTitle}>Available Packages</h2>
-        {loading ? (
-          <p style={styles.loading}>Loading packages...</p>
-        ) : packages.length === 0 ? (
-          <p style={styles.loading}>No packages available</p>
-        ) : (
-          <div style={styles.packagesGrid}>
-            {packages.map((pkg) => (
-              <div
-                key={pkg.id}
-                onClick={() => {
-                  setSelectedPackage(pkg);
-                  setTimeout(() => {
-                    purchaseSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-                  }, 100);
-                }}
-                style={{
-                  ...styles.packageCard,
-                  ...(selectedPackage?.id === pkg.id ? {...styles.packageCardSelected, borderColor: "#0369a1", backgroundColor: "#cffafe"} : {}),
-                }}
+          <AnimatePresence>
+            {statusReport && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 p-4 rounded-2xl bg-white/60 backdrop-blur-sm"
               >
-                <p style={{...styles.packageCardName, color: "#0369a1"}}>{pkg.dataAmount}</p>
-                <p style={styles.packageCardPrice}>GH₵{pkg.price}</p>
-                <p style={styles.packageDelivery}>⏱ {pkg.deliveryTime}</p>
-              </div>
-            ))}
-          </div>
-        )}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-muted-foreground">Order ID:</span> <strong>{statusReport.shortId}</strong></div>
+                  <div><span className="text-muted-foreground">Status:</span> <strong className={statusReport.status === "FULFILLED" ? "text-emerald-600" : statusReport.status === "FAILED" ? "text-red-600" : "text-amber-600"}>{statusReport.status}</strong></div>
+                  <div><span className="text-muted-foreground">Package:</span> <strong>{statusReport.packageDetails}</strong></div>
+                  <div><span className="text-muted-foreground">Date:</span> <strong>{statusReport.createdAt}</strong></div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.section>
 
-        <h2 style={styles.sectionTitle}>Purchase Data</h2>
-        <div style={styles.purchaseSection} ref={purchaseSectionRef}>
-          <div style={styles.purchaseCard}>
-            <h3>Phone Number</h3>
+        {/* Packages Grid */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600">
+              <Package className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold">Select Package</h2>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
+            </div>
+          ) : packages.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">No packages available</div>
+          ) : (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+            >
+              {packages.map((pkg) => (
+                <motion.div
+                  key={pkg.id}
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.03, y: -4 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    setSelectedPackage(pkg);
+                    setTimeout(() => {
+                      purchaseSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+                    }, 100);
+                  }}
+                  className={`
+                    relative p-4 rounded-2xl cursor-pointer transition-all duration-300
+                    ${selectedPackage?.id === pkg.id 
+                      ? "bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-xl shadow-red-500/30" 
+                      : "bg-white/70 backdrop-blur-sm border border-white/30 hover:border-red-300 hover:shadow-lg"}
+                  `}
+                >
+                  {selectedPackage?.id === pkg.id && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 bg-emerald-500 rounded-full p-1"
+                    >
+                      <CheckCircle className="h-4 w-4 text-white" />
+                    </motion.div>
+                  )}
+                  <p className={`text-2xl font-bold ${selectedPackage?.id === pkg.id ? "text-white" : "text-red-600"}`}>
+                    {pkg.dataAmount}
+                  </p>
+                  <p className={`text-lg font-semibold ${selectedPackage?.id === pkg.id ? "text-white/90" : "text-foreground"}`}>
+                    GH₵{pkg.price}
+                  </p>
+                  <p className={`text-xs mt-1 ${selectedPackage?.id === pkg.id ? "text-white/70" : "text-muted-foreground"}`}>
+                    ⏱ {pkg.deliveryTime}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </motion.section>
+
+        {/* Purchase Form */}
+        <motion.section
+          ref={purchaseSectionRef}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          {/* Phone Input */}
+          <div className="p-5 rounded-2xl bg-white/70 backdrop-blur-sm border border-white/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Phone className="h-4 w-4 text-red-600" />
+              <h3 className="font-semibold">Phone Number</h3>
+            </div>
             <Input
               type="tel"
-              placeholder="Enter Telecel number (e.g. 024...)"
+              placeholder="020xxxxxxx"
               value={phoneNumber}
               onChange={handlePhoneChange}
-              style={{
-                ...styles.input,
-                borderColor: phoneError ? "red" : "#ccc"
-              }}
+              className={`rounded-xl ${phoneError ? "border-red-400" : ""}`}
             />
-            {phoneError && <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>{phoneError}</p>}
+            {phoneError && <p className="text-red-500 text-xs mt-2">{phoneError}</p>}
           </div>
 
-          <div style={styles.purchaseCard}>
-            <h3>Email Address</h3>
+          {/* Email Input */}
+          <div className="p-5 rounded-2xl bg-white/70 backdrop-blur-sm border border-white/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Mail className="h-4 w-4 text-rose-600" />
+              <h3 className="font-semibold">Email Address</h3>
+            </div>
             <Input
               type="email"
               placeholder="your@email.com"
               value={customerEmail}
               onChange={(e) => {
                 setCustomerEmail(e.target.value);
-                if (e.target.value && !isValidEmail(e.target.value)) {
-                  setEmailError("Invalid email address");
-                } else {
-                  setEmailError("");
-                }
+                setEmailError(e.target.value && !isValidEmail(e.target.value) ? "Invalid email" : "");
               }}
-              style={{
-                ...styles.input,
-                borderColor: emailError ? "red" : "#ccc"
-              }}
+              className={`rounded-xl ${emailError ? "border-red-400" : ""}`}
             />
-            {emailError && <p style={{ color: "red", fontSize: "0.8em", marginTop: "5px" }}>{emailError}</p>}
-            <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>For Paystack receipts</p>
+            {emailError && <p className="text-red-500 text-xs mt-2">{emailError}</p>}
           </div>
 
-          <div style={styles.purchaseCard}>
-            <h3>Selected Package</h3>
+          {/* Selected Package */}
+          <div className="p-5 rounded-2xl bg-white/70 backdrop-blur-sm border border-white/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Package className="h-4 w-4 text-emerald-600" />
+              <h3 className="font-semibold">Selected</h3>
+            </div>
             {selectedPackage ? (
-              <div style={styles.selectedPackageInfo}>
-                <p style={{...styles.packageName, color: "#0369a1"}}>{selectedPackage.dataAmount}</p>
-                <p style={styles.packagePrice}>GH₵{selectedPackage.price}</p>
-                <p style={styles.packageTotal}>Total: GH₵{calculateTotal(selectedPackage.price).toFixed(2)}</p>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600">{selectedPackage.dataAmount}</p>
+                <p className="text-lg font-semibold">GH₵{selectedPackage.price}</p>
+                <p className="text-sm text-emerald-600">Total: GH₵{calculateTotal(selectedPackage.price).toFixed(2)}</p>
               </div>
             ) : (
-              <p style={styles.noSelection}>Select a package above</p>
+              <p className="text-muted-foreground text-center py-4">Select a package above</p>
             )}
           </div>
 
-          <div style={styles.purchaseCard}>
-            <h3>Add to Cart</h3>
+          {/* Add to Cart Button */}
+          <div className="p-5 rounded-2xl bg-white/70 backdrop-blur-sm border border-white/30 flex flex-col justify-center">
             <Button
               onClick={addToCart}
               disabled={!phoneNumber || !selectedPackage || !customerEmail || !!phoneError || !!emailError}
-              style={{
-                ...styles.buyButton,
-                backgroundColor: "#0369a1",
-                opacity: !phoneNumber || !selectedPackage || !customerEmail || !!phoneError || !!emailError ? 0.5 : 1,
-              }}
+              className="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl gap-2"
             >
-              <ShoppingCart size={18} style={{ marginRight: "8px" }} />
+              <ShoppingCart className="h-4 w-4" />
               Add to Cart
             </Button>
-            <p style={{ fontSize: "0.85em", color: "#666", marginTop: "10px", textAlign: "center" }}>
-              Add items to cart, then pay for all at once
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Add items then pay all at once
             </p>
           </div>
-        </div>
+        </motion.section>
 
-        {cart.length > 0 && (
-          <div style={styles.cartSection}>
-            <h2 style={styles.sectionTitle}>
-              <ShoppingCart size={24} style={{ marginRight: "10px", verticalAlign: "middle" }} />
-              Your Cart ({cart.length})
-            </h2>
-            <div style={styles.cartList}>
-              {cart.map((item) => (
-                <div key={item.id} style={styles.cartItem}>
-                  <div>
-                    <p style={styles.cartItemPhone}>{item.phoneNumber}</p>
-                    <p style={styles.cartItemPkg}>{item.pkg.dataAmount} - GH₵{item.pkg.price}</p>
-                  </div>
-                  <button onClick={() => removeFromCart(item.id)} style={styles.removeButton}>
-                    <Trash2 size={18} />
-                  </button>
+        {/* Cart Section */}
+        <AnimatePresence>
+          {cart.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 20, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: 20, height: 0 }}
+              className="rounded-3xl bg-white/80 backdrop-blur-sm border border-white/30 p-6 shadow-xl"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600">
+                  <ShoppingCart className="h-5 w-5 text-white" />
                 </div>
-              ))}
-            </div>
-            
-            <div style={styles.cartSummary}>
-              <div style={styles.summaryRow}>
-                <span>Subtotal:</span>
-                <span>GH₵{cartSubtotal.toFixed(2)}</span>
+                <h2 className="text-xl font-bold">Your Cart ({cart.length})</h2>
               </div>
-              <div style={styles.summaryRow}>
-                <span>Fee ({transactionCharge}%):</span>
-                <span>GH₵{cartCharge.toFixed(2)}</span>
+
+              <div className="space-y-3 mb-6">
+                {cart.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"
+                  >
+                    <div>
+                      <p className="font-bold">{item.phoneNumber}</p>
+                      <p className="text-sm text-muted-foreground">{item.pkg.dataAmount} • GH₵{item.pkg.price}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeFromCart(item.id)}
+                      className="text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </motion.div>
+                ))}
               </div>
-              <div style={styles.summaryTotal}>
-                <span>Total:</span>
-                <span>GH₵{cartTotal.toFixed(2)}</span>
+
+              <div className="border-t border-gray-200 pt-4 space-y-2">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>GH₵{cartSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Fee ({transactionCharge}%)</span>
+                  <span>GH₵{cartCharge.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xl font-bold pt-2">
+                  <span>Total</span>
+                  <span className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">GH₵{cartTotal.toFixed(2)}</span>
+                </div>
               </div>
-              
+
               <Button
                 onClick={handleCheckout}
                 disabled={purchasing}
-                style={{...styles.checkoutButton, backgroundColor: "#0369a1"}}
+                className="w-full mt-6 h-14 text-lg bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-2xl shadow-lg shadow-emerald-500/30"
               >
-                {purchasing ? "Processing..." : `Pay GH₵${cartTotal.toFixed(2)}`}
+                {purchasing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-5 w-5 mr-2" />
+                    Pay GH₵{cartTotal.toFixed(2)}
+                  </>
+                )}
               </Button>
-            </div>
-          </div>
-        )}
-
+            </motion.section>
+          )}
+        </AnimatePresence>
       </main>
 
-      {whatsappLink ? (
-        <Button
-          type="button"
+      {/* Floating WhatsApp */}
+      {whatsappLink && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={handleWhatsAppClick}
-          size="icon"
-          className="fixed bottom-5 right-5 z-50 rounded-full"
+          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/30 pulse-glow"
           aria-label="Chat on WhatsApp"
-          title="Chat on WhatsApp"
         >
-          <MessageCircle size={20} />
-        </Button>
-      ) : null}
+          <MessageCircle className="h-6 w-6" />
+        </motion.button>
+      )}
     </div>
   );
 }
-
-const styles: any = {
-  body: {
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    margin: 0,
-    padding: 0,
-    backgroundColor: "#f0f4f8",
-    color: "#333",
-    minHeight: "100vh",
-  },
-  header: {
-    backgroundColor: "white",
-    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-    padding: "20px",
-    textAlign: "center" as const,
-    borderBottom: "3px solid #0369a1",
-  },
-  headerTop: {
-    textAlign: "left" as const,
-  },
-  h1: {
-    color: "#1a1a1a",
-    marginBottom: "5px",
-    fontSize: "2.5em",
-  },
-  subtitle: {
-    color: "#0369a1",
-    fontSize: "1.1em",
-    fontWeight: "500",
-  },
-  contactBar: {
-    backgroundColor: "#0369a1",
-    color: "white",
-    padding: "12px",
-    textAlign: "center" as const,
-    borderRadius: "5px",
-    margin: "20px",
-  },
-  contactLink: {
-    color: "#ffcc00",
-    textDecoration: "none",
-    fontWeight: "bold",
-  },
-  main: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "20px",
-  },
-  statusChecker: {
-    backgroundColor: "#cffafe",
-    padding: "20px",
-    borderRadius: "8px",
-    marginBottom: "30px",
-    textAlign: "center" as const,
-    border: "1px solid #a5f3fc",
-  },
-  statusCheckerH2: {
-    marginTop: 0,
-    color: "#003d5b",
-  },
-  statusCheckerForm: {
-    display: "flex",
-    justifyContent: "center",
-    gap: "10px",
-    flexWrap: "wrap" as const,
-  },
-  input: {
-    padding: "10px",
-    border: "1px solid #ccc",
-    borderRadius: "5px",
-    width: "200px",
-  },
-  statusButton: {
-    padding: "10px 20px",
-    backgroundColor: "#0369a1",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-  statusReport: {
-    marginTop: "15px",
-    textAlign: "left" as const,
-    padding: "15px",
-    backgroundColor: "#fff",
-    borderRadius: "5px",
-    maxWidth: "400px",
-    margin: "15px auto 0",
-  },
-  sectionTitle: {
-    fontSize: "1.8em",
-    marginTop: "30px",
-    marginBottom: "20px",
-    color: "#1a1a1a",
-  },
-  purchaseSection: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: "20px",
-    marginBottom: "30px",
-  },
-  purchaseCard: {
-    padding: "20px",
-    backgroundColor: "#fff",
-    borderRadius: "8px",
-    border: "1px solid #ddd",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-  },
-  selectedPackageInfo: {
-    textAlign: "center" as const,
-  },
-  packageName: {
-    fontSize: "2em",
-    fontWeight: "bold",
-    color: "#0369a1",
-    margin: "10px 0",
-  },
-  packagePrice: {
-    fontSize: "1.5em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-  },
-  packageTotal: {
-    fontSize: "1.1em",
-    color: "#28a745",
-    marginTop: "10px",
-    fontWeight: "bold",
-  },
-  noSelection: {
-    color: "#999",
-    textAlign: "center" as const,
-    padding: "20px 0",
-  },
-  buyButton: {
-    width: "100%",
-    padding: "12px",
-    backgroundColor: "#0369a1",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    fontSize: "1.1em",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loading: {
-    textAlign: "center" as const,
-    color: "#666",
-    padding: "40px",
-  },
-  packagesGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-    gap: "15px",
-    marginBottom: "30px",
-  },
-  packageCard: {
-    padding: "20px",
-    backgroundColor: "#fff",
-    border: "2px solid #ddd",
-    borderRadius: "10px",
-    textAlign: "center" as const,
-    cursor: "pointer",
-    transition: "all 0.3s",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-  },
-  packageCardSelected: {
-    border: "2px solid #0369a1",
-    backgroundColor: "#cffafe",
-    boxShadow: "0 0 15px rgba(3, 105, 161, 0.3)",
-    transform: "scale(1.02)",
-  },
-  packageCardName: {
-    fontSize: "1.4em",
-    fontWeight: "bold",
-    color: "#0369a1",
-    margin: "5px 0",
-  },
-  packageCardPrice: {
-    fontSize: "1.2em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-    margin: "5px 0",
-  },
-  packageDelivery: {
-    fontSize: "0.85em",
-    color: "#666",
-    margin: "5px 0 0",
-  },
-  whatsappButton: {
-    position: "fixed" as const,
-    bottom: "24px",
-    right: "24px",
-    backgroundColor: "#25D366",
-    color: "white",
-    border: "none",
-    borderRadius: "50%",
-    width: "56px",
-    height: "56px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-    zIndex: 50,
-  },
-  cartSection: {
-    backgroundColor: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
-    marginTop: "30px",
-  },
-  cartList: {
-    marginBottom: "20px",
-  },
-  cartItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px",
-    borderBottom: "1px solid #eee",
-  },
-  cartItemPhone: {
-    fontWeight: "bold",
-    margin: 0,
-    color: "#1a1a1a",
-  },
-  cartItemPkg: {
-    color: "#666",
-    margin: 0,
-    fontSize: "0.9em",
-  },
-  removeButton: {
-    background: "none",
-    border: "none",
-    color: "#dc3545",
-    cursor: "pointer",
-    padding: "5px",
-  },
-  cartSummary: {
-    borderTop: "2px solid #eee",
-    paddingTop: "15px",
-  },
-  summaryRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "8px",
-    color: "#666",
-  },
-  summaryTotal: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "15px",
-    marginBottom: "20px",
-    fontSize: "1.3em",
-    fontWeight: "bold",
-    color: "#1a1a1a",
-  },
-  checkoutButton: {
-    width: "100%",
-    padding: "15px",
-    backgroundColor: "#0369a1",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    fontSize: "1.2em",
-  },
-};

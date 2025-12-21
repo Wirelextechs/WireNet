@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, Menu, X } from "lucide-react";
+import { MessageCircle, Menu, X, Zap, Clock, Smartphone, Radio, Phone, Sparkles, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
 
@@ -18,6 +18,65 @@ interface Settings {
   announcementSeverity?: AnnouncementSeverity;
   announcementActive?: boolean;
 }
+
+const categories = [
+  {
+    id: "datagod",
+    title: "DataGod",
+    description: "Wholesale pricing for bulk buyers",
+    details: "Best rates • Up to 24hr delivery",
+    icon: Sparkles,
+    gradient: "from-violet-500 via-purple-500 to-fuchsia-500",
+    shadowColor: "shadow-violet-500/25",
+    path: "/datagod",
+    enabled: "datagodEnabled" as const,
+  },
+  {
+    id: "fastnet",
+    title: "FastNet",
+    description: "Lightning-fast data delivery",
+    details: "5-20 min delivery • Standard rates",
+    icon: Zap,
+    gradient: "from-amber-500 via-orange-500 to-red-500",
+    shadowColor: "shadow-orange-500/25",
+    path: "/fastnet",
+    enabled: "fastnetEnabled" as const,
+  },
+  {
+    id: "at",
+    title: "AT iShare",
+    description: "AT network bundles",
+    details: "Instant delivery • Clear pricing",
+    icon: Smartphone,
+    gradient: "from-cyan-500 via-blue-500 to-indigo-500",
+    shadowColor: "shadow-blue-500/25",
+    path: "/at",
+    enabled: "atEnabled" as const,
+  },
+  {
+    id: "telecel",
+    title: "Telecel",
+    description: "Telecel data packages",
+    details: "Fast processing • Flexible bundles",
+    icon: Radio,
+    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+    shadowColor: "shadow-teal-500/25",
+    path: "/telecel",
+    enabled: "telecelEnabled" as const,
+  },
+  {
+    id: "afa",
+    title: "MTN AFA",
+    description: "Registration service",
+    details: "12-72hr processing • Cheaper calls",
+    icon: Phone,
+    gradient: "from-pink-500 via-rose-500 to-red-500",
+    shadowColor: "shadow-rose-500/25",
+    path: "",
+    enabled: "afaEnabled" as const,
+    isExternal: true,
+  },
+];
 
 export default function Storefront() {
   const [settings, setSettings] = useState<Settings>({
@@ -81,37 +140,92 @@ export default function Storefront() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b bg-muted/20">
-        <div className="mx-auto max-w-6xl px-4 py-3">
-          <AnnouncementBanner
-            text={settings.announcementText}
-            link={settings.announcementLink}
-            severity={settings.announcementSeverity || "info"}
-            active={settings.announcementActive === true}
-          />
-        </div>
-      </div>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
 
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <button
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { type: "spring", stiffness: 100 }
+    }
+  };
+
+  const enabledCategories = categories.filter(cat => settings[cat.enabled]);
+
+  return (
+    <div className="min-h-screen gradient-mesh">
+      {/* Announcement Banner */}
+      <AnimatePresence>
+        {settings.announcementActive && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 text-white">
+              <div className="mx-auto max-w-7xl px-4 py-3">
+                <AnnouncementBanner
+                  text={settings.announcementText}
+                  link={settings.announcementLink}
+                  severity={settings.announcementSeverity || "info"}
+                  active={settings.announcementActive === true}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="sticky top-0 z-40 glass border-b border-white/10"
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          <motion.button
             type="button"
             onClick={() => navigate("/")}
-            className="text-lg font-semibold tracking-tight"
+            className="flex items-center gap-2"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             aria-label="WireNet home"
           >
-            WireNet
-          </button>
+            <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gradient">WireNet</span>
+          </motion.button>
 
-          <div className="hidden items-center gap-2 md:flex">
-            {settings.whatsappLink ? (
-              <Button variant="ghost" onClick={handleWhatsAppClick}>
-                WhatsApp
+          <div className="hidden items-center gap-3 md:flex">
+            {settings.whatsappLink && (
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleWhatsAppClick}
+                  className="gap-2 hover:bg-emerald-500/10 hover:text-emerald-600"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </Button>
+              </motion.div>
+            )}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                onClick={() => navigate("/admin/login")}
+                className="gradient-primary text-white border-0 shadow-lg shadow-violet-500/25"
+              >
+                Admin Portal
               </Button>
-            ) : null}
-            <Button variant="ghost" onClick={() => navigate("/admin/login")}>Admin</Button>
+            </motion.div>
           </div>
 
           <Button
@@ -126,132 +240,180 @@ export default function Storefront() {
           </Button>
         </div>
 
-        {menuOpen ? (
-          <div className="border-t bg-background md:hidden">
-            <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3">
-              {settings.whatsappLink ? (
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-white/10 glass md:hidden overflow-hidden"
+            >
+              <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4">
+                {settings.whatsappLink && (
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-2"
+                    onClick={() => {
+                      handleWhatsAppClick();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    WhatsApp
+                  </Button>
+                )}
                 <Button
-                  variant="ghost"
-                  className="justify-start"
+                  className="justify-start gradient-primary text-white"
                   onClick={() => {
-                    handleWhatsAppClick();
+                    navigate("/admin/login");
                     setMenuOpen(false);
                   }}
                 >
-                  WhatsApp
+                  Admin Portal
                 </Button>
-              ) : null}
-              <Button
-                variant="ghost"
-                className="justify-start"
-                onClick={() => {
-                  navigate("/admin/login");
-                  setMenuOpen(false);
-                }}
-              >
-                Admin
-              </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.header>
+
+      <main className="mx-auto max-w-7xl px-4 py-12">
+        {/* Hero Section */}
+        <motion.section
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", delay: 0.2 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6"
+          >
+            <Sparkles className="h-4 w-4 text-violet-500" />
+            <span className="text-sm font-medium">Ghana's Premier Data Hub</span>
+          </motion.div>
+          
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
+            <span className="text-gradient">Instant Data</span>
+            <br />
+            <span className="text-foreground">At Your Fingertips</span>
+          </h1>
+          
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+            Experience lightning-fast data delivery with competitive prices.
+            Choose your network, select a bundle, and get connected instantly.
+          </p>
+
+          <motion.div
+            className="flex flex-wrap justify-center gap-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm font-medium">5-20 min delivery</span>
             </div>
-          </div>
-        ) : null}
-      </header>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 text-violet-600">
+              <Zap className="h-4 w-4" />
+              <span className="text-sm font-medium">Instant activation</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 text-amber-600">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-medium">Best prices</span>
+            </div>
+          </motion.div>
+        </motion.section>
 
-      <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
-        <section className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">All-in-One Data & Internet Solutions</h1>
-          <p className="text-muted-foreground">Choose a category to shop the right deal and delivery speed.</p>
-        </section>
+        {/* Categories Grid */}
+        <motion.section
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {enabledCategories.map((category, index) => {
+            const Icon = category.icon;
+            return (
+              <motion.div
+                key={category.id}
+                variants={itemVariants}
+                whileHover={{ y: -8, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => category.isExternal ? handleAfaClick() : navigate(category.path)}
+                className={`
+                  relative group cursor-pointer rounded-3xl p-1 
+                  bg-gradient-to-br ${category.gradient}
+                  ${category.shadowColor} shadow-xl hover:shadow-2xl
+                  transition-shadow duration-300
+                `}
+              >
+                <div className="relative h-full rounded-[1.4rem] bg-white/95 dark:bg-gray-900/95 p-6 backdrop-blur-sm">
+                  {/* Icon */}
+                  <div className={`
+                    inline-flex p-3 rounded-2xl mb-4
+                    bg-gradient-to-br ${category.gradient}
+                    shadow-lg ${category.shadowColor}
+                  `}>
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {settings.datagodEnabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>💰 DataGod</CardTitle>
-                <CardDescription>Dealership pricing for bulk buyers</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Wholesale-style rates with slower delivery (up to 24hrs).</p>
-                <Button className="w-full" onClick={() => navigate("/datagod")}>Shop DataGod</Button>
-              </CardContent>
-            </Card>
-          ) : null}
+                  {/* Content */}
+                  <h3 className="text-xl font-bold mb-2">{category.title}</h3>
+                  <p className="text-muted-foreground mb-3">{category.description}</p>
+                  <p className="text-sm text-muted-foreground/80">{category.details}</p>
 
-          {settings.fastnetEnabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>⚡ FastNet</CardTitle>
-                <CardDescription>Normal prices, fast delivery</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Designed for speed—delivery is typically 5–20 minutes.</p>
-                <Button className="w-full" onClick={() => navigate("/fastnet")}>Shop FastNet</Button>
-              </CardContent>
-            </Card>
-          ) : null}
+                  {/* Arrow indicator */}
+                  <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={`p-2 rounded-full bg-gradient-to-br ${category.gradient}`}>
+                      <ChevronRight className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
 
-          {settings.atEnabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>📱 AT ISHARE</CardTitle>
-                <CardDescription>Packages for AT subscribers</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Buy AT data bundles with quick delivery and clear pricing.</p>
-                <Button className="w-full" onClick={() => navigate("/at")}>Shop AT</Button>
-              </CardContent>
-            </Card>
-          ) : null}
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 rounded-[1.4rem] overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity shimmer" />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.section>
 
-          {settings.telecelEnabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>📡 TELECEL</CardTitle>
-                <CardDescription>Telecel bundles and support</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Flexible Telecel packages with fast processing.</p>
-                <Button className="w-full" onClick={() => navigate("/telecel")}>Shop Telecel</Button>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {settings.afaEnabled ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>📞 MTN AFA Registration</CardTitle>
-                <CardDescription>Cheaper calls & free network calls</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Registration typically takes 12–72 hours depending on verification.</p>
-                <Button className="w-full" variant="secondary" onClick={handleAfaClick}>Register Now</Button>
-              </CardContent>
-            </Card>
-          ) : null}
-        </section>
-
-        {!settings.datagodEnabled &&
-        !settings.fastnetEnabled &&
-        !settings.atEnabled &&
-        !settings.telecelEnabled &&
-        !settings.afaEnabled ? (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">No categories are currently available. Please check back soon!</CardContent>
-          </Card>
-        ) : null}
+        {/* Empty state */}
+        {enabledCategories.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-20"
+          >
+            <div className="inline-flex p-4 rounded-full bg-muted mb-4">
+              <Clock className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
+            <p className="text-muted-foreground">No categories available at the moment. Check back soon!</p>
+          </motion.div>
+        )}
       </main>
 
-      {settings.whatsappLink ? (
-        <Button
-          type="button"
+      {/* Floating WhatsApp button */}
+      {settings.whatsappLink && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.5, type: "spring" }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={handleWhatsAppClick}
-          size="icon"
-          className="fixed bottom-5 right-5 z-50 rounded-full"
+          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/30 pulse-glow"
           aria-label="Chat on WhatsApp"
           title="Chat on WhatsApp"
         >
-          <MessageCircle size={20} />
-        </Button>
-      ) : null}
+          <MessageCircle className="h-6 w-6" />
+        </motion.button>
+      )}
     </div>
   );
 }
