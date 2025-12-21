@@ -5,10 +5,7 @@
 
 const SMS_API_KEY = "cHJvc3Blci53ZWRhbTo1Q0d5YU1Hd3Nhdmd5bDBD";
 const SMS_API_URL = "https://sms.arkesel.com/sms/api";
-// IMPORTANT: Sender ID must be registered with Arkesel!
-// Common approved IDs: "Arkesel", or your registered business name
-// Change this to your registered Sender ID from Arkesel dashboard
-const SENDER_ID = "Arkesel";
+const SENDER_ID = "WTData"; // Your approved sender ID
 
 interface SMSResult {
   success: boolean;
