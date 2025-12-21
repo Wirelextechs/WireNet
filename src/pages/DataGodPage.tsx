@@ -80,7 +80,7 @@ export default function DataGodPage() {
   const loadPackages = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/datagod/packages/public");
+      const response = await fetch("/api/datagod/packages");
       if (response.ok) {
         const data = await response.json();
         setPackages(data);

@@ -915,12 +915,6 @@ const styles: any = {
     backgroundColor: "#6c757d",
     color: "white",
   },
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: "15px",
-    marginBottom: "20px",
-  },
   settingsForm: {
     display: "flex",
     flexDirection: "column",

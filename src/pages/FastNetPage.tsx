@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
+import { packagesAPI } from "@/lib/supabase";
 
 interface Package {
   id: string;
@@ -80,11 +81,8 @@ export default function FastNetPage() {
   const loadPackages = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/packages/public");
-      if (response.ok) {
-        const data = await response.json();
-        setPackages(data);
-      }
+      const data = await packagesAPI.getByCategory("fastnet");
+      setPackages(data || []);
     } catch (error) {
       console.error("Error loading packages:", error);
     } finally {
@@ -103,7 +101,7 @@ export default function FastNetPage() {
     }
     setStatusLoading(true);
     try {
-      const response = await fetch(`/api/orders/status/${statusCheckId}`);
+      const response = await fetch(`/api/fastnet/orders/status/${statusCheckId}`);
       if (response.ok) {
         const order = await response.json();
         setStatusReport({
@@ -230,7 +228,7 @@ export default function FastNetPage() {
             let firstOrderId = "";
             for (const item of cartItems) {
               try {
-                const orderResponse = await fetch("/api/purchase", {
+                const orderResponse = await fetch("/api/fastnet/purchase", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
