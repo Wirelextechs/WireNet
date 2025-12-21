@@ -18,6 +18,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Trust proxy for Vercel/production environments
   app.set("trust proxy", 1);
 
+  // Version/health helper (useful for verifying deployments)
+  app.get("/api/version", (req, res) => {
+    res.json({
+      env: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+      sha:
+        process.env.VERCEL_GIT_COMMIT_SHA ||
+        process.env.VERCEL_GITHUB_COMMIT_SHA ||
+        process.env.GIT_COMMIT_SHA ||
+        "unknown",
+      time: new Date().toISOString(),
+    });
+  });
+
   // Session middleware with PostgreSQL store
   app.use(
     session({
