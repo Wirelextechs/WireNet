@@ -699,6 +699,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DataGod Purchase endpoint (for storefront)
+  app.post("/api/datagod/purchase", async (req, res) => {
+    try {
+      const { phoneNumber, dataAmount, price, reference } = req.body;
+      
+      console.log("📝 DataGod purchase request:", { phoneNumber, dataAmount, price, reference });
+      
+      if (!phoneNumber || !dataAmount || !price) {
+        console.error("❌ Missing required fields:", { phoneNumber, dataAmount, price });
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const orderReference = `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      const order = await storage.createDatagodOrder({
+        shortId: orderReference,
+        customerPhone: phoneNumber,
+        packageName: dataAmount,
+        packagePrice: typeof price === 'string' ? parseFloat(price) : price,
+        status: "PAID",
+        paymentReference: reference || null,
+      });
+
+      console.log("✅ DataGod order created via purchase:", order);
+      res.json({ success: true, shortId: order.shortId, order });
+    } catch (error: any) {
+      console.error("❌ Error creating DataGod order:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // Get DataGod Order Status (Public - for customers to check their order)
   app.get("/api/datagod/orders/status/:shortId", async (req, res) => {
     try {
