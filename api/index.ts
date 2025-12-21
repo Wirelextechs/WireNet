@@ -8,6 +8,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Version/health helper (useful for verifying deployments)
+app.get("/api/version", (req, res) => {
+  res.json({
+    env: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+    sha:
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.VERCEL_GITHUB_COMMIT_SHA ||
+      process.env.GIT_COMMIT_SHA ||
+      "unknown",
+    time: new Date().toISOString(),
+  });
+});
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = [
