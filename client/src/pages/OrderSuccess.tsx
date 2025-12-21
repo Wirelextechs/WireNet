@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, Copy, Home, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
 
 interface OrderDetails {
   shortId: string;
@@ -24,6 +25,14 @@ export default function OrderSuccess() {
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [announcement, setAnnouncement] = useState<{ text: string; link: string; severity: AnnouncementSeverity; active: boolean }>(
+    {
+      text: "",
+      link: "",
+      severity: "info",
+      active: false,
+    }
+  );
   
   const searchParams = new URLSearchParams(window.location.search);
   const service = searchParams.get("service") || "datagod";
@@ -35,6 +44,24 @@ export default function OrderSuccess() {
       setLoading(false);
     }
   }, [orderId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch("/api/settings");
+        if (!response.ok) return;
+        const data = await response.json();
+        setAnnouncement({
+          text: data.announcementText || "",
+          link: data.announcementLink || "",
+          severity: (data.announcementSeverity as AnnouncementSeverity) || "info",
+          active: data.announcementActive === true,
+        });
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   const fetchOrderDetails = async () => {
     try {
@@ -89,18 +116,71 @@ export default function OrderSuccess() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.loadingBox}>
-          <div style={styles.spinner}></div>
-          <p>Loading order details...</p>
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="border-b bg-muted/20">
+          <div className="mx-auto max-w-6xl px-4 py-3">
+            <AnnouncementBanner
+              text={announcement.text}
+              link={announcement.link}
+              severity={announcement.severity}
+              active={announcement.active}
+            />
+          </div>
+        </div>
+
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="text-lg font-semibold tracking-tight"
+              aria-label="WireNet home"
+            >
+              WireNet
+            </button>
+            <Button variant="ghost" onClick={() => navigate("/")}>Home</Button>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <div style={styles.loadingBox}>
+            <div style={styles.spinner}></div>
+            <p>Loading order details...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.successCard}>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="border-b bg-muted/20">
+        <div className="mx-auto max-w-6xl px-4 py-3">
+          <AnnouncementBanner
+            text={announcement.text}
+            link={announcement.link}
+            severity={announcement.severity}
+            active={announcement.active}
+          />
+        </div>
+      </div>
+
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="text-lg font-semibold tracking-tight"
+            aria-label="WireNet home"
+          >
+            WireNet
+          </button>
+          <Button variant="ghost" onClick={() => navigate("/")}>Home</Button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        <div style={styles.successCard}>
         <div style={styles.iconContainer}>
           <CheckCircle size={64} color="#28a745" />
         </div>
@@ -188,6 +268,7 @@ export default function OrderSuccess() {
         <p style={styles.trackingNote}>
           You can check your order status anytime on the {service === "fastnet" ? "FastNet" : "DataGod"} page using your Order ID.
         </p>
+        </div>
       </div>
     </div>
   );

@@ -281,7 +281,7 @@ export async function getWalletBalance(): Promise<{
  * Get cost price for a data bundle
  */
 export async function getCostPrice(
-  dataAmount: string
+  _dataAmount: string
 ): Promise<{ success: boolean; costPrice?: number; message?: string }> {
   // Code Craft doesn't provide a price lookup endpoint
   // Prices should be maintained in the admin panel

@@ -4,7 +4,7 @@
  */
 
 import { storage } from "./storage.js";
-import * as supplierManager from "./supplier-manager.js";
+import * as codecraft from "./codecraft.js";
 
 const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
 let pollingActive = false;
@@ -57,7 +57,7 @@ async function checkCategoryOrders(category: "at" | "telecel") {
 
     for (const order of processingOrders) {
       try {
-        const supplierRef = order.supplierReference || order.supplier_reference;
+        const supplierRef = order.supplierReference || null;
         
         if (!supplierRef) {
           console.warn(`⚠️  Order ${order.shortId} has no supplier reference, skipping`);
@@ -66,7 +66,8 @@ async function checkCategoryOrders(category: "at" | "telecel") {
 
         console.log(`🔍 Checking order ${order.shortId} with reference ${supplierRef}...`);
         
-        const statusResult = await supplierManager.checkOrderStatus(category, supplierRef);
+        const network = category === "at" ? "at_ishare" : "telecel";
+        const statusResult = await codecraft.checkOrderStatus(supplierRef, network);
 
         if (statusResult.success && statusResult.status) {
           const newStatus = normalizeStatus(statusResult.status);
@@ -157,7 +158,7 @@ export async function checkSingleOrderStatus(
       return { success: false, message: "Order not found" };
     }
     
-    const supplierRef = order.supplierReference || order.supplier_reference;
+    const supplierRef = order.supplierReference || null;
     
     if (!supplierRef) {
       return { success: false, message: "Order has no supplier reference" };
@@ -165,7 +166,8 @@ export async function checkSingleOrderStatus(
 
     console.log(`🔍 Manual status check for order ${order.shortId}...`);
     
-    const statusResult = await supplierManager.checkOrderStatus(category, supplierRef);
+    const network = category === "at" ? "at_ishare" : "telecel";
+    const statusResult = await codecraft.checkOrderStatus(supplierRef, network);
 
     if (statusResult.success && statusResult.status) {
       const newStatus = normalizeStatus(statusResult.status);

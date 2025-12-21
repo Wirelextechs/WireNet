@@ -26,6 +26,7 @@ export default function AtPage() {
   const purchaseSectionRef = useRef<HTMLDivElement>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
+  const [whatsappLink, setWhatsappLink] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -54,6 +55,7 @@ export default function AtPage() {
       const response = await fetch("/api/settings");
       if (response.ok) {
         const data = await response.json();
+        setWhatsappLink(data.whatsappLink || "");
         if (data.atTransactionCharge) {
           setTransactionCharge(parseFloat(data.atTransactionCharge));
         }
@@ -66,6 +68,12 @@ export default function AtPage() {
       }
     } catch (error) {
       console.error("Error loading settings:", error);
+    }
+  };
+
+  const handleWhatsAppClick = () => {
+    if (whatsappLink) {
+      window.open(whatsappLink, "_blank");
     }
   };
 
@@ -283,38 +291,39 @@ export default function AtPage() {
   const cartTotal = cartSubtotal + cartCharge;
 
   return (
-    <div style={styles.body}>
-      <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/")}
-            style={{ marginBottom: "10px" }}
-          >
-            <ArrowLeft size={18} style={{ marginRight: "8px" }} />
-            Back to WireNet
-          </Button>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="border-b bg-muted/20">
+        <div className="mx-auto max-w-6xl px-4 py-3">
+          <AnnouncementBanner
+            text={announcement.text}
+            link={announcement.link}
+            severity={announcement.severity}
+            active={announcement.active}
+          />
         </div>
-        <h1 style={styles.h1}>AT ISHARE - HIGH-SPEED DATA</h1>
-        <p style={styles.subtitle}>Instant Delivery - Fast and Reliable</p>
       </div>
 
-      <div style={styles.contactBar}>
-        📞 Contact: <a href="tel:+233XXXXXXXXX" style={styles.contactLink}>+233 XXX XXX XXX</a> | 
-        💬 WhatsApp: <a href="https://wa.me/233XXXXXXXXX" style={styles.contactLink}>Chat with us</a>
-      </div>
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex max-w-6xl items-start justify-between gap-4 px-4 py-4">
+          <div className="space-y-1">
+            <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate("/")}
+            >
+              <ArrowLeft size={18} className="mr-2" />
+              Back to WireNet
+            </Button>
+            <h1 className="text-xl font-semibold tracking-tight">AT ISHARE - HIGH-SPEED DATA</h1>
+            <p className="text-sm text-muted-foreground">Instant Delivery - Fast and Reliable</p>
+          </div>
 
-      <div style={{ maxWidth: "1200px", margin: "16px auto 0", padding: "0 16px" }}>
-        <AnnouncementBanner
-          text={announcement.text}
-          link={announcement.link}
-          severity={announcement.severity}
-          active={announcement.active}
-        />
-      </div>
+          {whatsappLink ? (
+            <div className="hidden items-center gap-2 md:flex">
+              <Button variant="ghost" onClick={handleWhatsAppClick}>WhatsApp</Button>
+            </div>
+          ) : null}
+        </div>
+      </header>
 
-      <main style={styles.main}>
+      <main className="mx-auto max-w-6xl px-4 py-6">
         <div style={styles.statusChecker}>
           <h2 style={styles.statusCheckerH2}>Check Order Status</h2>
           <div style={styles.statusCheckerForm}>
@@ -492,13 +501,18 @@ export default function AtPage() {
 
       </main>
 
-      <button
-        onClick={() => window.open("https://wa.me/233XXXXXXXXX", "_blank")}
-        style={styles.whatsappButton}
-        title="Chat on WhatsApp"
-      >
-        <MessageCircle size={24} />
-      </button>
+      {whatsappLink ? (
+        <Button
+          type="button"
+          onClick={handleWhatsAppClick}
+          size="icon"
+          className="fixed bottom-5 right-5 z-50 rounded-full"
+          aria-label="Chat on WhatsApp"
+          title="Chat on WhatsApp"
+        >
+          <MessageCircle size={20} />
+        </Button>
+      ) : null}
     </div>
   );
 }

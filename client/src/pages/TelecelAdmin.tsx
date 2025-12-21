@@ -3,8 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, ShoppingCart, Package as PackageIcon, Clock, CheckCircle2, Settings as SettingsIcon, RefreshCw, Search } from "lucide-react";
-import { packagesAPI } from "@/lib/supabase";
+import { ArrowLeft, Plus, Trash2, RefreshCw } from "lucide-react";
 
 interface Order {
   id: string;

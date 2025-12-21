@@ -24,7 +24,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@shared/*": ["shared/*"]
+      "@shared/*": ["shared/*"],
+      "lucide-react": ["node_modules/lucide-react/dist/lucide-react.d.ts"]
     }
   },
   "include": ["src", "server", "shared"],
