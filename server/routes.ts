@@ -752,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: pkg.id.toString(),
         dataAmount: `${pkg.dataValueGB}GB`,
         price: pkg.priceGHS,
-        deliveryTime: "Instant",
+        deliveryTime: "1-24 hours",
         isEnabled: pkg.isEnabled,
       }));
       res.json(transformedPackages);
