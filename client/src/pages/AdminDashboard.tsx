@@ -18,7 +18,7 @@ interface Settings {
   announcementSeverity?: "info" | "success" | "warning" | "error";
   announcementActive?: boolean;
   smsEnabled?: boolean;
-  smsNotificationPhone?: string;
+  smsNotificationPhones?: string[];
 }
 
 export default function AdminDashboard() {
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
     announcementSeverity: "info",
     announcementActive: false,
     smsEnabled: false,
-    smsNotificationPhone: "",
+    smsNotificationPhones: [],
   });
   const [whatsappLink, setWhatsappLink] = useState("");
   const [afaLink, setAfaLink] = useState("");
@@ -46,7 +46,8 @@ export default function AdminDashboard() {
   const [announcementSeverity, setAnnouncementSeverity] = useState<"info" | "success" | "warning" | "error">("info");
   const [announcementActive, setAnnouncementActive] = useState(false);
   const [smsEnabled, setSmsEnabled] = useState(false);
-  const [smsNotificationPhone, setSmsNotificationPhone] = useState("");
+  const [smsNotificationPhones, setSmsNotificationPhones] = useState<string[]>([]);
+  const [newPhoneInput, setNewPhoneInput] = useState("");
   const [smsBalance, setSmsBalance] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -91,7 +92,7 @@ export default function AdminDashboard() {
           announcementSeverity: data.announcementSeverity || "info",
           announcementActive: data.announcementActive === true,
           smsEnabled: data.smsEnabled === true,
-          smsNotificationPhone: data.smsNotificationPhone || "",
+          smsNotificationPhones: data.smsNotificationPhones || [],
         });
         setWhatsappLink(data.whatsappLink || "");
         setAfaLink(data.afaLink || "");
@@ -100,7 +101,7 @@ export default function AdminDashboard() {
         setAnnouncementSeverity(data.announcementSeverity || "info");
         setAnnouncementActive(data.announcementActive === true);
         setSmsEnabled(data.smsEnabled === true);
-        setSmsNotificationPhone(data.smsNotificationPhone || "");
+        setSmsNotificationPhones(data.smsNotificationPhones || []);
       }
       
       // Check SMS balance
@@ -237,7 +238,7 @@ export default function AdminDashboard() {
           telecelEnabled: settings.telecelEnabled,
           afaEnabled: settings.afaEnabled,
           smsEnabled,
-          smsNotificationPhone,
+          smsNotificationPhones,
         }),
       });
 
@@ -575,16 +576,50 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notification Phone Number</label>
-                <Input
-                  type="tel"
-                  placeholder="0xxxxxxxxx"
-                  value={smsNotificationPhone}
-                  onChange={(e) => setSmsNotificationPhone(e.target.value)}
-                />
+                <label className="text-sm font-medium">Notification Phone Numbers</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="tel"
+                    placeholder="0xxxxxxxxx"
+                    value={newPhoneInput}
+                    onChange={(e) => setNewPhoneInput(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      if (newPhoneInput.trim()) {
+                        setSmsNotificationPhones([...smsNotificationPhones, newPhoneInput.trim()]);
+                        setNewPhoneInput("");
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
                 <p className="text-xs text-gray-500">
-                  Phone number to receive order alerts (Ghana format)
+                  Add multiple phone numbers to receive order alerts (Ghana format)
                 </p>
+                {smsNotificationPhones.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    {smsNotificationPhones.map((phone, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <span className="text-sm">{phone}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSmsNotificationPhones(smsNotificationPhones.filter((_, i) => i !== index));
+                          }}
+                          className="h-6 text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {smsBalance && (
@@ -606,21 +641,22 @@ export default function AdminDashboard() {
                 <Button
                   variant="outline"
                   onClick={async () => {
-                    if (!smsNotificationPhone) {
-                      alert("Enter a phone number first");
+                    if (smsNotificationPhones.length === 0) {
+                      alert("Add at least one phone number first");
                       return;
                     }
-                    setMessage("Sending test SMS...");
+                    setMessage("Sending test SMS to all numbers...");
                     try {
+                      // Send test to all numbers
                       const res = await fetch("/api/sms/test", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         credentials: "include",
-                        body: JSON.stringify({ phone: smsNotificationPhone }),
+                        body: JSON.stringify({ phones: smsNotificationPhones }),
                       });
                       const data = await res.json();
                       if (data.success) {
-                        setMessage("✅ Test SMS sent! Check your phone.");
+                        setMessage(`✅ Test SMS sent to ${smsNotificationPhones.length} number(s)!`);
                       } else {
                         setMessage(`❌ SMS failed: ${data.message}`);
                       }
@@ -630,7 +666,7 @@ export default function AdminDashboard() {
                     setTimeout(() => setMessage(""), 5000);
                   }}
                 >
-                  📱 Test SMS
+                  📱 Test SMS ({smsNotificationPhones.length})
                 </Button>
               </div>
             </CardContent>

@@ -61,10 +61,10 @@ export async function sendSMS(to: string, message: string): Promise<SMSResult> {
 }
 
 /**
- * Send order notification SMS to admin
+ * Send order notification SMS to admin(s)
  */
 export async function sendOrderNotification(
-  adminPhone: string,
+  adminPhones: string | string[],
   category: string,
   orderId: string,
   customerPhone: string,
@@ -72,7 +72,32 @@ export async function sendOrderNotification(
 ): Promise<SMSResult> {
   const message = `New ${category} Order!\nID: ${orderId}\nPhone: ${customerPhone}\nPackage: ${packageDetails}`;
   
-  return sendSMS(adminPhone, message);
+  // Convert single phone to array for consistency
+  const phones = Array.isArray(adminPhones) ? adminPhones : [adminPhones];
+  
+  // Send to all phone numbers
+  const results = await Promise.allSettled(
+    phones.map(phone => sendSMS(phone, message))
+  );
+  
+  // Check if at least one SMS was sent successfully
+  const anySuccess = results.some(
+    result => result.status === 'fulfilled' && result.value.success
+  );
+  
+  if (anySuccess) {
+    return {
+      success: true,
+      message: `SMS sent to ${results.filter(r => r.status === 'fulfilled' && r.value.success).length}/${phones.length} numbers`,
+      data: results
+    };
+  } else {
+    return {
+      success: false,
+      message: "Failed to send SMS to all numbers",
+      data: results
+    };
+  }
 }
 
 /**

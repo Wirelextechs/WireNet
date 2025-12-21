@@ -261,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhone } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhones } = req.body;
 
       const updated = await storage.updateSettings({
         whatsappLink,
@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         atActiveSupplier,
         telecelActiveSupplier,
         smsEnabled,
-        smsNotificationPhone,
+        smsNotificationPhones,
       });
 
       res.json(updated);
@@ -307,13 +307,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test SMS sending (Admin only)
   app.post("/api/sms/test", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { phone } = req.body;
-      if (!phone) {
-        return res.status(400).json({ success: false, message: "Phone number required" });
+      const { phones } = req.body;
+      if (!phones || (Array.isArray(phones) && phones.length === 0)) {
+        return res.status(400).json({ success: false, message: "Phone number(s) required" });
       }
       
       const result = await sendOrderNotification(
-        phone,
+        phones,
         "TEST",
         "TEST-123",
         "0244000000",
@@ -388,9 +388,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
-        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+        if (settings?.smsEnabled && settings?.smsNotificationPhones && settings.smsNotificationPhones.length > 0) {
           sendOrderNotification(
-            settings.smsNotificationPhone,
+            settings.smsNotificationPhones,
             "FastNet",
             order.shortId,
             phoneNumber,
@@ -783,9 +783,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
-        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+        if (settings?.smsEnabled && settings?.smsNotificationPhones && settings.smsNotificationPhones.length > 0) {
           sendOrderNotification(
-            settings.smsNotificationPhone,
+            settings.smsNotificationPhones,
             "DataGod",
             order.shortId,
             phoneNumber,
@@ -965,9 +965,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
-        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+        if (settings?.smsEnabled && settings?.smsNotificationPhones && settings.smsNotificationPhones.length > 0) {
           sendOrderNotification(
-            settings.smsNotificationPhone,
+            settings.smsNotificationPhones,
             "AT iShare",
             order.shortId,
             phoneNumber,
@@ -1189,9 +1189,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
-        if (settings?.smsEnabled && settings?.smsNotificationPhone) {
+        if (settings?.smsEnabled && settings?.smsNotificationPhones && settings.smsNotificationPhones.length > 0) {
           sendOrderNotification(
-            settings.smsNotificationPhone,
+            settings.smsNotificationPhones,
             "Telecel",
             order.shortId,
             phoneNumber,

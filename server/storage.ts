@@ -34,7 +34,7 @@ interface Settings {
   telecelActiveSupplier?: string;
   // SMS notification settings
   smsEnabled?: boolean;
-  smsNotificationPhone?: string;
+  smsNotificationPhones?: string[]; // Array of phone numbers
   createdAt: Date;
   updatedAt: Date;
 }
