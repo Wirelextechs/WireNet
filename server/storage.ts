@@ -159,7 +159,7 @@ class Storage {
       atActiveSupplier: settingsMap["atActiveSupplier"] || "codecraft",
       telecelActiveSupplier: settingsMap["telecelActiveSupplier"] || "codecraft",
       smsEnabled: settingsMap["smsEnabled"] === "true",
-      smsNotificationPhone: settingsMap["smsNotificationPhone"] || "",
+      smsNotificationPhones: settingsMap["smsNotificationPhones"] ? JSON.parse(settingsMap["smsNotificationPhones"]) : [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -223,8 +223,8 @@ class Storage {
     if (data.smsEnabled !== undefined) {
       await this.upsertSetting("smsEnabled", String(data.smsEnabled));
     }
-    if (data.smsNotificationPhone !== undefined) {
-      await this.upsertSetting("smsNotificationPhone", data.smsNotificationPhone);
+    if (data.smsNotificationPhones !== undefined) {
+      await this.upsertSetting("smsNotificationPhones", JSON.stringify(data.smsNotificationPhones));
     }
 
     return (await this.getSettings())!;
