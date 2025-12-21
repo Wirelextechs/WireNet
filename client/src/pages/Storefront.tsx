@@ -202,7 +202,15 @@ export default function Storefront() {
             <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
               <Zap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gradient">WireNet</span>
+            <motion.span 
+              className="text-xl font-extrabold tracking-tight"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent">Wire</span>
+              <span className="bg-gradient-to-r from-pink-500 via-orange-500 to-amber-500 bg-clip-text text-transparent">Net</span>
+            </motion.span>
           </motion.button>
 
           <div className="hidden items-center gap-3 md:flex">
@@ -293,6 +301,35 @@ export default function Storefront() {
           >
             <Sparkles className="h-4 w-4 text-violet-500" />
             <span className="text-sm font-medium">Ghana's Premier Data Hub</span>
+          </motion.div>
+          
+          {/* Animated WireNet Logo */}
+          <motion.div
+            className="mb-4"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 100, delay: 0.1 }}
+          >
+            <motion.span 
+              className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight inline-block"
+              animate={{ 
+                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+              }}
+              transition={{ 
+                duration: 5, 
+                repeat: Infinity, 
+                ease: "linear" 
+              }}
+              style={{
+                backgroundImage: "linear-gradient(90deg, #8b5cf6, #d946ef, #ec4899, #f97316, #eab308, #8b5cf6)",
+                backgroundSize: "200% auto",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              WireNet
+            </motion.span>
           </motion.div>
           
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
