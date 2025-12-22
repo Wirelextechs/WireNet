@@ -508,10 +508,15 @@ class Storage {
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
     if (supplierReference) updateData.supplierReference = supplierReference;
 
+    console.log(`🔧 Updating Telecel order ${id} with status ${status}`, updateData);
+    
     const result = await db.update(telecelOrders)
       .set(updateData)
       .where(eq(telecelOrders.id, id))
       .returning();
+    
+    console.log(`✅ Telecel order ${id} updated. Result:`, result);
+    return result.length > 0 ? result[0] : null;
     
     return result.length > 0 ? result[0] : null;
   }

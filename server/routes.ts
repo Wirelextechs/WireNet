@@ -1188,7 +1188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentReference: reference || null,
       });
 
-      console.log(`📝 TELECEL Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+      console.log(`📝 TELECEL Order ${order.shortId} created with ID ${order.id} for ${phoneNumber} - ${dataAmount}`);
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
@@ -1205,6 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let fulfillmentResult;
       try {
+        console.log(`🔄 Starting Telecel fulfillment for order ${order.id}...`);
         fulfillmentResult = await supplierManager.purchaseDataBundle(
           phoneNumber,
           dataAmount,
@@ -1213,11 +1214,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "codecraft",
           "telecel"
         );
+        console.log(`📤 Fulfillment result:`, fulfillmentResult);
 
         if (fulfillmentResult.success) {
           // Extract supplier reference from Code Craft response
           const supplierRef = fulfillmentResult.data?.reference_id || null;
           
+          console.log(`✅ Updating order ${order.id} status to PROCESSING with supplier ref:`, supplierRef);
           await storage.updateTelecelOrderStatus(
             order.id, 
             "PROCESSING", 
@@ -1230,6 +1233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ TELECEL Order ${order.shortId} fulfilled with supplier reference: ${supplierRef}`);
           }
         } else {
+          console.log(`⚠️ Fulfillment failed, updating order ${order.id} to PAID`);
           await storage.updateTelecelOrderStatus(
             order.id, 
             "PAID",
@@ -1238,7 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         }
       } catch (fulfillError: any) {
-        console.error("TELECEL Fulfillment error:", fulfillError);
+        console.error(`❌ TELECEL Fulfillment error for order ${order.id}:`, fulfillError);
         await storage.updateTelecelOrderStatus(
           order.id, 
           "PAID",
