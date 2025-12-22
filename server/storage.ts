@@ -490,7 +490,10 @@ class Storage {
   }
 
   async getTelecelOrders(): Promise<TelecelOrder[]> {
-    return await db.select().from(telecelOrders).orderBy(desc(telecelOrders.createdAt));
+    console.log("🔍 Querying telecel_orders table...");
+    const orders = await db.select().from(telecelOrders).orderBy(desc(telecelOrders.createdAt));
+    console.log(`🔍 Found ${orders.length} orders in database`);
+    return orders;
   }
 
   async getTelecelOrderById(id: number): Promise<TelecelOrder | null> {

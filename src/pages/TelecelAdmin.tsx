@@ -44,10 +44,13 @@ export default function TelecelAdmin() {
 
   const loadOrders = async () => {
     try {
+      console.log("📥 Fetching Telecel orders from /api/telecel/orders");
       const response = await fetch("/api/telecel/orders", { credentials: "include" });
+      console.log("📥 Response status:", response.status);
       if (response.ok) {
         const data = await response.json();
-        setOrders(data.map((o: any) => ({ 
+        console.log("📥 Raw data received:", data);
+        const mappedOrders = data.map((o: any) => ({ 
           ...o, 
           id: String(o.id),
           shortId: o.shortId || o.short_id,
@@ -56,7 +59,11 @@ export default function TelecelAdmin() {
           packagePrice: o.packagePrice || o.package_price,
           supplierUsed: o.supplierUsed || o.supplier_used,
           createdAt: new Date(o.createdAt || o.created_at) 
-        })));
+        }));
+        console.log("📥 Mapped orders:", mappedOrders);
+        setOrders(mappedOrders);
+      } else {
+        console.error("📥 Failed to fetch orders. Response:", await response.text());
       }
     } catch (error) {
       console.error("Error loading orders:", error);

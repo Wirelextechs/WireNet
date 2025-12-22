@@ -1284,7 +1284,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Get all TELECEL orders
   app.get("/api/telecel/orders", isAuthenticated, isAdmin, async (_req, res) => {
     try {
+      console.log("📋 Fetching all Telecel orders...");
       const orders = await storage.getTelecelOrders();
+      console.log(`📋 Retrieved ${orders.length} Telecel orders:`, orders);
       res.json(orders);
     } catch (error) {
       console.error("Error fetching TELECEL orders:", error);
