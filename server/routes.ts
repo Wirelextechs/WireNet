@@ -619,8 +619,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   id: data.data[0].id,
                   amount: data.data[0].amount,
                   customer: data.data[0].customer,
+                  metadata: data.data[0].metadata,
+                  authorization: data.data[0].authorization,
+                  paidAt: data.data[0].paidAt,
+                  createdAt: data.data[0].createdAt,
+                  // Log ALL keys in first transaction for debugging
+                  allKeys: Object.keys(data.data[0]),
                 } : null,
               };
+              console.log("📋 First transaction full structure:", JSON.stringify(firstPageData, null, 2));
             }
 
             console.log(`   Data array length: ${data.data?.length || 0}`);
@@ -636,20 +643,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Extract phone numbers from each transaction
             let phonesOnThisPage = 0;
-            for (const transaction of data.data) {
-              // Try multiple phone fields
-              const phone = 
-                (transaction.customer?.phone) ||
-                (transaction.metadata?.phone) ||
-                (transaction.authorization?.phone);
-                
-              if (phone) {
-                const phoneStr = String(phone).trim();
+            const phoneFieldsChecked: string[] = [];
+            
+            for (let txIdx = 0; txIdx < data.data.length; txIdx++) {
+              const transaction = data.data[txIdx];
+              let foundPhone: string | null = null;
+              
+              // Try multiple phone field locations
+              if (transaction.customer?.phone) {
+                foundPhone = transaction.customer.phone;
+                phoneFieldsChecked.push(`tx${txIdx}: customer.phone`);
+              } else if (transaction.metadata?.phone) {
+                foundPhone = transaction.metadata.phone;
+                phoneFieldsChecked.push(`tx${txIdx}: metadata.phone`);
+              } else if (transaction.authorization?.phone) {
+                foundPhone = transaction.authorization.phone;
+                phoneFieldsChecked.push(`tx${txIdx}: authorization.phone`);
+              } else if (transaction.metadata?.user_phone) {
+                foundPhone = transaction.metadata.user_phone;
+                phoneFieldsChecked.push(`tx${txIdx}: metadata.user_phone`);
+              }
+              
+              if (foundPhone) {
+                const phoneStr = String(foundPhone).trim();
                 if (phoneStr.length > 0 && phoneStr !== "null") {
                   phones.add(phoneStr);
                   phonesOnThisPage++;
                 }
               }
+            }
+            
+            if (page === 1 && phoneFieldsChecked.length > 0) {
+              console.log(`📱 Phone fields found in first page: ${phoneFieldsChecked.slice(0, 5).join(", ")}`);
             }
 
             totalProcessed += data.data.length;
