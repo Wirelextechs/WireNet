@@ -201,6 +201,31 @@ export default function AdminDashboard() {
     a.click();
   };
 
+  const handleSyncHistoricalPayments = async () => {
+    if (!confirm("Sync historical payment phone numbers from Paystack? This may take a minute...")) return;
+    
+    try {
+      setMessage("🔄 Syncing historical payment phones from Paystack...");
+      const response = await fetch("/api/payment-phones/sync-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentPhones(data.phones || []);
+        setMessage(`✅ Synced! Total: ${data.totalPhones}, New: ${data.newPhonesAdded}`);
+        setTimeout(() => setMessage(""), 5000);
+      } else {
+        setMessage("❌ Failed to sync payment phones");
+      }
+    } catch (error) {
+      console.error("Error syncing payment phones:", error);
+      setMessage("❌ Error syncing payment phones");
+    }
+  };
+
   const handleToggleAfa = async () => {
     try {
       const newValue = !settings.afaEnabled;
@@ -787,6 +812,15 @@ export default function AdminDashboard() {
                     📥 Export
                   </Button>
                 </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncHistoricalPayments}
+                  className="w-full"
+                >
+                  🔄 Sync Historical Payments
+                </Button>
 
                 <Button
                   variant="destructive"

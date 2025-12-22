@@ -534,6 +534,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync historical payment phones from Paystack (Admin only)
+  app.post("/api/payment-phones/sync-history", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+      if (!paystackSecret) {
+        return res.status(500).json({ success: false, message: "Paystack not configured" });
+      }
+
+      // Fetch all transactions from Paystack
+      console.log("🔄 Syncing historical payment phones from Paystack...");
+      const phones: Set<string> = new Set();
+      let page = 1;
+      let hasMore = true;
+      let totalProcessed = 0;
+
+      while (hasMore) {
+        const response = await fetch(
+          `https://api.paystack.co/transaction?perPage=100&page=${page}&status=success`,
+          {
+            headers: {
+              Authorization: `Bearer ${paystackSecret}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error("Paystack API error:", response.status);
+          break;
+        }
+
+        const data = await response.json();
+        
+        if (!data.data || data.data.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Extract phone numbers from each transaction
+        for (const transaction of data.data) {
+          if (transaction.customer?.phone) {
+            const phone = String(transaction.customer.phone).trim();
+            if (phone.length > 0) {
+              phones.add(phone);
+            }
+          }
+        }
+
+        totalProcessed += data.data.length;
+        console.log(`📊 Processed ${totalProcessed} transactions, found ${phones.size} unique phone numbers`);
+
+        // Check if there are more pages
+        if (!data.meta?.pagination?.has_more) {
+          hasMore = false;
+        }
+        page++;
+      }
+
+      // Get existing phones and merge
+      const existingSetting = await storage.getSetting("paymentPhones");
+      const existingPhones = existingSetting ? JSON.parse(existingSetting.value) : [];
+      const existingSet = new Set(existingPhones);
+      
+      const newCount = phones.size - existingSet.size;
+      for (const phone of phones) {
+        existingSet.add(phone);
+      }
+
+      // Update the setting with merged list
+      await storage.updateSetting("paymentPhones", JSON.stringify(Array.from(existingSet)));
+
+      res.json({
+        success: true,
+        message: `Synced ${totalProcessed} historical transactions`,
+        totalPhones: existingSet.size,
+        newPhonesAdded: newCount,
+        phones: Array.from(existingSet),
+      });
+    } catch (error) {
+      console.error("Error syncing payment phones:", error);
+      res.status(500).json({ success: false, message: "Failed to sync payment phones" });
+    }
+  });
+
   // Clear/Reset Payment Phones List (Admin only)
   app.post("/api/payment-phones/clear", isAuthenticated, isAdmin, async (req, res) => {
     try {
