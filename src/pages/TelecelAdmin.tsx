@@ -33,6 +33,7 @@ export default function TelecelAdmin() {
   const [editingPackage, setEditingPackage] = useState<any>(null);
   const [message, setMessage] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({ transactionCharge: "1.3" });
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -254,7 +255,27 @@ export default function TelecelAdmin() {
     }
   };
 
-  const filteredOrders = filterStatus === "ALL" ? orders : orders.filter(o => o.status === filterStatus);
+  const getFilteredOrders = () => {
+    let filtered = orders;
+    
+    // Apply status filter
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter(o => o.status === filterStatus);
+    }
+    
+    // Apply search filter (by Order ID or Phone Number)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(o => 
+        o.shortId.toLowerCase().includes(query) || 
+        o.customerPhone.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  };
+
+  const filteredOrders = getFilteredOrders();
 
   return (
     <div style={styles.container}>
@@ -343,6 +364,13 @@ export default function TelecelAdmin() {
                 <option value="PAID">Paid</option>
                 <option value="FAILED">Failed</option>
               </select>
+              <input
+                type="text"
+                placeholder="Search by Order ID or Phone Number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.filterSelect}
+              />
             </div>
           </CardHeader>
           <CardContent>

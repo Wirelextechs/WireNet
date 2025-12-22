@@ -524,6 +524,16 @@ export default function FastNetAdmin() {
                     </select>
                   </div>
                   <div style={styles.filterGroup}>
+                    <label style={styles.label}>Search:</label>
+                    <input
+                      type="text"
+                      placeholder="Search by Order ID or Phone Number"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.filterGroup}>
                     <label style={styles.label}>Bulk Action:</label>
                     <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)} style={styles.select}>
                       <option value="">Select Status</option>
