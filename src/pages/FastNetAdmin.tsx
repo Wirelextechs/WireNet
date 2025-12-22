@@ -41,6 +41,7 @@ export default function FastNetAdmin() {
   const [editingPackage, setEditingPackage] = useState<any>(null);
   const [message, setMessage] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
   const [activeSupplier, setActiveSupplier] = useState<Supplier>("dataxpress");
@@ -205,8 +206,23 @@ export default function FastNetAdmin() {
 
   // --- Order Management ---
   const getFilteredOrders = () => {
-    if (filterStatus === "ALL") return orders;
-    return orders.filter(o => o.status === filterStatus);
+    let filtered = orders;
+    
+    // Apply status filter
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter(o => o.status === filterStatus);
+    }
+    
+    // Apply search filter (by Order ID or Phone Number)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(o => 
+        o.shortId.toLowerCase().includes(query) || 
+        o.customerPhone.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
   };
 
   const handleToggleOrderSelect = (orderId: string) => {

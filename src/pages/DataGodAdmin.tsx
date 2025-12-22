@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ export default function DataGodAdmin() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState({ whatsAppLink: "", transactionCharge: "1.3" });
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState(""); // Add search state
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
   const [message, setMessage] = useState("");
@@ -94,8 +95,23 @@ export default function DataGodAdmin() {
   };
 
   const getFilteredOrders = () => {
-    if (filterStatus === "ALL") return orders;
-    return orders.filter(o => o.status === filterStatus);
+    let filtered = orders;
+    
+    // Apply status filter
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter(o => o.status === filterStatus);
+    }
+    
+    // Apply search filter (by Order ID or Phone Number)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(o => 
+        o.shortId.toLowerCase().includes(query) || 
+        o.customerPhone.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
   };
 
   const handleToggleOrderSelect = (orderId: number) => {
@@ -380,8 +396,17 @@ export default function DataGodAdmin() {
               </CardHeader>
               <CardContent>
                 <div style={styles.filterSection}>
-                  <div style={styles.filterGroup}>
-                    <label style={styles.label}>Filter by Status:</label>
+                  <div style={styles.filterGroup}>                    <label style={styles.label}>Search:</label>
+                    <input
+                      type="text"
+                      placeholder="Search by Order ID or Phone Number"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+
+                  <div style={styles.filterGroup}>                    <label style={styles.label}>Filter by Status:</label>
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
