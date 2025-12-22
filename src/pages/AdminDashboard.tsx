@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [paymentPhones, setPaymentPhones] = useState<string[]>([]);
   const [showPaymentPhones, setShowPaymentPhones] = useState(false);
+  const [syncDetails, setSyncDetails] = useState<any>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -215,8 +216,9 @@ export default function AdminDashboard() {
       if (response.ok) {
         const data = await response.json();
         setPaymentPhones(data.phones || []);
+        setSyncDetails(data);
         setMessage(`✅ Synced! Total: ${data.totalPhones}, New: ${data.newPhonesAdded}`);
-        setTimeout(() => setMessage(""), 5000);
+        setTimeout(() => setMessage(""), 8000);
       } else {
         setMessage("❌ Failed to sync payment phones");
       }
@@ -831,6 +833,38 @@ export default function AdminDashboard() {
                 >
                   🗑️ Clear All
                 </Button>
+
+                {syncDetails && (
+                  <div className="border-t pt-4 mt-4">
+                    <p className="text-xs font-semibold text-gray-700 mb-3">📊 Last Sync Details:</p>
+                    <div className="space-y-2 text-xs text-gray-600">
+                      <div className="flex justify-between">
+                        <span>Total Transactions:</span>
+                        <span className="font-mono font-bold text-gray-900">{syncDetails.totalTransactionsFetched?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Pages Fetched:</span>
+                        <span className="font-mono font-bold text-gray-900">{syncDetails.totalPagesFetched || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Unique Phones in Paystack:</span>
+                        <span className="font-mono font-bold text-gray-900">{syncDetails.uniquePhonesInPaystack || 0}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span>Before Sync:</span>
+                        <span className="font-mono font-bold text-gray-900">{syncDetails.previousCount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>After Sync:</span>
+                        <span className="font-mono font-bold text-blue-600">{syncDetails.totalPhones}</span>
+                      </div>
+                      <div className="flex justify-between bg-green-50 p-2 rounded">
+                        <span className="font-semibold">New Added:</span>
+                        <span className="font-mono font-bold text-green-700">{syncDetails.newPhonesAdded}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

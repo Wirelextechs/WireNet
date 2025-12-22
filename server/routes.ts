@@ -549,21 +549,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let hasMore = true;
       let totalProcessed = 0;
       let totalPages = 0;
+      const detailedLog: string[] = [];
 
       while (hasMore) {
         try {
           // Get all success transactions, using perPage=200 for efficiency
-          const response = await fetch(
-            `https://api.paystack.co/transaction?perPage=200&page=${page}&status=success&_=` + Date.now(),
-            {
-              headers: {
-                Authorization: `Bearer ${paystackSecret}`,
-              },
-            }
-          );
+          const url = `https://api.paystack.co/transaction?perPage=200&page=${page}&status=success`;
+          console.log(`📄 Fetching page ${page}: ${url}`);
+          
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${paystackSecret}`,
+            },
+          });
 
           if (!response.ok) {
-            console.error("Paystack API error:", response.status, await response.text());
+            const errorText = await response.text();
+            console.error("Paystack API error:", response.status, errorText);
+            detailedLog.push(`Page ${page}: ERROR ${response.status}`);
             break;
           }
 
@@ -571,32 +574,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (!data.data || data.data.length === 0) {
             console.log(`✅ Reached end of transactions at page ${page}`);
+            detailedLog.push(`Page ${page}: END - no more data`);
             hasMore = false;
             break;
           }
 
           // Extract phone numbers from each transaction
+          let phonesOnThisPage = 0;
           for (const transaction of data.data) {
-            if (transaction.customer?.phone) {
-              const phone = String(transaction.customer.phone).trim();
-              if (phone.length > 0) {
-                phones.add(phone);
+            // Try multiple phone fields
+            const phone = 
+              (transaction.customer?.phone) ||
+              (transaction.metadata?.phone) ||
+              (transaction.authorization?.phone);
+              
+            if (phone) {
+              const phoneStr = String(phone).trim();
+              if (phoneStr.length > 0 && phoneStr !== "null") {
+                phones.add(phoneStr);
+                phonesOnThisPage++;
               }
             }
           }
 
           totalProcessed += data.data.length;
           totalPages++;
-          console.log(`📊 Page ${page}: ${data.data.length} transactions, ${phones.size} unique phones so far`);
+          console.log(`📊 Page ${page}: ${data.data.length} transactions, ${phonesOnThisPage} new phones on this page, ${phones.size} unique total`);
+          detailedLog.push(`Page ${page}: ${data.data.length} txns, ${phonesOnThisPage} phones, ${phones.size} unique`);
 
           // Check if there are more pages
           if (data.meta?.pagination?.has_more) {
             page++;
           } else {
+            console.log(`✅ Pagination complete: has_more = false`);
+            detailedLog.push(`Pagination complete at page ${page}`);
             hasMore = false;
           }
         } catch (pageError) {
           console.error(`Error fetching page ${page}:`, pageError);
+          detailedLog.push(`Page ${page}: EXCEPTION - ${String(pageError)}`);
           break;
         }
       }
@@ -617,12 +633,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the setting with merged list
       await storage.upsertSetting("paymentPhones", JSON.stringify(Array.from(existingSet)));
 
+      console.log("📋 SYNC SUMMARY:");
+      console.log(`   Total transactions fetched: ${totalProcessed}`);
+      console.log(`   Total pages processed: ${totalPages}`);
+      console.log(`   Unique phones found in Paystack: ${phones.size}`);
+      console.log(`   Phones before sync: ${previousCount}`);
+      console.log(`   Phones after sync: ${existingSet.size}`);
+      console.log(`   New phones added: ${newCount}`);
+
       res.json({
         success: true,
         message: `Synced ${totalProcessed} historical transactions from ${totalPages} pages`,
         totalPhones: existingSet.size,
         newPhonesAdded: newCount,
         previousCount,
+        totalTransactionsFetched: totalProcessed,
+        totalPagesFetched: totalPages,
+        uniquePhonesInPaystack: phones.size,
+        detailedLog,
         phones: Array.from(existingSet),
       });
     } catch (error) {
