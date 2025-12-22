@@ -473,6 +473,11 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
+  async getAtOrderByPaymentReference(paymentReference: string): Promise<AtOrder | null> {
+    const result = await db.select().from(atOrders).where(eq(atOrders.paymentReference, paymentReference)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
   // TELECEL Orders
   async createTelecelOrder(data: {
     shortId: string;
@@ -532,6 +537,11 @@ class Storage {
 
   async getTelecelOrderByShortId(shortId: string): Promise<TelecelOrder | null> {
     const result = await db.select().from(telecelOrders).where(eq(telecelOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getTelecelOrderByPaymentReference(paymentReference: string): Promise<TelecelOrder | null> {
+    const result = await db.select().from(telecelOrders).where(eq(telecelOrders.paymentReference, paymentReference)).limit(1);
     return result.length > 0 ? result[0] : null;
   }
 

@@ -377,6 +377,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique reference if not provided
       const orderReference = reference || `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+      // Check if order already exists (prevent duplicates from webhook)
+      const existingOrder = await storage.getFastnetOrderByPaymentReference(orderReference);
+      if (existingOrder) {
+        console.log(`⚠️ Order ${orderReference} already exists, skipping duplicate creation`);
+        return res.status(409).json({ 
+          message: "Order already exists",
+          orderId: existingOrder.shortId,
+          status: existingOrder.status
+        });
+      }
+
       // Create order record in database FIRST with status PAID
       const order = await storage.createFastnetOrder({
         shortId: orderReference,
@@ -955,6 +966,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderReference = reference || `AT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+      // Check if order already exists (prevent duplicates from webhook)
+      const existingOrder = await storage.getAtOrderByPaymentReference(orderReference);
+      if (existingOrder) {
+        console.log(`⚠️ AT Order ${orderReference} already exists, skipping duplicate creation`);
+        return res.status(409).json({ 
+          message: "Order already exists",
+          orderId: existingOrder.shortId,
+          status: existingOrder.status
+        });
+      }
+
       const order = await storage.createAtOrder({
         shortId: orderReference,
         customerPhone: phoneNumber,
@@ -1184,6 +1206,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const orderReference = reference || `TC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // Check if order already exists (prevent duplicates from webhook)
+      const existingOrder = await storage.getTelecelOrderByPaymentReference(orderReference);
+      if (existingOrder) {
+        console.log(`⚠️ Telecel Order ${orderReference} already exists, skipping duplicate creation`);
+        return res.status(409).json({ 
+          message: "Order already exists",
+          orderId: existingOrder.shortId,
+          status: existingOrder.status
+        });
+      }
 
       const order = await storage.createTelecelOrder({
         shortId: orderReference,
