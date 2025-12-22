@@ -964,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentReference: reference || null,
       });
 
-      console.log(`📝 AT Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+      console.log(`📝 AT Order ${order.shortId} created with ID ${order.id} for ${phoneNumber} - ${dataAmount}`);
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
@@ -981,6 +981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let fulfillmentResult;
       try {
+        console.log(`🔄 Starting AT fulfillment for order ${order.id}...`);
         fulfillmentResult = await supplierManager.purchaseDataBundle(
           phoneNumber,
           dataAmount,
@@ -989,11 +990,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "codecraft",
           "at_ishare"
         );
+        console.log(`📤 Fulfillment result:`, fulfillmentResult);
 
         if (fulfillmentResult.success) {
           // Extract supplier reference from Code Craft response
           const supplierRef = fulfillmentResult.data?.reference_id || null;
           
+          console.log(`✅ Updating order ${order.id} status to PROCESSING with supplier ref:`, supplierRef);
           await storage.updateAtOrderStatus(
             order.id, 
             "PROCESSING", 
@@ -1006,6 +1009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ AT Order ${order.shortId} fulfilled with supplier reference: ${supplierRef}`);
           }
         } else {
+          console.log(`⚠️ Fulfillment failed, updating order ${order.id} to PAID`);
           await storage.updateAtOrderStatus(
             order.id, 
             "PAID",
@@ -1014,7 +1018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         }
       } catch (fulfillError: any) {
-        console.error("AT Fulfillment error:", fulfillError);
+        console.error(`❌ AT Fulfillment error for order ${order.id}:`, fulfillError);
         await storage.updateAtOrderStatus(
           order.id, 
           "PAID",
@@ -1056,7 +1060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Get all AT orders
   app.get("/api/at/orders", isAuthenticated, isAdmin, async (_req, res) => {
     try {
+      console.log("📋 Fetching all AT orders...");
       const orders = await storage.getAtOrders();
+      console.log(`📋 Retrieved ${orders.length} AT orders:`, orders);
       res.json(orders);
     } catch (error) {
       console.error("Error fetching AT orders:", error);

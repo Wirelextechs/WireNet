@@ -436,7 +436,10 @@ class Storage {
   }
 
   async getAtOrders(): Promise<AtOrder[]> {
-    return await db.select().from(atOrders).orderBy(desc(atOrders.createdAt));
+    console.log("🔍 Querying at_orders table...");
+    const orders = await db.select().from(atOrders).orderBy(desc(atOrders.createdAt));
+    console.log(`🔍 Found ${orders.length} AT orders in database`);
+    return orders;
   }
 
   async getAtOrderById(id: number): Promise<AtOrder | null> {
@@ -454,11 +457,14 @@ class Storage {
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
     if (supplierReference) updateData.supplierReference = supplierReference;
 
+    console.log(`🔧 Updating AT order ${id} with status ${status}`, updateData);
+    
     const result = await db.update(atOrders)
       .set(updateData)
       .where(eq(atOrders.id, id))
       .returning();
     
+    console.log(`✅ AT order ${id} updated. Result:`, result);
     return result.length > 0 ? result[0] : null;
   }
 
