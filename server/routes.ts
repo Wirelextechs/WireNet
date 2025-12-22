@@ -72,7 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const existingPhones = await storage.getSetting("paymentPhones");
           const phoneSet = new Set(existingPhones ? JSON.parse(existingPhones.value) : []);
           phoneSet.add(paymentPhone);
-          await storage.updateSetting("paymentPhones", JSON.stringify(Array.from(phoneSet)));
+          await storage.upsertSetting("paymentPhones", JSON.stringify(Array.from(phoneSet)));
           console.log(`✅ Payment phone saved for SMS marketing: ${paymentPhone}`);
         } catch (phoneError) {
           console.error("Error saving payment phone:", phoneError);
@@ -602,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update the setting with merged list
-      await storage.updateSetting("paymentPhones", JSON.stringify(Array.from(existingSet)));
+      await storage.upsertSetting("paymentPhones", JSON.stringify(Array.from(existingSet)));
 
       res.json({
         success: true,
@@ -620,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clear/Reset Payment Phones List (Admin only)
   app.post("/api/payment-phones/clear", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      await storage.updateSetting("paymentPhones", JSON.stringify([]));
+      await storage.upsertSetting("paymentPhones", JSON.stringify([]));
       res.json({ success: true, message: "Payment phones list cleared" });
     } catch (error) {
       console.error("Error clearing payment phones:", error);
