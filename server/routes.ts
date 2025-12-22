@@ -63,8 +63,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).json({ ok: true, ignored: true, reason: "missing_reference" });
       }
 
-      // Extract payment phone number from Paystack customer data for SMS marketing
-      const paymentPhone = String(req.body?.data?.customer?.phone || "").trim();
+      // Extract payment phone number from Paystack webhook
+      // Try multiple locations: metadata.wirenet.items[].phoneNumber (our custom field) first, then customer.phone
+      let paymentPhone = "";
+      
+      const metadata = req.body?.data?.metadata;
+      const wirenetMeta = metadata?.wirenet;
+      const items: any[] | undefined = wirenetMeta?.items;
+      
+      // First try to get phone from our custom metadata
+      if (Array.isArray(items) && items.length > 0 && items[0].phoneNumber) {
+        paymentPhone = String(items[0].phoneNumber || "").trim();
+      }
+      
+      // Fallback to standard Paystack customer phone
+      if (!paymentPhone) {
+        paymentPhone = String(req.body?.data?.customer?.phone || "").trim();
+      }
+      
       if (paymentPhone && paymentPhone.length > 0) {
         console.log(`📱 Payment phone from Paystack: ${paymentPhone}`);
         // Store payment phone in settings if it's new (for SMS marketing lists)
@@ -79,10 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const metadata = req.body?.data?.metadata;
-      const wirenetMeta = metadata?.wirenet;
       const service: string | undefined = wirenetMeta?.service;
-      const items: any[] | undefined = wirenetMeta?.items;
 
       if (!service || !Array.isArray(items) || items.length === 0) {
         console.warn("Paystack webhook missing wirenet metadata; cannot recover orders", { reference, service });
@@ -649,19 +662,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const transaction = data.data[txIdx];
               let foundPhone: string | null = null;
               
-              // Try multiple phone field locations
-              if (transaction.customer?.phone) {
-                foundPhone = transaction.customer.phone;
-                phoneFieldsChecked.push(`tx${txIdx}: customer.phone`);
-              } else if (transaction.metadata?.phone) {
-                foundPhone = transaction.metadata.phone;
-                phoneFieldsChecked.push(`tx${txIdx}: metadata.phone`);
-              } else if (transaction.authorization?.phone) {
-                foundPhone = transaction.authorization.phone;
-                phoneFieldsChecked.push(`tx${txIdx}: authorization.phone`);
-              } else if (transaction.metadata?.user_phone) {
-                foundPhone = transaction.metadata.user_phone;
-                phoneFieldsChecked.push(`tx${txIdx}: metadata.user_phone`);
+              // First check WireNet metadata (custom items array with phoneNumber)
+              if (transaction.metadata?.wirenet?.items && Array.isArray(transaction.metadata.wirenet.items)) {
+                for (const item of transaction.metadata.wirenet.items) {
+                  if (item.phoneNumber) {
+                    foundPhone = item.phoneNumber;
+                    if (txIdx < 3) phoneFieldsChecked.push(`tx${txIdx}: metadata.wirenet.items[].phoneNumber`);
+                    break;
+                  }
+                }
+              }
+              
+              // Fallback to standard Paystack fields if not found in metadata
+              if (!foundPhone) {
+                if (transaction.customer?.phone) {
+                  foundPhone = transaction.customer.phone;
+                  if (txIdx < 3) phoneFieldsChecked.push(`tx${txIdx}: customer.phone`);
+                } else if (transaction.metadata?.phone) {
+                  foundPhone = transaction.metadata.phone;
+                  if (txIdx < 3) phoneFieldsChecked.push(`tx${txIdx}: metadata.phone`);
+                } else if (transaction.authorization?.phone) {
+                  foundPhone = transaction.authorization.phone;
+                  if (txIdx < 3) phoneFieldsChecked.push(`tx${txIdx}: authorization.phone`);
+                }
               }
               
               if (foundPhone) {
@@ -674,7 +697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             if (page === 1 && phoneFieldsChecked.length > 0) {
-              console.log(`📱 Phone fields found in first page: ${phoneFieldsChecked.slice(0, 5).join(", ")}`);
+              console.log(`📱 Phone fields found: ${phoneFieldsChecked.join(", ")}`);
             }
 
             totalProcessed += data.data.length;
