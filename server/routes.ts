@@ -377,15 +377,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique reference if not provided
       const orderReference = reference || `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      // Check if order already exists (prevent duplicates from webhook)
-      const existingOrder = await storage.getFastnetOrderByPaymentReference(orderReference);
-      if (existingOrder) {
-        console.log(`⚠️ Order ${orderReference} already exists, skipping duplicate creation`);
-        return res.status(409).json({ 
-          message: "Order already exists",
-          orderId: existingOrder.shortId,
-          status: existingOrder.status
+      // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
+      // We check by paymentReference + phone + amount to be specific
+      if (reference) {
+        const existingOrder = await storage.findFastnetOrderByPaymentAndItem({
+          paymentReference: reference,
+          customerPhone: phoneNumber,
+          packageDetails: dataAmount,
+          packagePrice: typeof price === 'string' ? parseInt(price) : price,
         });
+        if (existingOrder) {
+          console.log(`⚠️ FastNet Order for ${phoneNumber}/${dataAmount} already exists with ref ${reference}, skipping duplicate`);
+          return res.status(409).json({ 
+            message: "Order already exists",
+            orderId: existingOrder.shortId,
+            status: existingOrder.status
+          });
+        }
       }
 
       // Create order record in database FIRST with status PAID
@@ -966,15 +974,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderReference = reference || `AT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      // Check if order already exists (prevent duplicates from webhook)
-      const existingOrder = await storage.getAtOrderByPaymentReference(orderReference);
-      if (existingOrder) {
-        console.log(`⚠️ AT Order ${orderReference} already exists, skipping duplicate creation`);
-        return res.status(409).json({ 
-          message: "Order already exists",
-          orderId: existingOrder.shortId,
-          status: existingOrder.status
+      // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
+      if (reference) {
+        const existingOrder = await storage.findAtOrderByPaymentAndItem({
+          paymentReference: reference,
+          customerPhone: phoneNumber,
+          packageDetails: dataAmount,
+          packagePrice: typeof price === 'string' ? parseInt(price) : price,
         });
+        if (existingOrder) {
+          console.log(`⚠️ AT Order for ${phoneNumber}/${dataAmount} already exists with ref ${reference}, skipping duplicate`);
+          return res.status(409).json({ 
+            message: "Order already exists",
+            orderId: existingOrder.shortId,
+            status: existingOrder.status
+          });
+        }
       }
 
       const order = await storage.createAtOrder({
@@ -1207,15 +1222,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderReference = reference || `TC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-      // Check if order already exists (prevent duplicates from webhook)
-      const existingOrder = await storage.getTelecelOrderByPaymentReference(orderReference);
-      if (existingOrder) {
-        console.log(`⚠️ Telecel Order ${orderReference} already exists, skipping duplicate creation`);
-        return res.status(409).json({ 
-          message: "Order already exists",
-          orderId: existingOrder.shortId,
-          status: existingOrder.status
+      // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
+      if (reference) {
+        const existingOrder = await storage.findTelecelOrderByPaymentAndItem({
+          paymentReference: reference,
+          customerPhone: phoneNumber,
+          packageDetails: dataAmount,
+          packagePrice: typeof price === 'string' ? parseInt(price) : price,
         });
+        if (existingOrder) {
+          console.log(`⚠️ Telecel Order for ${phoneNumber}/${dataAmount} already exists with ref ${reference}, skipping duplicate`);
+          return res.status(409).json({ 
+            message: "Order already exists",
+            orderId: existingOrder.shortId,
+            status: existingOrder.status
+          });
+        }
       }
 
       const order = await storage.createTelecelOrder({
