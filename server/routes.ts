@@ -542,78 +542,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ success: false, message: "Paystack not configured" });
       }
 
-      // Fetch all transactions from Paystack
-      console.log("🔄 Syncing historical payment phones from Paystack...");
+      // Fetch all transactions from Paystack (from account creation, all-time)
+      console.log("🔄 Syncing all historical payment phones from Paystack...");
       const phones: Set<string> = new Set();
       let page = 1;
       let hasMore = true;
       let totalProcessed = 0;
+      let totalPages = 0;
 
       while (hasMore) {
-        const response = await fetch(
-          `https://api.paystack.co/transaction?perPage=100&page=${page}&status=success`,
-          {
-            headers: {
-              Authorization: `Bearer ${paystackSecret}`,
-            },
+        try {
+          // Get all success transactions, using perPage=200 for efficiency
+          const response = await fetch(
+            `https://api.paystack.co/transaction?perPage=200&page=${page}&status=success&_=` + Date.now(),
+            {
+              headers: {
+                Authorization: `Bearer ${paystackSecret}`,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            console.error("Paystack API error:", response.status, await response.text());
+            break;
           }
-        );
 
-        if (!response.ok) {
-          console.error("Paystack API error:", response.status);
-          break;
-        }
+          const data = await response.json();
+          
+          if (!data.data || data.data.length === 0) {
+            console.log(`✅ Reached end of transactions at page ${page}`);
+            hasMore = false;
+            break;
+          }
 
-        const data = await response.json();
-        
-        if (!data.data || data.data.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        // Extract phone numbers from each transaction
-        for (const transaction of data.data) {
-          if (transaction.customer?.phone) {
-            const phone = String(transaction.customer.phone).trim();
-            if (phone.length > 0) {
-              phones.add(phone);
+          // Extract phone numbers from each transaction
+          for (const transaction of data.data) {
+            if (transaction.customer?.phone) {
+              const phone = String(transaction.customer.phone).trim();
+              if (phone.length > 0) {
+                phones.add(phone);
+              }
             }
           }
-        }
 
-        totalProcessed += data.data.length;
-        console.log(`📊 Processed ${totalProcessed} transactions, found ${phones.size} unique phone numbers`);
+          totalProcessed += data.data.length;
+          totalPages++;
+          console.log(`📊 Page ${page}: ${data.data.length} transactions, ${phones.size} unique phones so far`);
 
-        // Check if there are more pages
-        if (!data.meta?.pagination?.has_more) {
-          hasMore = false;
+          // Check if there are more pages
+          if (data.meta?.pagination?.has_more) {
+            page++;
+          } else {
+            hasMore = false;
+          }
+        } catch (pageError) {
+          console.error(`Error fetching page ${page}:`, pageError);
+          break;
         }
-        page++;
       }
 
-      // Get existing phones and merge
+      // Get existing phones before sync
       const existingSetting = await storage.getSetting("paymentPhones");
       const existingPhones = existingSetting ? JSON.parse(existingSetting.value) : [];
       const existingSet = new Set(existingPhones);
+      const previousCount = existingSet.size;
       
-      const newCount = phones.size - existingSet.size;
+      // Merge new phones
       for (const phone of phones) {
         existingSet.add(phone);
       }
+      
+      const newCount = existingSet.size - previousCount;
 
       // Update the setting with merged list
       await storage.upsertSetting("paymentPhones", JSON.stringify(Array.from(existingSet)));
 
       res.json({
         success: true,
-        message: `Synced ${totalProcessed} historical transactions`,
+        message: `Synced ${totalProcessed} historical transactions from ${totalPages} pages`,
         totalPhones: existingSet.size,
         newPhonesAdded: newCount,
+        previousCount,
         phones: Array.from(existingSet),
       });
     } catch (error) {
       console.error("Error syncing payment phones:", error);
-      res.status(500).json({ success: false, message: "Failed to sync payment phones" });
+      res.status(500).json({ success: false, message: "Failed to sync payment phones", error: String(error) });
     }
   });
 
