@@ -52,6 +52,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [paymentPhones, setPaymentPhones] = useState<string[]>([]);
+  const [showPaymentPhones, setShowPaymentPhones] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -116,6 +118,17 @@ export default function AdminDashboard() {
       } catch (e) {
         console.error("Could not fetch SMS balance:", e);
       }
+
+      // Load payment phones for SMS marketing
+      try {
+        const phonesRes = await fetch("/api/payment-phones", { credentials: "include" });
+        if (phonesRes.ok) {
+          const phonesData = await phonesRes.json();
+          setPaymentPhones(phonesData.phones || []);
+        }
+      } catch (e) {
+        console.error("Could not fetch payment phones:", e);
+      }
     } catch (error) {
       console.error("Error loading settings:", error);
     }
@@ -157,6 +170,35 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error updating FastNet toggle:", error);
     }
+  };
+
+  const handleClearPaymentPhones = async () => {
+    if (!confirm("Are you sure you want to clear all payment phone numbers?")) return;
+    
+    try {
+      const response = await fetch("/api/payment-phones/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (response.ok) {
+        setPaymentPhones([]);
+        setMessage("Payment phones cleared!");
+        setTimeout(() => setMessage(""), 2000);
+      }
+    } catch (error) {
+      console.error("Error clearing payment phones:", error);
+    }
+  };
+
+  const handleExportPaymentPhones = () => {
+    const csv = paymentPhones.join("\n");
+    const blob = new Blob([csv], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payment-phones-${new Date().toISOString().split("T")[0]}.txt`;
+    a.click();
   };
 
   const handleToggleAfa = async () => {
@@ -674,6 +716,66 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 mt-8">
+          {/* Payment Phones for SMS Marketing */}
+          <Card>
+            <CardHeader>
+              <CardTitle>💳 Payment Phones (SMS Marketing)</CardTitle>
+              <CardDescription>
+                Phone numbers collected from Paystack payments. Use for SMS marketing campaigns.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-3 rounded">
+                  <p className="text-sm font-medium text-blue-900">
+                    Total Collected: <span className="text-lg font-bold">{paymentPhones.length}</span>
+                  </p>
+                </div>
+
+                {showPaymentPhones && paymentPhones.length > 0 && (
+                  <div className="bg-gray-50 p-3 rounded max-h-64 overflow-y-auto">
+                    <p className="text-xs font-medium text-gray-600 mb-2">Numbers collected:</p>
+                    <div className="space-y-1">
+                      {paymentPhones.map((phone, idx) => (
+                        <p key={idx} className="text-sm text-gray-700">{phone}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPaymentPhones(!showPaymentPhones)}
+                    className="flex-1"
+                  >
+                    {showPaymentPhones ? "Hide" : "Show"} Numbers
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPaymentPhones}
+                    disabled={paymentPhones.length === 0}
+                    className="flex-1"
+                  >
+                    📥 Export
+                  </Button>
+                </div>
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleClearPaymentPhones}
+                  disabled={paymentPhones.length === 0}
+                  className="w-full"
+                >
+                  🗑️ Clear All
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Announcement Banner</CardTitle>

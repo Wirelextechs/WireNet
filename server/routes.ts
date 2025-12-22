@@ -63,6 +63,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).json({ ok: true, ignored: true, reason: "missing_reference" });
       }
 
+      // Extract payment phone number from Paystack customer data for SMS marketing
+      const paymentPhone = String(req.body?.data?.customer?.phone || "").trim();
+      if (paymentPhone && paymentPhone.length > 0) {
+        console.log(`📱 Payment phone from Paystack: ${paymentPhone}`);
+        // Store payment phone in settings if it's new (for SMS marketing lists)
+        try {
+          const existingPhones = await storage.getSetting("paymentPhones");
+          const phoneSet = new Set(existingPhones ? JSON.parse(existingPhones.value) : []);
+          phoneSet.add(paymentPhone);
+          await storage.updateSetting("paymentPhones", JSON.stringify(Array.from(phoneSet)));
+          console.log(`✅ Payment phone saved for SMS marketing: ${paymentPhone}`);
+        } catch (phoneError) {
+          console.error("Error saving payment phone:", phoneError);
+        }
+      }
+
       const metadata = req.body?.data?.metadata;
       const wirenetMeta = metadata?.wirenet;
       const service: string | undefined = wirenetMeta?.service;
@@ -503,6 +519,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching order status:", error);
       res.status(500).json({ message: "Failed to fetch order status" });
+    }
+  });
+
+  // Get Payment Phones for SMS Marketing (Admin only)
+  app.get("/api/payment-phones", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const setting = await storage.getSetting("paymentPhones");
+      const phones = setting ? JSON.parse(setting.value) : [];
+      res.json({ phones, count: phones.length });
+    } catch (error) {
+      console.error("Error retrieving payment phones:", error);
+      res.json({ phones: [], count: 0 });
+    }
+  });
+
+  // Clear/Reset Payment Phones List (Admin only)
+  app.post("/api/payment-phones/clear", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.updateSetting("paymentPhones", JSON.stringify([]));
+      res.json({ success: true, message: "Payment phones list cleared" });
+    } catch (error) {
+      console.error("Error clearing payment phones:", error);
+      res.status(500).json({ success: false, message: "Failed to clear payment phones" });
     }
   });
 
