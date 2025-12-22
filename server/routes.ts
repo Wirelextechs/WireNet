@@ -538,8 +538,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payment-phones/sync-history", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+      console.log("🔍 Checking Paystack config...");
+      console.log(`   Secret key exists: ${!!paystackSecret}`);
+      
       if (!paystackSecret) {
-        return res.status(500).json({ success: false, message: "Paystack not configured" });
+        return res.status(500).json({ success: false, message: "Paystack not configured", debug: "PAYSTACK_SECRET_KEY is not set" });
       }
 
       // Fetch all transactions from Paystack (from account creation, all-time)
@@ -550,69 +553,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalProcessed = 0;
       let totalPages = 0;
       const detailedLog: string[] = [];
+      let firstPageData: any = null;
+      const batchSize = 50; // Smaller batch size to avoid timeouts
+      const maxRetries = 3;
 
       while (hasMore) {
-        try {
-          // Get all success transactions, using perPage=200 for efficiency
-          const url = `https://api.paystack.co/transaction?perPage=200&page=${page}&status=success`;
-          console.log(`📄 Fetching page ${page}: ${url}`);
-          
-          const response = await fetch(url, {
-            headers: {
-              Authorization: `Bearer ${paystackSecret}`,
-            },
-          });
+        let retryCount = 0;
+        let pageSuccess = false;
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Paystack API error:", response.status, errorText);
-            detailedLog.push(`Page ${page}: ERROR ${response.status}`);
-            break;
-          }
+        while (retryCount < maxRetries && !pageSuccess) {
+          try {
+            // Get all success transactions with smaller batch size
+            const url = `https://api.paystack.co/transaction?perPage=${batchSize}&page=${page}&status=success`;
+            console.log(`📄 Fetching page ${page} (attempt ${retryCount + 1}/${maxRetries}): ${url}`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+            
+            const response = await fetch(url, {
+              headers: {
+                Authorization: `Bearer ${paystackSecret}`,
+              },
+              signal: controller.signal,
+            });
 
-          const data = await response.json();
-          
-          if (!data.data || data.data.length === 0) {
-            console.log(`✅ Reached end of transactions at page ${page}`);
-            detailedLog.push(`Page ${page}: END - no more data`);
-            hasMore = false;
-            break;
-          }
+            clearTimeout(timeoutId);
+            console.log(`   Response status: ${response.status}`);
+            
+            const responseText = await response.text();
+            console.log(`   Response length: ${responseText.length} bytes`);
+            
+            if (!response.ok) {
+              if (response.status === 504 && retryCount < maxRetries - 1) {
+                console.warn(`⚠️ Request timeout (504), retrying... (${retryCount + 1}/${maxRetries})`);
+                detailedLog.push(`Page ${page}: Attempt ${retryCount + 1} - Timeout, retrying`);
+                retryCount++;
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                continue;
+              }
+              console.error("❌ Paystack API error:", response.status, responseText.substring(0, 500));
+              detailedLog.push(`Page ${page}: ERROR ${response.status} - ${responseText.substring(0, 200)}`);
+              pageSuccess = false;
+              break;
+            }
 
-          // Extract phone numbers from each transaction
-          let phonesOnThisPage = 0;
-          for (const transaction of data.data) {
-            // Try multiple phone fields
-            const phone = 
-              (transaction.customer?.phone) ||
-              (transaction.metadata?.phone) ||
-              (transaction.authorization?.phone);
-              
-            if (phone) {
-              const phoneStr = String(phone).trim();
-              if (phoneStr.length > 0 && phoneStr !== "null") {
-                phones.add(phoneStr);
-                phonesOnThisPage++;
+            let data;
+            try {
+              data = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error("❌ Failed to parse Paystack response:", parseError);
+              detailedLog.push(`Page ${page}: PARSE_ERROR - Invalid JSON`);
+              pageSuccess = false;
+              break;
+            }
+
+            // Store first page response for debugging
+            if (page === 1) {
+              firstPageData = {
+                status: data.status,
+                message: data.message,
+                dataLength: data.data?.length || 0,
+                metaExists: !!data.meta,
+                pagination: data.meta?.pagination,
+                firstTransaction: data.data?.[0] ? {
+                  id: data.data[0].id,
+                  amount: data.data[0].amount,
+                  customer: data.data[0].customer,
+                } : null,
+              };
+            }
+
+            console.log(`   Data array length: ${data.data?.length || 0}`);
+            console.log(`   Status: ${data.status}, Message: ${data.message}`);
+            
+            if (!data.data || data.data.length === 0) {
+              console.log(`✅ Reached end of transactions at page ${page}`);
+              detailedLog.push(`Page ${page}: END - no more data`);
+              hasMore = false;
+              pageSuccess = true;
+              break;
+            }
+
+            // Extract phone numbers from each transaction
+            let phonesOnThisPage = 0;
+            for (const transaction of data.data) {
+              // Try multiple phone fields
+              const phone = 
+                (transaction.customer?.phone) ||
+                (transaction.metadata?.phone) ||
+                (transaction.authorization?.phone);
+                
+              if (phone) {
+                const phoneStr = String(phone).trim();
+                if (phoneStr.length > 0 && phoneStr !== "null") {
+                  phones.add(phoneStr);
+                  phonesOnThisPage++;
+                }
               }
             }
-          }
 
-          totalProcessed += data.data.length;
-          totalPages++;
-          console.log(`📊 Page ${page}: ${data.data.length} transactions, ${phonesOnThisPage} new phones on this page, ${phones.size} unique total`);
-          detailedLog.push(`Page ${page}: ${data.data.length} txns, ${phonesOnThisPage} phones, ${phones.size} unique`);
+            totalProcessed += data.data.length;
+            totalPages++;
+            console.log(`📊 Page ${page}: ${data.data.length} transactions, ${phonesOnThisPage} new phones on this page, ${phones.size} unique total`);
+            detailedLog.push(`Page ${page}: ${data.data.length} txns, ${phonesOnThisPage} phones, ${phones.size} unique`);
 
-          // Check if there are more pages
-          if (data.meta?.pagination?.has_more) {
-            page++;
-          } else {
-            console.log(`✅ Pagination complete: has_more = false`);
-            detailedLog.push(`Pagination complete at page ${page}`);
-            hasMore = false;
+            // Check if there are more pages
+            if (data.meta?.pagination?.has_more) {
+              page++;
+            } else {
+              console.log(`✅ Pagination complete: has_more = false`);
+              detailedLog.push(`Pagination complete at page ${page}`);
+              hasMore = false;
+            }
+            
+            pageSuccess = true;
+          } catch (pageError) {
+            if (pageError instanceof Error && pageError.name === 'AbortError') {
+              console.warn(`⚠️ Request timeout on page ${page}, attempt ${retryCount + 1}`);
+              if (retryCount < maxRetries - 1) {
+                retryCount++;
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                continue;
+              }
+            }
+            console.error(`Error fetching page ${page}:`, pageError);
+            detailedLog.push(`Page ${page}: EXCEPTION - ${String(pageError)}`);
+            pageSuccess = false;
+            break;
           }
-        } catch (pageError) {
-          console.error(`Error fetching page ${page}:`, pageError);
-          detailedLog.push(`Page ${page}: EXCEPTION - ${String(pageError)}`);
+        }
+
+        if (!pageSuccess) {
+          console.log("⚠️ Failed to fetch page after retries, stopping sync");
           break;
         }
       }
@@ -642,14 +714,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`   New phones added: ${newCount}`);
 
       res.json({
-        success: true,
-        message: `Synced ${totalProcessed} historical transactions from ${totalPages} pages`,
+        success: totalProcessed > 0,
+        message: totalProcessed > 0 
+          ? `Synced ${totalProcessed} historical transactions from ${totalPages} pages`
+          : `Sync incomplete: Fetched ${totalProcessed} transactions from ${totalPages} pages (API timeouts - may need to try again)`,
         totalPhones: existingSet.size,
         newPhonesAdded: newCount,
         previousCount,
         totalTransactionsFetched: totalProcessed,
         totalPagesFetched: totalPages,
         uniquePhonesInPaystack: phones.size,
+        batchSize,
+        firstPageData,
         detailedLog,
         phones: Array.from(existingSet),
       });
