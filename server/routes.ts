@@ -98,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (service === "fastnet") {
           const dataAmount = String(item.dataAmount || "");
-          const price = Number(item.price);
+          const price = Math.round(Number(item.price)); // Round to nearest integer
           if (!phoneNumber || !dataAmount || !Number.isFinite(price)) continue;
 
           const existing = await storage.findFastnetOrderByPaymentAndItem({
@@ -123,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (service === "at") {
           const dataAmount = String(item.dataAmount || "");
-          const price = Number(item.price);
+          const price = Math.round(Number(item.price)); // Round to nearest integer
           if (!phoneNumber || !dataAmount || !Number.isFinite(price)) continue;
 
           const existing = await storage.findAtOrderByPaymentAndItem({
@@ -148,7 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (service === "telecel") {
           const dataAmount = String(item.dataAmount || "");
-          const price = Number(item.price);
+          const price = Math.round(Number(item.price)); // Round to nearest integer
           if (!phoneNumber || !dataAmount || !Number.isFinite(price)) continue;
 
           const existing = await storage.findTelecelOrderByPaymentAndItem({
