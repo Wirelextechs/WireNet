@@ -373,7 +373,7 @@ export default function TelecelAdmin() {
                         {order.status}
                       </span>
                     </div>
-                    <div style={styles.tableCell}>{order.createdAt.toLocaleDateString()}</div>
+                    <div style={styles.tableCell}>{order.createdAt.toLocaleString()}</div>
                     <div style={styles.tableCell}>
                       <Button 
                         onClick={() => refreshSingleOrderStatus(order.id)}
