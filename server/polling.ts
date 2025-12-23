@@ -1,26 +1,176 @@
 /**
  * Background Order Status Polling Service
- * Automatically checks PROCESSING orders against Code Craft every 10 minutes
+ * - Fast polling (2 min) for recent orders (< 30 min old)
+ * - Standard polling (10 min) for older orders
+ * - Immediate status check after pushing to supplier
  */
 
 import { storage } from "./storage.js";
 import * as codecraft from "./codecraft.js";
 import * as supplierManager from "./supplier-manager.js";
 
-const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
+const FAST_POLLING_INTERVAL = 2 * 60 * 1000; // 2 minutes for recent orders
+const STANDARD_POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes for older orders
+const RECENT_ORDER_THRESHOLD = 30 * 60 * 1000; // Orders < 30 min are "recent"
 let pollingActive = false;
 
 export async function startStatusPolling() {
   if (pollingActive) return;
   
   pollingActive = true;
-  console.log("🔄 Order status polling started (interval: 10 minutes)");
+  console.log("🔄 Order status polling started (fast: 2min, standard: 10min)");
 
   // Run immediately on startup
   await pollOrderStatuses();
 
-  // Then run periodically
-  setInterval(pollOrderStatuses, POLLING_INTERVAL);
+  // Fast polling for recent orders (every 2 minutes)
+  setInterval(async () => {
+    console.log("⚡ Fast polling for recent orders...");
+    await pollRecentOrders();
+  }, FAST_POLLING_INTERVAL);
+
+  // Standard polling for all orders (every 10 minutes)
+  setInterval(pollOrderStatuses, STANDARD_POLLING_INTERVAL);
+}
+
+/**
+ * Poll only recent orders (created in last 30 minutes)
+ */
+async function pollRecentOrders() {
+  const cutoffTime = new Date(Date.now() - RECENT_ORDER_THRESHOLD);
+  
+  try {
+    // Check FastNet recent orders
+    const fastnetOrders = await storage.getFastnetOrders();
+    const recentFastnet = fastnetOrders.filter(o => 
+      o.status === "PROCESSING" && new Date(o.createdAt) > cutoffTime
+    );
+    
+    if (recentFastnet.length > 0) {
+      console.log(`⚡ [FASTNET] Checking ${recentFastnet.length} recent orders...`);
+      for (const order of recentFastnet) {
+        await checkAndUpdateOrderStatus(order, "fastnet");
+      }
+    }
+
+    // Check AT recent orders
+    const atOrders = await storage.getAtOrders();
+    const recentAt = atOrders.filter(o => 
+      o.status === "PROCESSING" && new Date(o.createdAt) > cutoffTime
+    );
+    
+    if (recentAt.length > 0) {
+      console.log(`⚡ [AT] Checking ${recentAt.length} recent orders...`);
+      for (const order of recentAt) {
+        await checkAndUpdateOrderStatus(order, "at");
+      }
+    }
+
+    // Check Telecel recent orders
+    const telecelOrders = await storage.getTelecelOrders();
+    const recentTelecel = telecelOrders.filter(o => 
+      o.status === "PROCESSING" && new Date(o.createdAt) > cutoffTime
+    );
+    
+    if (recentTelecel.length > 0) {
+      console.log(`⚡ [TELECEL] Checking ${recentTelecel.length} recent orders...`);
+      for (const order of recentTelecel) {
+        await checkAndUpdateOrderStatus(order, "telecel");
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error in fast polling:", error);
+  }
+}
+
+/**
+ * Check order status from CodeCraft and update if changed
+ */
+async function checkAndUpdateOrderStatus(
+  order: any, 
+  category: "fastnet" | "at" | "telecel"
+): Promise<boolean> {
+  const referenceId = order.supplierReference || order.shortId;
+  
+  if (!referenceId) {
+    console.log(`⚠️ [${category.toUpperCase()}] Order ${order.shortId} has no reference, skipping status check`);
+    return false;
+  }
+
+  try {
+    const network = category === "at" ? "at_ishare" : category === "telecel" ? "telecel" : "mtn";
+    console.log(`🔍 [${category.toUpperCase()}] Checking status for ${order.shortId} (ref: ${referenceId})...`);
+    
+    const statusResult = await codecraft.checkOrderStatus(referenceId, network);
+
+    if (statusResult.success && statusResult.status) {
+      const newStatus = normalizeStatus(statusResult.status);
+      
+      console.log(`📊 [${category.toUpperCase()}] Order ${order.shortId}: "${statusResult.status}" → ${newStatus}`);
+
+      if (newStatus !== "PROCESSING" && newStatus !== order.status) {
+        console.log(`✅ [${category.toUpperCase()}] Updating order ${order.shortId}: ${order.status} → ${newStatus}`);
+        
+        if (category === "fastnet") {
+          await storage.updateFastnetOrderStatus(order.id, newStatus);
+        } else if (category === "at") {
+          await storage.updateAtOrderStatus(order.id, newStatus);
+        } else {
+          await storage.updateTelecelOrderStatus(order.id, newStatus);
+        }
+        return true;
+      }
+    }
+  } catch (err) {
+    console.error(`❌ [${category.toUpperCase()}] Error checking order ${order.shortId}:`, err);
+  }
+  return false;
+}
+
+/**
+ * Schedule a delayed status check for an order
+ * Called after successfully pushing an order to supplier
+ */
+export function scheduleStatusCheck(
+  orderId: number,
+  shortId: string, 
+  category: "fastnet" | "at" | "telecel",
+  delayMs: number = 10000 // Default 10 seconds
+) {
+  console.log(`⏰ [${category.toUpperCase()}] Scheduling status check for ${shortId} in ${delayMs/1000}s...`);
+  
+  setTimeout(async () => {
+    try {
+      console.log(`⏰ [${category.toUpperCase()}] Running scheduled status check for ${shortId}...`);
+      
+      // Fetch fresh order data
+      let order;
+      if (category === "fastnet") {
+        const orders = await storage.getFastnetOrders();
+        order = orders.find(o => o.id === orderId);
+      } else if (category === "at") {
+        const orders = await storage.getAtOrders();
+        order = orders.find(o => o.id === orderId);
+      } else {
+        const orders = await storage.getTelecelOrders();
+        order = orders.find(o => o.id === orderId);
+      }
+
+      if (order && order.status === "PROCESSING") {
+        const updated = await checkAndUpdateOrderStatus(order, category);
+        
+        // If still processing, schedule another check in 30 seconds
+        if (!updated) {
+          console.log(`⏰ [${category.toUpperCase()}] Order ${shortId} still processing, will check again in 30s...`);
+          scheduleStatusCheck(orderId, shortId, category, 30000);
+        }
+      } else if (order) {
+        console.log(`✅ [${category.toUpperCase()}] Order ${shortId} already ${order.status}, no check needed`);
+      }
+    } catch (err) {
+      console.error(`❌ [${category.toUpperCase()}] Scheduled check error for ${shortId}:`, err);
+    }
+  }, delayMs);
 }
 
 export async function pollOrderStatuses() {

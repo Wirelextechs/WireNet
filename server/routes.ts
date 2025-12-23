@@ -148,7 +148,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               if (result.success) {
                 console.log(`✅ [WEBHOOK] FastNet order ${shortId} pushed successfully to ${result.supplier}`);
-                await storage.updateFastnetOrderStatus(newOrder.id, "PAID", result.supplier, result.message);
+                await storage.updateFastnetOrderStatus(newOrder.id, "PROCESSING", result.supplier, result.message);
+                // Schedule status check after 10 seconds
+                polling.scheduleStatusCheck(newOrder.id, shortId, "fastnet", 10000);
               } else {
                 console.log(`❌ [WEBHOOK] FastNet order ${shortId} failed: ${result.message}`);
                 await storage.updateFastnetOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
@@ -199,7 +201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               if (result.success) {
                 console.log(`✅ [WEBHOOK] AT order ${shortId} pushed successfully to ${result.supplier}`);
-                await storage.updateAtOrderStatus(newOrder.id, "PAID", result.supplier, result.message);
+                await storage.updateAtOrderStatus(newOrder.id, "PROCESSING", result.supplier, result.message);
+                // Schedule status check after 10 seconds
+                polling.scheduleStatusCheck(newOrder.id, shortId, "at", 10000);
               } else {
                 console.log(`❌ [WEBHOOK] AT order ${shortId} failed: ${result.message}`);
                 await storage.updateAtOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
@@ -250,7 +254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               if (result.success) {
                 console.log(`✅ [WEBHOOK] Telecel order ${shortId} pushed successfully to ${result.supplier}`);
-                await storage.updateTelecelOrderStatus(newOrder.id, "PAID", result.supplier, result.message);
+                await storage.updateTelecelOrderStatus(newOrder.id, "PROCESSING", result.supplier, result.message);
+                // Schedule status check after 10 seconds
+                polling.scheduleStatusCheck(newOrder.id, shortId, "telecel", 10000);
               } else {
                 console.log(`❌ [WEBHOOK] Telecel order ${shortId} failed: ${result.message}`);
                 await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
@@ -336,9 +342,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to find and update the order in each table
       let updated = false;
 
-      // Check FastNet orders
+      // Check FastNet orders (FastNet doesn't have supplierReference column)
       const fastnetOrders = await storage.getFastnetOrders();
-      const fastnetOrder = fastnetOrders.find(o => o.shortId === reference_id || o.supplierReference === reference_id);
+      const fastnetOrder = fastnetOrders.find(o => o.shortId === reference_id);
       if (fastnetOrder && newStatus !== "PROCESSING") {
         console.log(`✅ [CODECRAFT CALLBACK] Updating FastNet order ${fastnetOrder.shortId}: ${fastnetOrder.status} → ${newStatus}`);
         await storage.updateFastnetOrderStatus(fastnetOrder.id, newStatus, undefined, message || statusText);
@@ -646,6 +652,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fulfillmentResult.supplier,
             JSON.stringify(fulfillmentResult.data || {})
           );
+          // Schedule status check after 10 seconds
+          polling.scheduleStatusCheck(order.id, order.shortId, "fastnet", 10000);
         } else {
           await storage.updateFastnetOrderStatus(
             order.id, 
