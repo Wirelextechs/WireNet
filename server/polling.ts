@@ -30,7 +30,9 @@ export async function pollOrderStatuses() {
     // Process FASTNET orders first (push them to supplier)
     await processFastnetOrders();
     
-    await checkCategoryOrders("telecel");
+    // Process AT and Telecel orders (push and check status)
+    await processAtOrders();
+    await processTelecelOrders();
     
     console.log("✅ Order status check completed");
   } catch (error) {
@@ -119,6 +121,138 @@ async function processFastnetOrders() {
     console.log("✅ [FASTNET] Finished processing FastNet orders");
   } catch (error) {
     console.error("❌ [FASTNET] Error processing FASTNET orders:", error);
+  }
+}
+
+/**
+ * Process AT orders - push to supplier if not pushed, check status if pushed
+ */
+async function processAtOrders() {
+  try {
+    console.log("🔄 [AT] Starting to process AT orders...");
+    
+    const allOrders = await storage.getAtOrders();
+    const processingOrders = allOrders.filter(o => o.status === "PROCESSING");
+    
+    if (processingOrders.length === 0) {
+      console.log("ℹ️  [AT] No PROCESSING orders to process");
+      return;
+    }
+    
+    console.log(`📋 [AT] Processing ${processingOrders.length} orders...`);
+    
+    for (const order of processingOrders) {
+      try {
+        // If order hasn't been pushed to supplier yet, push it now
+        if (!order.supplierReference && !order.supplierUsed) {
+          console.log(`📤 [AT] Pushing order ${order.shortId} to supplier...`);
+          
+          const result = await supplierManager.purchaseDataBundle(
+            order.customerPhone,
+            order.packageDetails,
+            order.packagePrice,
+            order.shortId,
+            undefined, // Use active supplier
+            "at"
+          );
+          
+          if (result.success) {
+            console.log(`✅ [AT] Order ${order.shortId} pushed to ${result.supplier}`);
+            await storage.updateAtOrderStatus(order.id, "PAID", result.supplier, result.message);
+          } else {
+            console.log(`❌ [AT] Order ${order.shortId} failed: ${result.message}`);
+            await storage.updateAtOrderStatus(order.id, "FAILED", result.supplier, result.message);
+          }
+        } 
+        // If order has been pushed, check its status
+        else if (order.supplierReference) {
+          console.log(`🔍 [AT] Checking status for order ${order.shortId}...`);
+          
+          const statusResult = await codecraft.checkOrderStatus(order.supplierReference, "at_ishare");
+          
+          if (statusResult.success && statusResult.status) {
+            const newStatus = normalizeStatus(statusResult.status);
+            
+            if (newStatus !== "PROCESSING") {
+              console.log(`✅ [AT] Order ${order.shortId}: ${order.status} → ${newStatus}`);
+              await storage.updateAtOrderStatus(order.id, newStatus);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`❌ [AT] Error processing order ${order.shortId}:`, err);
+      }
+    }
+    
+    console.log("✅ [AT] Finished processing AT orders");
+  } catch (error) {
+    console.error("❌ [AT] Error:", error);
+  }
+}
+
+/**
+ * Process Telecel orders - push to supplier if not pushed, check status if pushed
+ */
+async function processTelecelOrders() {
+  try {
+    console.log("🔄 [TELECEL] Starting to process Telecel orders...");
+    
+    const allOrders = await storage.getTelecelOrders();
+    const processingOrders = allOrders.filter(o => o.status === "PROCESSING");
+    
+    if (processingOrders.length === 0) {
+      console.log("ℹ️  [TELECEL] No PROCESSING orders to process");
+      return;
+    }
+    
+    console.log(`📋 [TELECEL] Processing ${processingOrders.length} orders...`);
+    
+    for (const order of processingOrders) {
+      try {
+        // If order hasn't been pushed to supplier yet, push it now
+        if (!order.supplierReference && !order.supplierUsed) {
+          console.log(`📤 [TELECEL] Pushing order ${order.shortId} to supplier...`);
+          
+          const result = await supplierManager.purchaseDataBundle(
+            order.customerPhone,
+            order.packageDetails,
+            order.packagePrice,
+            order.shortId,
+            undefined, // Use active supplier
+            "telecel"
+          );
+          
+          if (result.success) {
+            console.log(`✅ [TELECEL] Order ${order.shortId} pushed to ${result.supplier}`);
+            await storage.updateTelecelOrderStatus(order.id, "PAID", result.supplier, result.message);
+          } else {
+            console.log(`❌ [TELECEL] Order ${order.shortId} failed: ${result.message}`);
+            await storage.updateTelecelOrderStatus(order.id, "FAILED", result.supplier, result.message);
+          }
+        } 
+        // If order has been pushed, check its status
+        else if (order.supplierReference) {
+          console.log(`🔍 [TELECEL] Checking status for order ${order.shortId}...`);
+          
+          const statusResult = await codecraft.checkOrderStatus(order.supplierReference, "telecel");
+          
+          if (statusResult.success && statusResult.status) {
+            const newStatus = normalizeStatus(statusResult.status);
+            
+            if (newStatus !== "PROCESSING") {
+              console.log(`✅ [TELECEL] Order ${order.shortId}: ${order.status} → ${newStatus}`);
+              await storage.updateTelecelOrderStatus(order.id, newStatus);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`❌ [TELECEL] Error processing order ${order.shortId}:`, err);
+      }
+    }
+    
+    console.log("✅ [TELECEL] Finished processing Telecel orders");
+  } catch (error) {
+    console.error("❌ [TELECEL] Error:", error);
   }
 }
 

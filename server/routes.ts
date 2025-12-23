@@ -295,6 +295,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * CodeCraft Callback Webhook
+   * Receives real-time status updates from CodeCraft Network
+   * Configure this URL in CodeCraft dashboard: https://wirenet.vercel.app/api/codecraft/callback
+   * 
+   * Expected payload from CodeCraft:
+   * {
+   *   reference_id: string,
+   *   status: "Successful" | "Failed" | "Pending",
+   *   message?: string,
+   *   network?: string
+   * }
+   */
+  app.post("/api/codecraft/callback", async (req: any, res) => {
+    try {
+      console.log("📥 [CODECRAFT CALLBACK] Received:", JSON.stringify(req.body, null, 2));
+
+      const { reference_id, status, message, network, order_status } = req.body;
+
+      if (!reference_id) {
+        console.warn("⚠️ [CODECRAFT CALLBACK] Missing reference_id");
+        return res.status(400).json({ error: "Missing reference_id" });
+      }
+
+      // Determine the final status
+      const statusText = (order_status || status || "").toString().toLowerCase();
+      let newStatus: "FULFILLED" | "FAILED" | "PROCESSING" = "PROCESSING";
+
+      if (statusText.includes("successful") || statusText.includes("delivered") || 
+          statusText.includes("completed") || statusText.includes("credited")) {
+        newStatus = "FULFILLED";
+      } else if (statusText.includes("failed") || statusText.includes("rejected") || 
+                 statusText.includes("error") || statusText.includes("cancelled")) {
+        newStatus = "FAILED";
+      }
+
+      console.log(`📊 [CODECRAFT CALLBACK] Reference: ${reference_id}, Status: ${statusText} → ${newStatus}`);
+
+      // Try to find and update the order in each table
+      let updated = false;
+
+      // Check FastNet orders
+      const fastnetOrders = await storage.getFastnetOrders();
+      const fastnetOrder = fastnetOrders.find(o => o.shortId === reference_id || o.supplierReference === reference_id);
+      if (fastnetOrder && newStatus !== "PROCESSING") {
+        console.log(`✅ [CODECRAFT CALLBACK] Updating FastNet order ${fastnetOrder.shortId}: ${fastnetOrder.status} → ${newStatus}`);
+        await storage.updateFastnetOrderStatus(fastnetOrder.id, newStatus, undefined, message || statusText);
+        updated = true;
+      }
+
+      // Check AT orders
+      const atOrders = await storage.getAtOrders();
+      const atOrder = atOrders.find(o => o.shortId === reference_id || o.supplierReference === reference_id);
+      if (atOrder && newStatus !== "PROCESSING") {
+        console.log(`✅ [CODECRAFT CALLBACK] Updating AT order ${atOrder.shortId}: ${atOrder.status} → ${newStatus}`);
+        await storage.updateAtOrderStatus(atOrder.id, newStatus, undefined, message || statusText);
+        updated = true;
+      }
+
+      // Check Telecel orders
+      const telecelOrders = await storage.getTelecelOrders();
+      const telecelOrder = telecelOrders.find(o => o.shortId === reference_id || o.supplierReference === reference_id);
+      if (telecelOrder && newStatus !== "PROCESSING") {
+        console.log(`✅ [CODECRAFT CALLBACK] Updating Telecel order ${telecelOrder.shortId}: ${telecelOrder.status} → ${newStatus}`);
+        await storage.updateTelecelOrderStatus(telecelOrder.id, newStatus, undefined, message || statusText);
+        updated = true;
+      }
+
+      if (updated) {
+        console.log(`✅ [CODECRAFT CALLBACK] Order ${reference_id} updated to ${newStatus}`);
+        return res.status(200).json({ ok: true, reference_id, newStatus });
+      } else {
+        console.warn(`⚠️ [CODECRAFT CALLBACK] Order ${reference_id} not found or no status change`);
+        return res.status(200).json({ ok: true, reference_id, message: "Order not found or no change needed" });
+      }
+    } catch (error) {
+      console.error("❌ [CODECRAFT CALLBACK] Error:", error);
+      return res.status(500).json({ error: "Callback processing failed" });
+    }
+  });
+
   // Session middleware with PostgreSQL store
   app.use(
     session({
