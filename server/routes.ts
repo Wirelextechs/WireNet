@@ -359,6 +359,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual trigger for order polling (Admin only - for testing/debugging)
+  app.post("/api/admin/trigger-polling", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      console.log("🔄 Manual polling trigger requested by admin");
+      await polling.pollOrderStatuses();
+      res.json({ success: true, message: "Order polling triggered successfully. Check server logs for details." });
+    } catch (error) {
+      console.error("Error triggering polling:", error);
+      res.status(500).json({ success: false, message: "Failed to trigger polling", error: String(error) });
+    }
+  });
+
   // --- FastNet Order Fulfillment Routes ---
 
   // Get all FastNet orders (Admin only)
