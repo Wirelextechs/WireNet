@@ -5,6 +5,7 @@
 
 import { storage } from "./storage.js";
 import * as codecraft from "./codecraft.js";
+import * as supplierManager from "./supplier-manager.js";
 
 const POLLING_INTERVAL = 10 * 60 * 1000; // 10 minutes
 let pollingActive = false;
@@ -26,15 +27,79 @@ export async function pollOrderStatuses() {
   try {
     console.log("🔍 Starting automatic order status check...");
     
-    // Check AT orders
-    await checkCategoryOrders("at");
+    // Process FASTNET orders first (push them to supplier)
+    await processFastnetOrders();
     
-    // Check TELECEL orders
     await checkCategoryOrders("telecel");
     
     console.log("✅ Order status check completed");
   } catch (error) {
     console.error("❌ Error during order status polling:", error);
+  }
+}
+
+async function processFastnetOrders() {
+  try {
+    // Get all FASTNET orders with PROCESSING status
+    const allOrders = await storage.getFastnetOrders();
+    const processingOrders = allOrders.filter(o => o.status === "PROCESSING");
+
+    if (processingOrders.length === 0) {
+      console.log("ℹ️  No PROCESSING FASTNET orders to process");
+      return;
+    }
+
+    console.log(`📋 Processing ${processingOrders.length} FASTNET PROCESSING orders...`);
+
+    for (const order of processingOrders) {
+      try {
+        console.log(`📤 Pushing FASTNET order ${order.shortId} to supplier...`);
+        
+        // Push order to the active supplier
+        const purchaseResult = await supplierManager.purchaseDataBundle(
+          order.customerPhone,
+          order.packageDetails,
+          order.packagePrice,
+          order.shortId,
+          undefined, // Use active supplier
+          "mtn" // Default network for fastnet
+        );
+
+        if (purchaseResult.success) {
+          console.log(`✅ FASTNET order ${order.shortId} successfully pushed to ${purchaseResult.supplier}`);
+          
+          // Update order status to PAID (pushed to supplier)
+          await storage.updateFastnetOrderStatus(
+            order.id,
+            "PAID",
+            purchaseResult.supplier,
+            purchaseResult.message
+          );
+        } else {
+          console.error(`❌ FASTNET order ${order.shortId} failed: ${purchaseResult.message}`);
+          
+          // Update with error status
+          await storage.updateFastnetOrderStatus(
+            order.id,
+            "FAILED",
+            purchaseResult.supplier,
+            purchaseResult.message
+          );
+        }
+      } catch (err) {
+        console.error(`❌ Error processing order ${order.shortId}:`, err);
+        
+        // Update with error
+        await storage.updateFastnetOrderStatus(
+          order.id,
+          "FAILED",
+          "unknown",
+          String(err)
+        );
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error processing FASTNET orders:", error);
   }
 }
 
