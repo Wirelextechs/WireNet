@@ -102,6 +102,8 @@ export async function purchaseDataBundle(
     });
 
     const result: HubnetResponse = await response.json();
+    
+    console.log(`📡 Hubnet raw response:`, JSON.stringify(result));
 
     if (!response.ok) {
       console.error(`❌ Hubnet API error:`, result);
@@ -112,7 +114,17 @@ export async function purchaseDataBundle(
     }
 
     // Hubnet returns code "0000" for successful transaction initialization
-    if (result.status && result.code === "0000") {
+    // Also check for messages that indicate success even if code is different
+    const successMessages = [
+      "Your transaction has been processed and is now complete",
+      "Transaction successful",
+      "successfully",
+    ];
+    
+    const messageText = (result.reason || result.message || "").toLowerCase();
+    const isSuccessMessage = successMessages.some(msg => messageText.includes(msg.toLowerCase()));
+    
+    if ((result.status && result.code === "0000") || isSuccessMessage) {
       console.log(`✅ Hubnet order successful:`, result);
       return {
         success: true,
