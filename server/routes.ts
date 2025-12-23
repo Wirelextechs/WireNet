@@ -405,6 +405,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate a unique reference if not provided
       const orderReference = reference || `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      // Round price to integer (handle decimal prices like 5.1)
+      const roundedPrice = Math.round(Number(price));
 
       // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
       // We check by paymentReference + phone + amount to be specific
@@ -413,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentReference: reference,
           customerPhone: phoneNumber,
           packageDetails: dataAmount,
-          packagePrice: typeof price === 'string' ? parseInt(price) : price,
+          packagePrice: roundedPrice,
         });
         if (existingOrder) {
           console.log(`⚠️ FastNet Order for ${phoneNumber}/${dataAmount} already exists with ref ${reference}, skipping duplicate`);
@@ -430,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shortId: orderReference,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
-        packagePrice: typeof price === 'string' ? parseInt(price) : price,
+        packagePrice: roundedPrice,
         status: "PROCESSING",
         paymentReference: reference || null,
       });
