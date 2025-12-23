@@ -40,22 +40,28 @@ export async function pollOrderStatuses() {
 
 async function processFastnetOrders() {
   try {
+    console.log("🔄 [FASTNET] Starting to process FastNet orders...");
+    
     // Get all FASTNET orders with PROCESSING status
     const allOrders = await storage.getFastnetOrders();
+    console.log(`🔄 [FASTNET] Retrieved ${allOrders.length} total FastNet orders from DB`);
+    
     const processingOrders = allOrders.filter(o => o.status === "PROCESSING");
+    console.log(`🔄 [FASTNET] Found ${processingOrders.length} PROCESSING orders`);
 
     if (processingOrders.length === 0) {
-      console.log("ℹ️  No PROCESSING FASTNET orders to process");
+      console.log("ℹ️  [FASTNET] No PROCESSING FASTNET orders to process");
       return;
     }
 
-    console.log(`📋 Processing ${processingOrders.length} FASTNET PROCESSING orders...`);
+    console.log(`📋 [FASTNET] Processing ${processingOrders.length} FASTNET PROCESSING orders...`);
 
     for (const order of processingOrders) {
       try {
-        console.log(`📤 Pushing FASTNET order ${order.shortId} (ID: ${order.id}, Phone: ${order.customerPhone}, Package: ${order.packageDetails}, Price: ${order.packagePrice}) to supplier...`);
+        console.log(`📤 [FASTNET] Processing order: ID=${order.id}, ShortID=${order.shortId}, Phone=${order.customerPhone}, Package=${order.packageDetails}, Price=${order.packagePrice}, Status=${order.status}`);
         
         // Push order to the active supplier
+        console.log(`📤 [FASTNET] Calling supplierManager.purchaseDataBundle for ${order.shortId}...`);
         const purchaseResult = await supplierManager.purchaseDataBundle(
           order.customerPhone,
           order.packageDetails,
@@ -65,41 +71,54 @@ async function processFastnetOrders() {
           "mtn" // Default network for fastnet
         );
 
+        console.log(`📤 [FASTNET] Supplier result for ${order.shortId}: success=${purchaseResult.success}, supplier=${purchaseResult.supplier}, message=${purchaseResult.message}`);
+
         if (purchaseResult.success) {
-          console.log(`✅ FASTNET order ${order.shortId} successfully pushed to ${purchaseResult.supplier}`);
+          console.log(`✅ [FASTNET] Order ${order.shortId} successfully pushed to ${purchaseResult.supplier}`);
           
           // Update order status to PAID (pushed to supplier)
-          await storage.updateFastnetOrderStatus(
+          console.log(`💾 [FASTNET] Updating DB: order ${order.id} status=PAID, supplier=${purchaseResult.supplier}`);
+          const updateResult = await storage.updateFastnetOrderStatus(
             order.id,
             "PAID",
             purchaseResult.supplier,
             purchaseResult.message
           );
+          console.log(`💾 [FASTNET] DB Update result: ${updateResult ? 'SUCCESS' : 'FAILED'}`);
         } else {
-          console.error(`❌ FASTNET order ${order.shortId} failed: ${purchaseResult.message}`);
+          console.error(`❌ [FASTNET] Order ${order.shortId} failed: ${purchaseResult.message}`);
           
           // Update with error status
-          await storage.updateFastnetOrderStatus(
+          console.log(`💾 [FASTNET] Updating DB: order ${order.id} status=FAILED, supplier=${purchaseResult.supplier}`);
+          const updateResult = await storage.updateFastnetOrderStatus(
             order.id,
             "FAILED",
             purchaseResult.supplier,
             purchaseResult.message
           );
+          console.log(`💾 [FASTNET] DB Update result: ${updateResult ? 'SUCCESS' : 'FAILED'}`);
         }
       } catch (err) {
-        console.error(`❌ Error processing order ${order.shortId}:`, err);
+        console.error(`❌ [FASTNET] Exception processing order ${order.shortId}:`, err);
         
         // Update with error
-        await storage.updateFastnetOrderStatus(
-          order.id,
-          "FAILED",
-          "unknown",
-          String(err)
-        );
+        try {
+          console.log(`💾 [FASTNET] Updating DB: order ${order.id} status=FAILED due to exception`);
+          const updateResult = await storage.updateFastnetOrderStatus(
+            order.id,
+            "FAILED",
+            "unknown",
+            String(err)
+          );
+          console.log(`💾 [FASTNET] DB Update result: ${updateResult ? 'SUCCESS' : 'FAILED'}`);
+        } catch (updateErr) {
+          console.error(`💾 [FASTNET] Failed to update order status in DB:`, updateErr);
+        }
       }
     }
+    console.log("✅ [FASTNET] Finished processing FastNet orders");
   } catch (error) {
-    console.error("❌ Error processing FASTNET orders:", error);
+    console.error("❌ [FASTNET] Error processing FASTNET orders:", error);
   }
 }
 
