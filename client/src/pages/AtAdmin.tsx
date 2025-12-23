@@ -157,6 +157,26 @@ export default function AtAdmin() {
     setTimeout(() => setMessage(""), 3000);
   };
 
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/at/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (response.ok) {
+        setMessage(`✅ Order updated to ${newStatus}`);
+        loadOrders();
+      } else {
+        setMessage("❌ Failed to update order");
+      }
+    } catch (error) {
+      setMessage("❌ Error updating order");
+    }
+    setTimeout(() => setMessage(""), 3000);
+  };
+
   const addPackage = async () => {
     if (!newPackage.amount || !newPackage.price || !newPackage.delivery) {
       setMessage("❌ Fill all fields");
@@ -394,12 +414,25 @@ export default function AtAdmin() {
                     <div style={styles.tableCell}>{order.packageDetails}</div>
                     <div style={styles.tableCell}>GH₵{order.packagePrice}</div>
                     <div style={styles.tableCell}>
-                      <span style={{
-                        ...styles.statusBadge,
-                        backgroundColor: getStatusColor(order.status),
-                      }}>
-                        {order.status}
-                      </span>
+                      <select
+                        value={order.status}
+                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          border: "1px solid #ccc",
+                          backgroundColor: getStatusColor(order.status),
+                          color: "white",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="PROCESSING">PROCESSING</option>
+                        <option value="FULFILLED">FULFILLED</option>
+                        <option value="PAID">PAID</option>
+                        <option value="FAILED">FAILED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                      </select>
                     </div>
                     <div style={styles.tableCell}>{order.createdAt.toLocaleString()}</div>
                     <div style={styles.tableCell}>

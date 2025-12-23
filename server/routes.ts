@@ -1589,6 +1589,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Manually update AT order status
+  app.patch("/api/at/orders/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const updated = await storage.updateAtOrderStatus(id, status);
+      if (!updated) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      console.log(`📝 AT order ${id} manually updated to ${status}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating AT order:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
   // Admin: Refresh all AT orders (AT only, not all categories)
   app.post("/api/at/orders/refresh/all", isAuthenticated, isAdmin, async (_req, res) => {
     try {
@@ -1834,6 +1857,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error refreshing TELECEL order status:", error);
       res.status(500).json({ success: false, message: "Failed to refresh order status" });
+    }
+  });
+
+  // Admin: Manually update TELECEL order status
+  app.patch("/api/telecel/orders/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+
+      const updated = await storage.updateTelecelOrderStatus(id, status);
+      if (!updated) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      console.log(`📝 Telecel order ${id} manually updated to ${status}`);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating Telecel order:", error);
+      res.status(500).json({ message: "Failed to update order" });
     }
   });
 
