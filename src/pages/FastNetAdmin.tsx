@@ -47,6 +47,7 @@ export default function FastNetAdmin() {
   const [activeSupplier, setActiveSupplier] = useState<Supplier>("dataxpress");
   const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [processingPending, setProcessingPending] = useState(false);
   const [walletBalances, setWalletBalances] = useState<{
     dataxpress: WalletBalance;
     hubnet: WalletBalance;
@@ -341,6 +342,33 @@ export default function FastNetAdmin() {
     }
   };
 
+  // Push all PROCESSING orders to supplier
+  const handleProcessPendingOrders = async () => {
+    setProcessingPending(true);
+    try {
+      const response = await fetch("/api/admin/trigger-polling", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setMessage(`✅ ${result.message}`);
+        await loadOrders(); // Reload orders to get updated statuses
+      } else {
+        const error = await response.json();
+        setMessage(`❌ ${error.message || "Failed to process orders"}`);
+      }
+    } catch (error) {
+      console.error("Error processing pending orders:", error);
+      setMessage("❌ Failed to process pending orders");
+    } finally {
+      setProcessingPending(false);
+      setTimeout(() => setMessage(""), 5000);
+    }
+  };
+
   // --- Package Management ---
   const handleAddPackage = async () => {
     if (!newPackage.amount || !newPackage.price || !newPackage.delivery) {
@@ -544,6 +572,10 @@ export default function FastNetAdmin() {
                     </select>
                   </div>
                   <Button onClick={handleBulkStatusChange} style={styles.bulkButton}>Update ({selectedOrders.size})</Button>
+                  <Button onClick={handleProcessPendingOrders} disabled={processingPending} style={{ ...styles.bulkButton, marginLeft: "10px", backgroundColor: "#28a745" }}>
+                    <PackageIcon size={16} style={{ marginRight: "6px" }} className={processingPending ? "animate-spin" : ""} />
+                    {processingPending ? "Processing..." : "Push to Supplier"}
+                  </Button>
                   <Button onClick={handleRefreshAllStatuses} disabled={refreshingAll} style={{ ...styles.bulkButton, marginLeft: "10px", backgroundColor: "#17a2b8" }}>
                     <RefreshCw size={16} style={{ marginRight: "6px" }} className={refreshingAll ? "animate-spin" : ""} />
                     {refreshingAll ? "Refreshing..." : "Refresh All Statuses"}
