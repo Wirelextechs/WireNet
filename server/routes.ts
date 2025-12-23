@@ -409,8 +409,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Round price to integer (handle decimal prices like 5.1)
       const roundedPrice = Math.round(Number(price));
 
-      // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
-      // We check by paymentReference + phone + amount to be specific
+      // Check if THIS EXACT order already exists (prevent duplicates from same webhook/transaction)
+      // Only block if: same payment reference AND same phone AND same package
+      // This prevents duplicate webhook calls from creating multiple orders, but allows
+      // legitimate repeat purchases with different payment references
       if (reference) {
         const existingOrder = await storage.findFastnetOrderByPaymentAndItem({
           paymentReference: reference,

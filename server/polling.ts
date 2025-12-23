@@ -53,7 +53,7 @@ async function processFastnetOrders() {
 
     for (const order of processingOrders) {
       try {
-        console.log(`📤 Pushing FASTNET order ${order.shortId} to supplier...`);
+        console.log(`📤 Pushing FASTNET order ${order.shortId} (ID: ${order.id}, Phone: ${order.customerPhone}, Package: ${order.packageDetails}, Price: ${order.packagePrice}) to supplier...`);
         
         // Push order to the active supplier
         const purchaseResult = await supplierManager.purchaseDataBundle(
