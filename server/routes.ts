@@ -123,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (existing) continue;
 
           const shortId = `${reference}-${index + 1}`;
-          await storage.createFastnetOrder({
+          const newOrder = await storage.createFastnetOrder({
             shortId,
             customerPhone: phoneNumber,
             packageDetails: dataAmount,
@@ -132,6 +132,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentReference: reference,
           });
           created++;
+
+          // Immediately push to supplier (don't await - process in background)
+          (async () => {
+            try {
+              console.log(`🚀 [WEBHOOK] Immediately pushing FastNet order ${shortId} to supplier...`);
+              const result = await supplierManager.purchaseDataBundle(
+                phoneNumber,
+                dataAmount,
+                price,
+                shortId,
+                undefined, // Use active supplier
+                "mtn" // Default network
+              );
+              
+              if (result.success) {
+                console.log(`✅ [WEBHOOK] FastNet order ${shortId} pushed successfully to ${result.supplier}`);
+                await storage.updateFastnetOrderStatus(newOrder.id, "PAID", result.supplier, result.message);
+              } else {
+                console.log(`❌ [WEBHOOK] FastNet order ${shortId} failed: ${result.message}`);
+                await storage.updateFastnetOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
+              }
+            } catch (err) {
+              console.error(`❌ [WEBHOOK] Error pushing FastNet order ${shortId}:`, err);
+              await storage.updateFastnetOrderStatus(newOrder.id, "FAILED", "unknown", String(err));
+            }
+          })();
         }
 
         if (service === "at") {
@@ -148,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (existing) continue;
 
           const shortId = `${reference}-${index + 1}`;
-          await storage.createAtOrder({
+          const newOrder = await storage.createAtOrder({
             shortId,
             customerPhone: phoneNumber,
             packageDetails: dataAmount,
@@ -157,6 +183,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentReference: reference,
           });
           created++;
+
+          // Immediately push to supplier (don't await - process in background)
+          (async () => {
+            try {
+              console.log(`🚀 [WEBHOOK] Immediately pushing AT order ${shortId} to supplier...`);
+              const result = await supplierManager.purchaseDataBundle(
+                phoneNumber,
+                dataAmount,
+                price,
+                shortId,
+                undefined, // Use active supplier
+                "at" // AT network
+              );
+              
+              if (result.success) {
+                console.log(`✅ [WEBHOOK] AT order ${shortId} pushed successfully to ${result.supplier}`);
+                await storage.updateAtOrderStatus(newOrder.id, "PAID", result.supplier, result.message);
+              } else {
+                console.log(`❌ [WEBHOOK] AT order ${shortId} failed: ${result.message}`);
+                await storage.updateAtOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
+              }
+            } catch (err) {
+              console.error(`❌ [WEBHOOK] Error pushing AT order ${shortId}:`, err);
+              await storage.updateAtOrderStatus(newOrder.id, "FAILED", "unknown", String(err));
+            }
+          })();
         }
 
         if (service === "telecel") {
@@ -173,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (existing) continue;
 
           const shortId = `${reference}-${index + 1}`;
-          await storage.createTelecelOrder({
+          const newOrder = await storage.createTelecelOrder({
             shortId,
             customerPhone: phoneNumber,
             packageDetails: dataAmount,
@@ -182,6 +234,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentReference: reference,
           });
           created++;
+
+          // Immediately push to supplier (don't await - process in background)
+          (async () => {
+            try {
+              console.log(`🚀 [WEBHOOK] Immediately pushing Telecel order ${shortId} to supplier...`);
+              const result = await supplierManager.purchaseDataBundle(
+                phoneNumber,
+                dataAmount,
+                price,
+                shortId,
+                undefined, // Use active supplier
+                "telecel" // Telecel network
+              );
+              
+              if (result.success) {
+                console.log(`✅ [WEBHOOK] Telecel order ${shortId} pushed successfully to ${result.supplier}`);
+                await storage.updateTelecelOrderStatus(newOrder.id, "PAID", result.supplier, result.message);
+              } else {
+                console.log(`❌ [WEBHOOK] Telecel order ${shortId} failed: ${result.message}`);
+                await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
+              }
+            } catch (err) {
+              console.error(`❌ [WEBHOOK] Error pushing Telecel order ${shortId}:`, err);
+              await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", "unknown", String(err));
+            }
+          })();
         }
 
         if (service === "datagod") {
