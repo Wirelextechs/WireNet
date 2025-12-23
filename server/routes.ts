@@ -8,6 +8,7 @@ import { Pool } from "pg";
 import crypto from "crypto";
 import * as supplierManager from "./supplier-manager.js";
 import * as polling from "./polling.js";
+import * as codecraft from "./codecraft.js";
 import { sendOrderNotification, checkSMSBalance } from "./sms.js";
 
 const PgStore = pgSession(session);
@@ -186,31 +187,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           created++;
 
-          // Immediately push to supplier (don't await - process in background)
+          // Immediately push to CodeCraft (AT orders ALWAYS use CodeCraft)
           (async () => {
             try {
-              console.log(`🚀 [WEBHOOK] Immediately pushing AT order ${shortId} to supplier...`);
-              const result = await supplierManager.purchaseDataBundle(
+              console.log(`🚀 [WEBHOOK] Pushing AT order ${shortId} to CodeCraft...`);
+              const result = await codecraft.purchaseDataBundle(
                 phoneNumber,
-                dataAmount,
+                dataAmount.toUpperCase(), // CodeCraft needs uppercase like "2GB"
                 price,
                 shortId,
-                undefined, // Use active supplier
                 "at" // AT network
               );
               
               if (result.success) {
-                console.log(`✅ [WEBHOOK] AT order ${shortId} pushed successfully to ${result.supplier}`);
-                await storage.updateAtOrderStatus(newOrder.id, "PROCESSING", result.supplier, result.message);
+                console.log(`✅ [WEBHOOK] AT order ${shortId} pushed to CodeCraft`);
+                await storage.updateAtOrderStatus(newOrder.id, "PROCESSING", "codecraft", result.message);
                 // Schedule status check after 10 seconds
                 polling.scheduleStatusCheck(newOrder.id, shortId, "at", 10000);
               } else {
                 console.log(`❌ [WEBHOOK] AT order ${shortId} failed: ${result.message}`);
-                await storage.updateAtOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
+                await storage.updateAtOrderStatus(newOrder.id, "FAILED", "codecraft", result.message);
               }
             } catch (err) {
               console.error(`❌ [WEBHOOK] Error pushing AT order ${shortId}:`, err);
-              await storage.updateAtOrderStatus(newOrder.id, "FAILED", "unknown", String(err));
+              await storage.updateAtOrderStatus(newOrder.id, "FAILED", "codecraft", String(err));
             }
           })();
         }
@@ -239,31 +239,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           created++;
 
-          // Immediately push to supplier (don't await - process in background)
+          // Immediately push to CodeCraft (Telecel orders ALWAYS use CodeCraft)
           (async () => {
             try {
-              console.log(`🚀 [WEBHOOK] Immediately pushing Telecel order ${shortId} to supplier...`);
-              const result = await supplierManager.purchaseDataBundle(
+              console.log(`🚀 [WEBHOOK] Pushing Telecel order ${shortId} to CodeCraft...`);
+              const result = await codecraft.purchaseDataBundle(
                 phoneNumber,
-                dataAmount,
+                dataAmount.toUpperCase(), // CodeCraft needs uppercase like "5GB"
                 price,
                 shortId,
-                undefined, // Use active supplier
                 "telecel" // Telecel network
               );
               
               if (result.success) {
-                console.log(`✅ [WEBHOOK] Telecel order ${shortId} pushed successfully to ${result.supplier}`);
-                await storage.updateTelecelOrderStatus(newOrder.id, "PROCESSING", result.supplier, result.message);
+                console.log(`✅ [WEBHOOK] Telecel order ${shortId} pushed to CodeCraft`);
+                await storage.updateTelecelOrderStatus(newOrder.id, "PROCESSING", "codecraft", result.message);
                 // Schedule status check after 10 seconds
                 polling.scheduleStatusCheck(newOrder.id, shortId, "telecel", 10000);
               } else {
                 console.log(`❌ [WEBHOOK] Telecel order ${shortId} failed: ${result.message}`);
-                await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", result.supplier, result.message);
+                await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", "codecraft", result.message);
               }
             } catch (err) {
               console.error(`❌ [WEBHOOK] Error pushing Telecel order ${shortId}:`, err);
-              await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", "unknown", String(err));
+              await storage.updateTelecelOrderStatus(newOrder.id, "FAILED", "codecraft", String(err));
             }
           })();
         }
@@ -1590,11 +1589,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Refresh all AT orders
+  // Admin: Refresh all AT orders (AT only, not all categories)
   app.post("/api/at/orders/refresh/all", isAuthenticated, isAdmin, async (_req, res) => {
     try {
-      await polling.pollOrderStatuses();
-      res.json({ success: true, message: "All orders status updated" });
+      await polling.pollAtOrders();
+      res.json({ success: true, message: "AT orders status updated" });
     } catch (error) {
       console.error("Error refreshing AT orders:", error);
       res.status(500).json({ success: false, message: "Failed to refresh orders" });
@@ -1838,11 +1837,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Refresh all TELECEL orders
+  // Admin: Refresh all TELECEL orders (Telecel only, not all categories)
   app.post("/api/telecel/orders/refresh/all", isAuthenticated, isAdmin, async (_req, res) => {
     try {
-      await polling.pollOrderStatuses();
-      res.json({ success: true, message: "All orders status updated" });
+      await polling.pollTelecelOrders();
+      res.json({ success: true, message: "Telecel orders status updated" });
     } catch (error) {
       console.error("Error refreshing TELECEL orders:", error);
       res.status(500).json({ success: false, message: "Failed to refresh orders" });

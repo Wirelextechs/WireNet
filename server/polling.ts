@@ -190,6 +190,45 @@ export async function pollOrderStatuses() {
   }
 }
 
+/**
+ * Poll only FastNet orders (for FastNet refresh button)
+ */
+export async function pollFastnetOrders() {
+  try {
+    console.log("🔍 [FASTNET] Starting FastNet order status check...");
+    await processFastnetOrders();
+    console.log("✅ [FASTNET] FastNet order status check completed");
+  } catch (error) {
+    console.error("❌ [FASTNET] Error:", error);
+  }
+}
+
+/**
+ * Poll only AT orders (for AT refresh button)
+ */
+export async function pollAtOrders() {
+  try {
+    console.log("🔍 [AT] Starting AT order status check...");
+    await processAtOrders();
+    console.log("✅ [AT] AT order status check completed");
+  } catch (error) {
+    console.error("❌ [AT] Error:", error);
+  }
+}
+
+/**
+ * Poll only Telecel orders (for Telecel refresh button)
+ */
+export async function pollTelecelOrders() {
+  try {
+    console.log("🔍 [TELECEL] Starting Telecel order status check...");
+    await processTelecelOrders();
+    console.log("✅ [TELECEL] Telecel order status check completed");
+  } catch (error) {
+    console.error("❌ [TELECEL] Error:", error);
+  }
+}
+
 async function processFastnetOrders() {
   try {
     console.log("🔄 [FASTNET] Starting to process FastNet orders...");
@@ -294,36 +333,39 @@ async function processAtOrders() {
     for (const order of processingOrders) {
       try {
         // If order hasn't been pushed to supplier yet, push it now
+        // AT orders ALWAYS use CodeCraft (not the active supplier)
         if (!order.supplierReference && !order.supplierUsed) {
-          console.log(`📤 [AT] Pushing order ${order.shortId} to supplier...`);
+          console.log(`📤 [AT] Pushing order ${order.shortId} to CodeCraft...`);
           
-          const result = await supplierManager.purchaseDataBundle(
+          // Use CodeCraft directly for AT orders
+          const result = await codecraft.purchaseDataBundle(
             order.customerPhone,
-            order.packageDetails,
+            order.packageDetails.toUpperCase(), // CodeCraft needs uppercase like "2GB"
             order.packagePrice,
             order.shortId,
-            undefined, // Use active supplier
-            "at"
+            "at" // AT network
           );
           
           if (result.success) {
-            console.log(`✅ [AT] Order ${order.shortId} pushed to ${result.supplier}`);
-            await storage.updateAtOrderStatus(order.id, "PAID", result.supplier, result.message);
+            console.log(`✅ [AT] Order ${order.shortId} pushed to CodeCraft`);
+            await storage.updateAtOrderStatus(order.id, "PROCESSING", "codecraft", result.message);
+            // Schedule status check
+            scheduleStatusCheck(order.id, order.shortId, "at", 10000);
           } else {
             console.log(`❌ [AT] Order ${order.shortId} failed: ${result.message}`);
-            await storage.updateAtOrderStatus(order.id, "FAILED", result.supplier, result.message);
+            await storage.updateAtOrderStatus(order.id, "FAILED", "codecraft", result.message);
           }
         } 
         // If order has been pushed, check its status
-        else if (order.supplierReference) {
+        else if (order.supplierUsed === "codecraft") {
           console.log(`🔍 [AT] Checking status for order ${order.shortId}...`);
           
-          const statusResult = await codecraft.checkOrderStatus(order.supplierReference, "at_ishare");
+          const statusResult = await codecraft.checkOrderStatus(order.shortId, "at_ishare");
           
           if (statusResult.success && statusResult.status) {
             const newStatus = normalizeStatus(statusResult.status);
             
-            if (newStatus !== "PROCESSING") {
+            if (newStatus !== "PROCESSING" && newStatus !== order.status) {
               console.log(`✅ [AT] Order ${order.shortId}: ${order.status} → ${newStatus}`);
               await storage.updateAtOrderStatus(order.id, newStatus);
             }
@@ -360,36 +402,39 @@ async function processTelecelOrders() {
     for (const order of processingOrders) {
       try {
         // If order hasn't been pushed to supplier yet, push it now
+        // Telecel orders ALWAYS use CodeCraft (not the active supplier)
         if (!order.supplierReference && !order.supplierUsed) {
-          console.log(`📤 [TELECEL] Pushing order ${order.shortId} to supplier...`);
+          console.log(`📤 [TELECEL] Pushing order ${order.shortId} to CodeCraft...`);
           
-          const result = await supplierManager.purchaseDataBundle(
+          // Use CodeCraft directly for Telecel orders
+          const result = await codecraft.purchaseDataBundle(
             order.customerPhone,
-            order.packageDetails,
+            order.packageDetails.toUpperCase(), // CodeCraft needs uppercase like "5GB"
             order.packagePrice,
             order.shortId,
-            undefined, // Use active supplier
-            "telecel"
+            "telecel" // Telecel network
           );
           
           if (result.success) {
-            console.log(`✅ [TELECEL] Order ${order.shortId} pushed to ${result.supplier}`);
-            await storage.updateTelecelOrderStatus(order.id, "PAID", result.supplier, result.message);
+            console.log(`✅ [TELECEL] Order ${order.shortId} pushed to CodeCraft`);
+            await storage.updateTelecelOrderStatus(order.id, "PROCESSING", "codecraft", result.message);
+            // Schedule status check
+            scheduleStatusCheck(order.id, order.shortId, "telecel", 10000);
           } else {
             console.log(`❌ [TELECEL] Order ${order.shortId} failed: ${result.message}`);
-            await storage.updateTelecelOrderStatus(order.id, "FAILED", result.supplier, result.message);
+            await storage.updateTelecelOrderStatus(order.id, "FAILED", "codecraft", result.message);
           }
         } 
         // If order has been pushed, check its status
-        else if (order.supplierReference) {
+        else if (order.supplierUsed === "codecraft") {
           console.log(`🔍 [TELECEL] Checking status for order ${order.shortId}...`);
           
-          const statusResult = await codecraft.checkOrderStatus(order.supplierReference, "telecel");
+          const statusResult = await codecraft.checkOrderStatus(order.shortId, "telecel");
           
           if (statusResult.success && statusResult.status) {
             const newStatus = normalizeStatus(statusResult.status);
             
-            if (newStatus !== "PROCESSING") {
+            if (newStatus !== "PROCESSING" && newStatus !== order.status) {
               console.log(`✅ [TELECEL] Order ${order.shortId}: ${order.status} → ${newStatus}`);
               await storage.updateTelecelOrderStatus(order.id, newStatus);
             }
