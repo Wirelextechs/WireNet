@@ -7,13 +7,15 @@
 const MOOLRE_BASE_URL = "https://api.moolre.com/open/transact/payment";
 const MOOLRE_USER = process.env.MOOLRE_USER;
 const MOOLRE_PUB_KEY = process.env.MOOLRE_PUB_KEY;
-const MOOLRE_SECRET = process.env.MOOLRE_SECRET;
+const MOOLRE_SECRET = process.env.MOOLRE_SECRET; // API secret for requests
+const MOOLRE_WEBHOOK_SECRET = process.env.MOOLRE_WEBHOOK_SECRET; // Webhook verification secret (different from API secret)
 const MOOLRE_ACCOUNT = process.env.MOOLRE_ACCOUNT; // Merchant account number
 
 console.log(`🔑 Moolre Status: ${MOOLRE_USER && MOOLRE_PUB_KEY ? '✅ SET' : '❌ NOT SET'}`);
+console.log(`🔑 Moolre Webhook Secret: ${MOOLRE_WEBHOOK_SECRET ? '✅ SET' : '❌ NOT SET'}`);
 if (!MOOLRE_USER || !MOOLRE_PUB_KEY) {
   console.warn("⚠️  MOOLRE_USER and MOOLRE_PUB_KEY not set - Moolre payments will be disabled");
-  console.warn("Please set environment variables: MOOLRE_USER, MOOLRE_PUB_KEY, MOOLRE_SECRET, MOOLRE_ACCOUNT");
+  console.warn("Please set environment variables: MOOLRE_USER, MOOLRE_PUB_KEY, MOOLRE_SECRET, MOOLRE_WEBHOOK_SECRET, MOOLRE_ACCOUNT");
 }
 
 interface MoolrePaymentRequest {
@@ -173,17 +175,19 @@ export async function initiatePayment(
 
 /**
  * Verify webhook secret (security check)
+ * Note: Moolre has a separate webhook secret from the API secret
  */
 export function verifyWebhookSecret(secret: string): boolean {
-  if (!MOOLRE_SECRET) {
-    console.warn("⚠️  MOOLRE_SECRET not configured - allowing webhook (insecure)");
+  if (!MOOLRE_WEBHOOK_SECRET) {
+    console.warn("⚠️  MOOLRE_WEBHOOK_SECRET not configured - allowing webhook (insecure)");
+    console.warn("   Set MOOLRE_WEBHOOK_SECRET environment variable to the secret from Moolre webhooks");
     // In production, you should require the secret
     // For now, allow if not configured
     return true;
   }
-  const isValid = secret === MOOLRE_SECRET;
+  const isValid = secret === MOOLRE_WEBHOOK_SECRET;
   if (!isValid) {
-    console.error(`❌ Invalid Moolre webhook secret. Expected: ${MOOLRE_SECRET?.substring(0, 8)}..., Got: ${secret?.substring(0, 8)}...`);
+    console.error(`❌ Invalid Moolre webhook secret. Expected: ${MOOLRE_WEBHOOK_SECRET?.substring(0, 8)}..., Got: ${secret?.substring(0, 8)}...`);
   }
   return isValid;
 }
