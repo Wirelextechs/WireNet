@@ -351,6 +351,10 @@ export default function DataGodPage() {
         setCustomerEmail("");
         setPurchasing(false);
         navigate(`/order/success/${moolreRef}?service=datagod&gateway=moolre`);
+      } else if (result.data?.code === "TP14" || result.message?.includes("OTP") || result.message?.includes("verification")) {
+        // First-time payer - OTP sent to their phone
+        alert("📱 Verification Required!\n\nA verification code has been sent to your phone. Please:\n1. Check your SMS\n2. Complete the verification\n3. Click Pay again\n\nThis only happens once for first-time users.");
+        setPurchasing(false);
       } else {
         alert(`Payment initiation failed: ${result.message || "Unknown error"}`);
         setPurchasing(false);

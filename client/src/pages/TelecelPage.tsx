@@ -368,6 +368,10 @@ export default function TelecelPage() {
         setPurchasing(false);
         const orderId = firstOrderId || moolreRef;
         navigate(`/order/success/${orderId}?service=telecel&gateway=moolre`);
+      } else if (result.data?.code === "TP14" || result.message?.includes("OTP") || result.message?.includes("verification")) {
+        // First-time payer - OTP sent to their phone
+        alert("📱 Verification Required!\n\nA verification code has been sent to your phone. Please:\n1. Check your SMS\n2. Complete the verification\n3. Click Pay again\n\nThis only happens once for first-time users.");
+        setPurchasing(false);
       } else {
         alert(`Payment initiation failed: ${result.message || "Unknown error"}`);
         setPurchasing(false);
@@ -377,8 +381,6 @@ export default function TelecelPage() {
       alert("Failed to initiate Moolre payment. Please try again.");
       setPurchasing(false);
     }
-  };
-
   };
 
   const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);

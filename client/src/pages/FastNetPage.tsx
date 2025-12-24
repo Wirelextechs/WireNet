@@ -295,10 +295,16 @@ export default function FastNetPage() {
   };
 
   const handleMoolreCheckout = async () => {
+    // For Moolre, we need to:
+    // 1. Get phone number (we have it)
+    // 2. Initiate payment with Moolre API
+    // 3. Webhook will handle the rest
+
     const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
     const charge = subtotal * (transactionCharge / 100);
     const totalAmount = subtotal + charge;
 
+    // Use first phone number from cart as the payer
     const payerPhone = cart[0]?.phoneNumber;
     if (!payerPhone) {
       alert("Phone number required for Moolre payment");
@@ -306,6 +312,7 @@ export default function FastNetPage() {
       return;
     }
 
+    // Create a reference for Moolre
     const moolreRef = `FASTNET-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     try {
@@ -336,26 +343,45 @@ export default function FastNetPage() {
           phone: payerPhone,
           amount: totalAmount,
           orderReference: moolreRef,
-          network: "mtn",
+          network: "mtn", // Default to MTN
         }),
       });
 
       const result = await response.json();
 
-      if (result.success || result.code === "TR099") {
-        setCart([]);
-        setPhoneNumber("");
-        setSelectedPackage(null);
-        setCustomerEmail("");
+      // Handle OTP/verification response (TP14 = first-time payer)
+      if (result.data?.code === "TP14" || result.status === "OTP_REQUIRED" || result.message?.includes("OTP") || result.message?.includes("verification")) {
+        alert("📱 Verification Required!\n\nA verification code has been sent to your phone. Please:\n1. Check your SMS\n2. Complete the verification\n3. Click Pay again\n\nThis only happens once for first-time users.");
         setPurchasing(false);
-        navigate(`/order/success/${moolreRef}?service=fastnet&gateway=moolre`);
-      } else {
-        alert(`Payment initiation failed: ${result.message || "Unknown error"}`);
-        setPurchasing(false);
+        return;
       }
+
+      if (!result.success && result.code !== "TR099") {
+        alert(`Payment initiation failed: ${result.message}`);
+        setPurchasing(false);
+        return;
+      }
+
+      // Clear cart and navigate
+      setCart([]);
+      setPhoneNumber("");
+      setSelectedPackage(null);
+      setCustomerEmail("");
+      setPurchasing(false);
+
+      // For Moolre, show a message about pending confirmation
+      if (result.status === "PENDING" || result.code === "TR099") {
+        alert(
+          "A payment prompt has been sent to your phone. Please confirm the payment on your device."
+        );
+      } else if (result.status === "SUCCESS") {
+        alert("Payment successful!");
+      }
+
+      navigate(`/order/success/${moolreRef}?service=fastnet&gateway=moolre`);
     } catch (error) {
       console.error("Moolre payment error:", error);
-      alert("Failed to initiate Moolre payment. Please try again.");
+      alert("Failed to process Moolre payment. Please try again.");
       setPurchasing(false);
     }
   };

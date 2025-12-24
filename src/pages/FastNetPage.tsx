@@ -349,7 +349,14 @@ export default function FastNetPage() {
 
       const result = await response.json();
 
-      if (!result.success) {
+      // Handle OTP/verification response (TP14 = first-time payer)
+      if (result.data?.code === "TP14" || result.status === "OTP_REQUIRED" || result.message?.includes("OTP") || result.message?.includes("verification")) {
+        alert("📱 Verification Required!\n\nA verification code has been sent to your phone. Please:\n1. Check your SMS\n2. Complete the verification\n3. Click Pay again\n\nThis only happens once for first-time users.");
+        setPurchasing(false);
+        return;
+      }
+
+      if (!result.success && result.code !== "TR099") {
         alert(`Payment initiation failed: ${result.message}`);
         setPurchasing(false);
         return;
@@ -363,11 +370,7 @@ export default function FastNetPage() {
       setPurchasing(false);
 
       // For Moolre, show a message about pending confirmation
-      if (result.status === "OTP_REQUIRED") {
-        alert(
-          "OTP required. Please enter the OTP you receive on your phone to complete the payment."
-        );
-      } else if (result.status === "PENDING") {
+      if (result.status === "PENDING" || result.code === "TR099") {
         alert(
           "A payment prompt has been sent to your phone. Please confirm the payment on your device."
         );
