@@ -187,18 +187,39 @@ export default function TelecelPage() {
       return;
     }
 
+    setPurchasing(true);
+
+    try {
+      // Get active payment gateway from settings
+      const settingsResponse = await fetch("/api/settings");
+      const settings = await settingsResponse.json();
+      const activeGateway = settings.activePaymentGateway || "paystack";
+
+      if (activeGateway === "moolre") {
+        await handleMoolreCheckout();
+      } else {
+        await handlePaystackCheckout();
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      alert("Payment system error. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
+  const handlePaystackCheckout = async () => {
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     if (!publicKey) {
       alert("Payment configuration error - Paystack key not found");
+      setPurchasing(false);
       return;
     }
 
     if (!(window as any).PaystackPop) {
       alert("Payment system not loaded. Please refresh the page.");
+      setPurchasing(false);
       return;
     }
-
-    setPurchasing(true);
 
     const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
     const charge = subtotal * (transactionCharge / 100);
@@ -278,6 +299,86 @@ export default function TelecelPage() {
       alert("Failed to initialize payment. Please try again.");
       setPurchasing(false);
     }
+  };
+
+  const handleMoolreCheckout = async () => {
+    const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+    const charge = subtotal * (transactionCharge / 100);
+    const totalAmount = subtotal + charge;
+
+    const payerPhone = cart[0]?.phoneNumber;
+    if (!payerPhone) {
+      alert("Phone number required for Moolre payment");
+      setPurchasing(false);
+      return;
+    }
+
+    const moolreRef = `TELECEL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    try {
+      // Create orders first
+      const cartItems = [...cart];
+      let firstOrderId = "";
+      for (const item of cartItems) {
+        try {
+          const orderResponse = await fetch("/api/telecel/purchase", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phoneNumber: item.phoneNumber,
+              dataAmount: item.pkg.dataAmount,
+              price: item.pkg.price,
+              reference: moolreRef,
+            }),
+          });
+          if (orderResponse.ok) {
+            try {
+              const orderData = await orderResponse.json();
+              if (!firstOrderId && orderData.shortId) {
+                firstOrderId = orderData.shortId;
+              }
+            } catch {
+              // Response may not be JSON
+            }
+          }
+        } catch (error) {
+          console.error("Error creating order:", error);
+        }
+      }
+
+      // Initiate Moolre payment
+      const response = await fetch("/api/moolre/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: payerPhone,
+          amount: totalAmount,
+          orderReference: moolreRef,
+          network: "mtn",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success || result.code === "TR099") {
+        setCart([]);
+        setPhoneNumber("");
+        setSelectedPackage(null);
+        setCustomerEmail("");
+        setPurchasing(false);
+        const orderId = firstOrderId || moolreRef;
+        navigate(`/order/success/${orderId}?service=telecel&gateway=moolre`);
+      } else {
+        alert(`Payment initiation failed: ${result.message || "Unknown error"}`);
+        setPurchasing(false);
+      }
+    } catch (error) {
+      console.error("Moolre payment error:", error);
+      alert("Failed to initiate Moolre payment. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
   };
 
   const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);

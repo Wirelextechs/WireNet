@@ -19,6 +19,7 @@ interface Settings {
   announcementActive?: boolean;
   smsEnabled?: boolean;
   smsNotificationPhones?: string[];
+  activePaymentGateway?: "paystack" | "moolre";
 }
 
 export default function AdminDashboard() {
@@ -38,6 +39,7 @@ export default function AdminDashboard() {
     announcementActive: false,
     smsEnabled: false,
     smsNotificationPhones: [],
+    activePaymentGateway: "paystack",
   });
   const [whatsappLink, setWhatsappLink] = useState("");
   const [afaLink, setAfaLink] = useState("");
@@ -47,6 +49,7 @@ export default function AdminDashboard() {
   const [announcementActive, setAnnouncementActive] = useState(false);
   const [smsEnabled, setSmsEnabled] = useState(false);
   const [smsNotificationPhones, setSmsNotificationPhones] = useState<string[]>([]);
+  const [activePaymentGateway, setActivePaymentGateway] = useState<"paystack" | "moolre">("paystack");
   const [newPhoneInput, setNewPhoneInput] = useState("");
   const [smsBalance, setSmsBalance] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,6 +99,7 @@ export default function AdminDashboard() {
           announcementActive: data.announcementActive === true,
           smsEnabled: data.smsEnabled === true,
           smsNotificationPhones: data.smsNotificationPhones || [],
+          activePaymentGateway: data.activePaymentGateway || "paystack",
         });
         setWhatsappLink(data.whatsappLink || "");
         setAfaLink(data.afaLink || "");
@@ -105,6 +109,7 @@ export default function AdminDashboard() {
         setAnnouncementActive(data.announcementActive === true);
         setSmsEnabled(data.smsEnabled === true);
         setSmsNotificationPhones(data.smsNotificationPhones || []);
+        setActivePaymentGateway(data.activePaymentGateway || "paystack");
       }
       
       // Check SMS balance
@@ -308,6 +313,7 @@ export default function AdminDashboard() {
           afaEnabled: settings.afaEnabled,
           smsEnabled,
           smsNotificationPhones,
+          activePaymentGateway,
         }),
       });
 
@@ -326,11 +332,13 @@ export default function AdminDashboard() {
           atEnabled: updated.atEnabled,
           telecelEnabled: updated.telecelEnabled,
           afaEnabled: updated.afaEnabled,
+          activePaymentGateway: updated.activePaymentGateway || "paystack",
         });
         setAnnouncementText(updated.announcementText || "");
         setAnnouncementLink(updated.announcementLink || "");
         setAnnouncementSeverity(updated.announcementSeverity || "info");
         setAnnouncementActive(updated.announcementActive === true);
+        setActivePaymentGateway(updated.activePaymentGateway || "paystack");
         setMessage("Settings saved successfully!");
         setTimeout(() => setMessage(""), 3000);
       } else {
@@ -738,6 +746,62 @@ export default function AdminDashboard() {
                   📱 Test SMS ({smsNotificationPhones.length})
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Gateway Settings Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                💳 Payment Gateway
+              </CardTitle>
+              <CardDescription>
+                Select which payment gateway to use for customer payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <label className="text-sm font-medium block">Active Payment Gateway</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div
+                    className={`p-4 border rounded cursor-pointer transition ${
+                      activePaymentGateway === "paystack"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    onClick={() => setActivePaymentGateway("paystack")}
+                  >
+                    <div className="font-semibold text-sm">Paystack</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {activePaymentGateway === "paystack" && "✓ Selected"}
+                    </div>
+                  </div>
+                  <div
+                    className={`p-4 border rounded cursor-pointer transition ${
+                      activePaymentGateway === "moolre"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    onClick={() => setActivePaymentGateway("moolre")}
+                  >
+                    <div className="font-semibold text-sm">Moolre</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {activePaymentGateway === "moolre" && "✓ Selected"}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Selected gateway: <span className="font-semibold capitalize">{activePaymentGateway}</span>
+                </p>
+              </div>
+
+              <Button
+                onClick={handleSaveSettings}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? "Saving..." : "Save Payment Gateway"}
+              </Button>
             </CardContent>
           </Card>
         </div>

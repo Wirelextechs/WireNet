@@ -9,6 +9,7 @@ import crypto from "crypto";
 import * as supplierManager from "./supplier-manager.js";
 import * as polling from "./polling.js";
 import * as codecraft from "./codecraft.js";
+import * as moolre from "./moolre.js";
 import { sendOrderNotification, checkSMSBalance } from "./sms.js";
 
 const PgStore = pgSession(session);
@@ -381,6 +382,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Moolre Payment Webhook Handler
+   * Called by Moolre after payment attempt (success, pending, or failure)
+   * Response format:
+   * {
+   *   transactionid: string,
+   *   status: "TR000" | "TR099" | "TP14" | other code,
+   *   externalref: string (order reference),
+   *   amount: number,
+   *   payer: string,
+   *   message: string,
+   *   secret: string (webhook secret to verify)
+   * }
+   */
+  app.post("/api/moolre/webhook", async (req: any, res) => {
+    try {
+      console.log("📥 [MOOLRE WEBHOOK] Received:", JSON.stringify(req.body, null, 2));
+
+      const { transactionid, status, externalref, amount, payer, message, secret } = req.body;
+
+      // Verify webhook secret
+      if (!moolre.verifyWebhookSecret(secret)) {
+        console.warn("⚠️ [MOOLRE WEBHOOK] Invalid webhook secret");
+        return res.status(401).json({ error: "Invalid webhook secret" });
+      }
+
+      if (!externalref) {
+        console.warn("⚠️ [MOOLRE WEBHOOK] Missing externalref (order reference)");
+        return res.status(400).json({ error: "Missing externalref" });
+      }
+
+      console.log(`📊 [MOOLRE WEBHOOK] Order: ${externalref}, Transaction: ${transactionid}, Status: ${status}`);
+
+      // Determine order status based on Moolre response code
+      let newStatus: "FULFILLED" | "PROCESSING" | "FAILED" = "PROCESSING";
+
+      if (status === "TR000" || status === "0") {
+        // Successful payment
+        newStatus = "FULFILLED";
+      } else if (status === "TP14") {
+        // OTP required - still processing, user needs to enter OTP
+        newStatus = "PROCESSING";
+      } else if (status === "TR099") {
+        // Payment pending - prompt sent to user, awaiting confirmation
+        newStatus = "PROCESSING";
+      } else {
+        // Any other code is treated as failure
+        newStatus = "FAILED";
+      }
+
+      console.log(`📊 [MOOLRE WEBHOOK] Status: ${status} → Order Status: ${newStatus}`);
+
+      // Try to find and update the order in each table
+      let updated = false;
+
+      // Check FastNet orders
+      const fastnetOrders = await storage.getFastnetOrders();
+      const fastnetOrder = fastnetOrders.find(o => o.shortId === externalref);
+      if (fastnetOrder) {
+        console.log(`✅ [MOOLRE WEBHOOK] Updating FastNet order ${fastnetOrder.shortId}: ${fastnetOrder.status} → ${newStatus}`);
+        await storage.updateFastnetOrderStatus(fastnetOrder.id, newStatus, transactionid, message);
+        updated = true;
+      }
+
+      // Check AT orders
+      const atOrders = await storage.getAtOrders();
+      const atOrder = atOrders.find(o => o.shortId === externalref);
+      if (atOrder) {
+        console.log(`✅ [MOOLRE WEBHOOK] Updating AT order ${atOrder.shortId}: ${atOrder.status} → ${newStatus}`);
+        await storage.updateAtOrderStatus(atOrder.id, newStatus, transactionid, message);
+        updated = true;
+      }
+
+      // Check Telecel orders
+      const telecelOrders = await storage.getTelecelOrders();
+      const telecelOrder = telecelOrders.find(o => o.shortId === externalref);
+      if (telecelOrder) {
+        console.log(`✅ [MOOLRE WEBHOOK] Updating Telecel order ${telecelOrder.shortId}: ${telecelOrder.status} → ${newStatus}`);
+        await storage.updateTelecelOrderStatus(telecelOrder.id, newStatus, transactionid, message);
+        updated = true;
+      }
+
+      // Check DataGod orders
+      const datagodOrders = await storage.getDatagodOrders();
+      const datagodOrder = datagodOrders.find(o => o.shortId === externalref);
+      if (datagodOrder) {
+        console.log(`✅ [MOOLRE WEBHOOK] Updating DataGod order ${datagodOrder.shortId}: ${datagodOrder.status} → ${newStatus}`);
+        await storage.updateDatagodOrderStatus(datagodOrder.id, newStatus, transactionid, message);
+        updated = true;
+      }
+
+      if (updated) {
+        console.log(`✅ [MOOLRE WEBHOOK] Order ${externalref} updated to ${newStatus}`);
+
+        // If payment successful, trigger supplier fulfillment for FastNet
+        if (newStatus === "FULFILLED") {
+          const fastnetOrder = fastnetOrders.find(o => o.shortId === externalref);
+          if (fastnetOrder && fastnetOrder.status !== "FULFILLED") {
+            console.log(`🚀 [MOOLRE WEBHOOK] Scheduling supplier push for FastNet order ${fastnetOrder.shortId}`);
+            polling.scheduleStatusCheck(fastnetOrder.id, "fastnet");
+          }
+        }
+
+        return res.status(200).json({ ok: true, externalref, newStatus });
+      } else {
+        console.warn(`⚠️ [MOOLRE WEBHOOK] Order ${externalref} not found`);
+        return res.status(200).json({ ok: true, externalref, message: "Order not found" });
+      }
+    } catch (error) {
+      console.error("❌ [MOOLRE WEBHOOK] Error:", error);
+      return res.status(500).json({ error: "Webhook processing failed" });
+    }
+  });
+
+  // Moolre payment initiation endpoint
+  app.post("/api/moolre/initiate", async (req: any, res) => {
+    try {
+      const { phone, amount, orderReference, network } = req.body;
+
+      if (!phone || !amount || !orderReference) {
+        return res.status(400).json({ error: "Missing required fields: phone, amount, orderReference" });
+      }
+
+      console.log(`💳 [MOOLRE INITIATE] Phone: ${phone}, Amount: ${amount}, Ref: ${orderReference}, Network: ${network}`);
+
+      // Call Moolre API to initiate payment
+      const result = await moolre.initiatePayment(phone, amount, orderReference, network || "mtn");
+
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+      console.error("❌ [MOOLRE INITIATE] Error:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : "Payment initiation failed" 
+      });
+    }
+  });
+
   // Session middleware with PostgreSQL store
   app.use(
     session({
@@ -455,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
       console.log("📥 Settings update request body:", JSON.stringify(req.body, null, 2));
-      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhones } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhones, activePaymentGateway } = req.body;
       
       console.log("📱 smsNotificationPhones received:", smsNotificationPhones, "Type:", typeof smsNotificationPhones, "IsArray:", Array.isArray(smsNotificationPhones));
 
@@ -480,6 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         telecelActiveSupplier,
         smsEnabled,
         smsNotificationPhones,
+        activePaymentGateway,
       });
 
       res.json(updated);

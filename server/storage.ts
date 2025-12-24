@@ -35,6 +35,8 @@ interface Settings {
   // SMS notification settings
   smsEnabled?: boolean;
   smsNotificationPhones?: string[]; // Array of phone numbers
+  // Payment gateway settings
+  activePaymentGateway?: "paystack" | "moolre"; // Primary payment gateway
   createdAt: Date;
   updatedAt: Date;
 }
@@ -167,6 +169,7 @@ class Storage {
           return [];
         }
       })(),
+      activePaymentGateway: (settingsMap["activePaymentGateway"] as "paystack" | "moolre") || "paystack",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -233,6 +236,10 @@ class Storage {
     if (data.smsNotificationPhones !== undefined) {
       console.log("📱 Saving smsNotificationPhones:", data.smsNotificationPhones);
       await this.upsertSetting("smsNotificationPhones", JSON.stringify(data.smsNotificationPhones));
+    }
+    if (data.activePaymentGateway !== undefined) {
+      console.log("💳 Saving activePaymentGateway:", data.activePaymentGateway);
+      await this.upsertSetting("activePaymentGateway", data.activePaymentGateway);
     }
 
     return (await this.getSettings())!;

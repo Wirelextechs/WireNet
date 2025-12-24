@@ -191,18 +191,39 @@ export default function FastNetPage() {
       return;
     }
 
+    setPurchasing(true);
+
+    try {
+      // Get active payment gateway from settings
+      const settingsResponse = await fetch("/api/settings");
+      const settings = await settingsResponse.json();
+      const activeGateway = settings.activePaymentGateway || "paystack";
+
+      if (activeGateway === "moolre") {
+        await handleMoolreCheckout();
+      } else {
+        await handlePaystackCheckout();
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      alert("Payment system error. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
+  const handlePaystackCheckout = async () => {
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     if (!publicKey) {
       alert("Payment configuration error - Paystack key not found");
+      setPurchasing(false);
       return;
     }
 
     if (!(window as any).PaystackPop) {
       alert("Payment system not loaded. Please refresh the page.");
+      setPurchasing(false);
       return;
     }
-
-    setPurchasing(true);
 
     const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
     const charge = subtotal * (transactionCharge / 100);
@@ -269,6 +290,95 @@ export default function FastNetPage() {
     } catch (error) {
       console.error("Paystack initialization error:", error);
       alert("Failed to initialize payment. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
+  const handleMoolreCheckout = async () => {
+    // For Moolre, we need to:
+    // 1. Get phone number (we have it)
+    // 2. Initiate payment with Moolre API
+    // 3. Webhook will handle the rest
+
+    const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
+    const charge = subtotal * (transactionCharge / 100);
+    const totalAmount = subtotal + charge;
+
+    // Use first phone number from cart as the payer
+    const payerPhone = cart[0]?.phoneNumber;
+    if (!payerPhone) {
+      alert("Phone number required for Moolre payment");
+      setPurchasing(false);
+      return;
+    }
+
+    // Create a reference for Moolre
+    const moolreRef = `FASTNET-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    try {
+      // Create orders first
+      const cartItems = [...cart];
+      for (const item of cartItems) {
+        try {
+          await fetch("/api/fastnet/purchase", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phoneNumber: item.phoneNumber,
+              dataAmount: item.pkg.dataAmount,
+              price: item.pkg.price,
+              reference: moolreRef,
+            }),
+          });
+        } catch (error) {
+          console.error("Error creating order:", error);
+        }
+      }
+
+      // Initiate Moolre payment
+      const response = await fetch("/api/moolre/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: payerPhone,
+          amount: totalAmount,
+          orderReference: moolreRef,
+          network: "mtn", // Default to MTN
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        alert(`Payment initiation failed: ${result.message}`);
+        setPurchasing(false);
+        return;
+      }
+
+      // Clear cart and navigate
+      setCart([]);
+      setPhoneNumber("");
+      setSelectedPackage(null);
+      setCustomerEmail("");
+      setPurchasing(false);
+
+      // For Moolre, show a message about pending confirmation
+      if (result.status === "OTP_REQUIRED") {
+        alert(
+          "OTP required. Please enter the OTP you receive on your phone to complete the payment."
+        );
+      } else if (result.status === "PENDING") {
+        alert(
+          "A payment prompt has been sent to your phone. Please confirm the payment on your device."
+        );
+      } else if (result.status === "SUCCESS") {
+        alert("Payment successful!");
+      }
+
+      navigate(`/order/success/${moolreRef}?service=fastnet&gateway=moolre`);
+    } catch (error) {
+      console.error("Moolre payment error:", error);
+      alert("Failed to process Moolre payment. Please try again.");
       setPurchasing(false);
     }
   };
