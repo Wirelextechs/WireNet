@@ -748,10 +748,9 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Payment Gateway Settings Card */}
         <div className="grid md:grid-cols-2 gap-8 mt-8">
+          {/* Payment Gateway Settings Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -806,9 +805,7 @@ export default function AdminDashboard() {
               </Button>
             </CardContent>
           </Card>
-        </div>
 
-        <div className="grid md:grid-cols-2 gap-8 mt-8">
           {/* Payment Phones for SMS Marketing */}
           <Card>
             <CardHeader>
