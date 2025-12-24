@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Phone, Smartphone, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { X, Phone, Smartphone, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
 
@@ -14,7 +14,7 @@ interface MoMoPaymentModalProps {
   service: "at" | "telecel" | "fastnet" | "datagod";
 }
 
-type PaymentStatus = "idle" | "processing" | "otp_required" | "pending" | "success" | "error";
+type PaymentStatus = "idle" | "processing" | "verification_pending" | "pending" | "success" | "error";
 
 export default function MoMoPaymentModal({
   isOpen,
@@ -30,8 +30,8 @@ export default function MoMoPaymentModal({
   const [phoneError, setPhoneError] = useState("");
   const [status, setStatus] = useState<PaymentStatus>("idle");
   const [statusMessage, setStatusMessage] = useState("");
-  const [otp, setOtp] = useState("");
   const [firstOrderId, setFirstOrderId] = useState("");
+  const [ordersCreated, setOrdersCreated] = useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
@@ -67,16 +67,10 @@ export default function MoMoPaymentModal({
     }
 
     setStatus("processing");
-    setStatusMessage("Creating orders...");
+    setStatusMessage("Initiating payment...");
 
     try {
-      // Create orders first
-      const orderId = await onCreateOrders(orderReference);
-      setFirstOrderId(orderId);
-
-      setStatusMessage("Initiating payment...");
-
-      // Initiate Moolre payment
+      // Initiate Moolre payment FIRST (don't create orders yet)
       const response = await fetch("/api/moolre/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,18 +85,27 @@ export default function MoMoPaymentModal({
       const result = await response.json();
 
       if (result.success || result.code === "TR099") {
-        // Payment prompt sent to phone
+        // Payment prompt sent to phone - NOW create orders
+        setStatusMessage("Creating orders...");
+        const orderId = await onCreateOrders(orderReference);
+        setFirstOrderId(orderId);
+        setOrdersCreated(true);
+        
         setStatus("pending");
         setStatusMessage("A payment prompt has been sent to your phone. Please enter your MoMo PIN to complete the payment.");
         
         // Wait a moment then redirect to success
         setTimeout(() => {
           onSuccess(orderId || orderReference);
-        }, 3000);
-      } else if (result.data?.code === "TP14" || result.code === "TP14" || result.message?.includes("OTP") || result.message?.includes("verification")) {
-        // First-time payer - OTP required
-        setStatus("otp_required");
-        setStatusMessage("A verification code has been sent to your phone via SMS. Please enter it below.");
+        }, 4000);
+      } else if (result.data?.code === "TP14" || result.code === "TP14" || result.message?.includes("verification")) {
+        // First-time payer - needs to complete verification on their PHONE
+        setStatus("verification_pending");
+        setStatusMessage("Please complete the verification sent to your phone via SMS, then click 'Try Again'.");
+      } else if (result.code === "TP09") {
+        // Channel not supported
+        setStatus("error");
+        setStatusMessage(`${payerNetwork.toUpperCase()} is not currently supported. Please try a different network.`);
       } else {
         setStatus("error");
         setStatusMessage(result.message || "Payment initiation failed. Please try again.");
@@ -114,17 +117,12 @@ export default function MoMoPaymentModal({
     }
   };
 
-  const handleOtpSubmit = async () => {
-    if (!otp || otp.length < 4) {
-      setStatusMessage("Please enter the verification code sent to your phone");
-      return;
-    }
-
+  const handleRetryAfterVerification = async () => {
     setStatus("processing");
-    setStatusMessage("Verifying and processing payment...");
+    setStatusMessage("Checking verification status...");
 
     try {
-      // Re-initiate payment after OTP verification
+      // Re-initiate payment after user completes phone verification
       const response = await fetch("/api/moolre/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,23 +137,31 @@ export default function MoMoPaymentModal({
       const result = await response.json();
 
       if (result.success || result.code === "TR099") {
+        // Payment prompt sent - NOW create orders
+        if (!ordersCreated) {
+          setStatusMessage("Creating orders...");
+          const orderId = await onCreateOrders(orderReference);
+          setFirstOrderId(orderId);
+          setOrdersCreated(true);
+        }
+        
         setStatus("pending");
         setStatusMessage("A payment prompt has been sent to your phone. Please enter your MoMo PIN to complete the payment.");
         
         setTimeout(() => {
           onSuccess(firstOrderId || orderReference);
-        }, 3000);
-      } else if (result.data?.code === "TP14" || result.code === "TP14" || result.message?.includes("OTP") || result.message?.includes("verification")) {
-        setStatus("otp_required");
-        setStatusMessage("Verification still pending. Please complete the SMS verification and try again.");
+        }, 4000);
+      } else if (result.data?.code === "TP14" || result.code === "TP14" || result.message?.includes("verification")) {
+        setStatus("verification_pending");
+        setStatusMessage("Verification still pending. Please complete the SMS verification on your phone, then try again.");
       } else {
         setStatus("error");
         setStatusMessage(result.message || "Payment failed. Please try again.");
       }
     } catch (error) {
-      console.error("Moolre OTP verification error:", error);
+      console.error("Moolre retry error:", error);
       setStatus("error");
-      setStatusMessage("Failed to verify. Please try again.");
+      setStatusMessage("Failed to process. Please try again.");
     }
   };
 
@@ -166,15 +172,16 @@ export default function MoMoPaymentModal({
     setPhoneError("");
     setStatus("idle");
     setStatusMessage("");
-    setOtp("");
     setFirstOrderId("");
+    setOrdersCreated(false);
     onClose();
   };
 
   const resetToIdle = () => {
     setStatus("idle");
     setStatusMessage("");
-    setOtp("");
+    setOrdersCreated(false);
+    setFirstOrderId("");
   };
 
   if (!isOpen) return null;
@@ -299,36 +306,31 @@ export default function MoMoPaymentModal({
               </div>
             )}
 
-            {status === "otp_required" && (
+            {status === "verification_pending" && (
               <div className="space-y-4">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="h-8 w-8 text-yellow-500" />
+                    <Smartphone className="h-8 w-8 text-yellow-500" />
                   </div>
-                  <h3 className="text-white font-bold text-lg mb-2">Verification Required</h3>
+                  <h3 className="text-white font-bold text-lg mb-2">Complete Verification on Your Phone</h3>
                   <p className="text-gray-400 text-sm">{statusMessage}</p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Enter Verification Code
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Enter code from SMS"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 text-lg h-12 text-center tracking-widest"
-                    maxLength={6}
-                  />
+                <div className="bg-white/5 rounded-xl p-4 text-sm text-gray-300">
+                  <p className="font-medium text-white mb-2">📱 How to verify:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Check the SMS sent to <span className="text-yellow-400">{payerPhone}</span></li>
+                    <li>Follow the instructions in the SMS (reply or dial USSD)</li>
+                    <li>Once verified, click "Try Again" below</li>
+                  </ol>
                 </div>
 
                 <Button
-                  onClick={handleOtpSubmit}
-                  disabled={!otp || otp.length < 4}
+                  onClick={handleRetryAfterVerification}
                   className="w-full h-12 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold"
                 >
-                  Verify & Pay
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  I've Verified - Try Again
                 </Button>
 
                 <button
