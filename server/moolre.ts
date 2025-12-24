@@ -25,7 +25,7 @@ interface MoolrePaymentRequest {
   externalref: string; // order reference
   accountnumber: string; // merchant account
   sessionid?: string; // optional USSD session
-  otp?: string; // OTP code for verification (TP14 response)
+  otpcode?: string; // OTP code for verification (TP14 response)
 }
 
 interface MoolrePaymentResponse {
@@ -81,10 +81,10 @@ export async function initiatePayment(
       accountnumber: MOOLRE_ACCOUNT,
     };
 
-    // Add OTP if provided (for TP14 verification)
+    // Add OTP code if provided (for TP14 verification)
     if (otp) {
-      payload.otp = otp;
-      console.log(`📡 Submitting OTP for verification: ${otp}`);
+      payload.otpcode = otp;
+      console.log(`📡 Submitting OTP code for verification: ${otp}`);
     }
 
     console.log(`📡 Initiating Moolre payment:`, {
