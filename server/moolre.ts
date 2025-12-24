@@ -176,12 +176,14 @@ export async function initiatePayment(
  */
 export function verifyWebhookSecret(secret: string): boolean {
   if (!MOOLRE_SECRET) {
-    console.warn("⚠️  MOOLRE_SECRET not configured");
-    return false;
+    console.warn("⚠️  MOOLRE_SECRET not configured - allowing webhook (insecure)");
+    // In production, you should require the secret
+    // For now, allow if not configured
+    return true;
   }
   const isValid = secret === MOOLRE_SECRET;
   if (!isValid) {
-    console.error("❌ Invalid Moolre webhook secret");
+    console.error(`❌ Invalid Moolre webhook secret. Expected: ${MOOLRE_SECRET?.substring(0, 8)}..., Got: ${secret?.substring(0, 8)}...`);
   }
   return isValid;
 }

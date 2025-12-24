@@ -400,11 +400,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("📥 [MOOLRE WEBHOOK] Received:", JSON.stringify(req.body, null, 2));
 
-      const { transactionid, status, externalref, message, secret } = req.body;
+      // Moolre webhook has nested data structure
+      const { code, message: topMessage, data } = req.body;
+      
+      // Extract fields from data object (Moolre's actual payload structure)
+      const transactionid = data?.transactionid;
+      const externalref = data?.externalref;
+      const secret = data?.secret;
+      const txstatus = data?.txstatus;
+      const message = topMessage || data?.message;
 
       // Verify webhook secret
       if (!moolre.verifyWebhookSecret(secret)) {
-        console.warn("⚠️ [MOOLRE WEBHOOK] Invalid webhook secret");
+        console.warn("⚠️ [MOOLRE WEBHOOK] Invalid webhook secret. Received:", secret);
         return res.status(401).json({ error: "Invalid webhook secret" });
       }
 
@@ -413,18 +421,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing externalref" });
       }
 
-      console.log(`📊 [MOOLRE WEBHOOK] Order: ${externalref}, Transaction: ${transactionid}, Status: ${status}`);
+      console.log(`📊 [MOOLRE WEBHOOK] Order: ${externalref}, Transaction: ${transactionid}, Code: ${code}, TxStatus: ${txstatus}`);
 
       // Determine if this is a successful payment
-      const paymentSuccessful = status === "TR000" || status === "0";
+      // Moolre success: code="P01" and txstatus=1, OR legacy codes TR000/0
+      const paymentSuccessful = (code === "P01" && txstatus === 1) || code === "TR000" || code === "0";
 
       if (!paymentSuccessful) {
-        // Payment not successful yet (TP14=OTP needed, TR099=pending, etc)
-        console.log(`📊 [MOOLRE WEBHOOK] Payment not yet confirmed (status: ${status})`);
+        // Payment not successful yet
+        console.log(`📊 [MOOLRE WEBHOOK] Payment not confirmed (code: ${code}, txstatus: ${txstatus})`);
         return res.status(200).json({ ok: true, externalref, message: "Payment not yet confirmed" });
       }
 
-      console.log(`✅ [MOOLRE WEBHOOK] Payment confirmed (TR000) for order: ${externalref}`);
+      console.log(`✅ [MOOLRE WEBHOOK] Payment confirmed for order: ${externalref}`);
 
       // Payment successful - find ALL orders with this reference and trigger fulfillment
       let updated = false;
