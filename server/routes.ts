@@ -408,6 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const externalref = data?.externalref;
       const secret = data?.secret;
       const txstatus = data?.txstatus;
+      const payer = data?.payer; // Payer's phone number for SMS marketing
       const message = topMessage || data?.message;
 
       // Verify webhook secret
@@ -434,6 +435,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`✅ [MOOLRE WEBHOOK] Payment confirmed for order: ${externalref}`);
+
+      // Save payer's phone for SMS marketing (same as Paystack)
+      if (payer && payer.length > 0) {
+        try {
+          // Format phone number (Moolre sends as 233XXXXXXXXX, convert to 0XXXXXXXXX)
+          let paymentPhone = String(payer).trim();
+          if (paymentPhone.startsWith("233")) {
+            paymentPhone = "0" + paymentPhone.substring(3);
+          }
+          
+          console.log(`📱 Payment phone from Moolre: ${paymentPhone}`);
+          const existingPhones = await storage.getSetting("paymentPhones");
+          const phoneSet = new Set(existingPhones ? JSON.parse(existingPhones.value) : []);
+          phoneSet.add(paymentPhone);
+          await storage.upsertSetting("paymentPhones", JSON.stringify(Array.from(phoneSet)));
+          console.log(`✅ Payment phone saved for SMS marketing: ${paymentPhone}`);
+        } catch (phoneError) {
+          console.error("Error saving payment phone:", phoneError);
+        }
+      }
 
       // Payment successful - find ALL orders with this reference and trigger fulfillment
       let updated = false;
