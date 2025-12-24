@@ -426,14 +426,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ [MOOLRE WEBHOOK] Payment confirmed (TR000) for order: ${externalref}`);
 
-      // Payment successful - find the order and trigger fulfillment
+      // Payment successful - find ALL orders with this reference and trigger fulfillment
       let updated = false;
 
-      // Check FastNet orders
+      // Check FastNet orders - find ALL matching orders (bulk orders share same reference)
       const fastnetOrders = await storage.getFastnetOrders();
-      const fastnetOrder = fastnetOrders.find(o => o.shortId === externalref);
-      if (fastnetOrder && fastnetOrder.status === "PENDING") {
-        console.log(`🚀 [MOOLRE WEBHOOK] Triggering FastNet fulfillment for order ${fastnetOrder.shortId}`);
+      const matchingFastnetOrders = fastnetOrders.filter(o => 
+        (o.shortId === externalref || o.paymentReference === externalref) && o.status === "PENDING"
+      );
+      
+      for (const fastnetOrder of matchingFastnetOrders) {
+        console.log(`🚀 [MOOLRE WEBHOOK] Triggering FastNet fulfillment for order ${fastnetOrder.shortId} (ID: ${fastnetOrder.id})`);
         await storage.updateFastnetOrderStatus(fastnetOrder.id, "PAID", transactionid, message);
         
         // Trigger supplier fulfillment
@@ -449,19 +452,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             polling.scheduleStatusCheck(fastnetOrder.id, fastnetOrder.shortId, "fastnet", 10000);
             console.log(`✅ [MOOLRE WEBHOOK] FastNet order ${fastnetOrder.shortId} sent to supplier`);
           } else {
-            console.error(`❌ [MOOLRE WEBHOOK] FastNet fulfillment failed:`, fulfillmentResult.message);
+            console.error(`❌ [MOOLRE WEBHOOK] FastNet fulfillment failed for ${fastnetOrder.shortId}:`, fulfillmentResult.message);
           }
         } catch (err) {
-          console.error(`❌ [MOOLRE WEBHOOK] FastNet fulfillment error:`, err);
+          console.error(`❌ [MOOLRE WEBHOOK] FastNet fulfillment error for ${fastnetOrder.shortId}:`, err);
         }
         updated = true;
       }
 
-      // Check AT orders
+      // Check AT orders - find ALL matching orders
       const atOrders = await storage.getAtOrders();
-      const atOrder = atOrders.find(o => o.shortId === externalref);
-      if (atOrder && atOrder.status === "PENDING") {
-        console.log(`🚀 [MOOLRE WEBHOOK] Triggering AT fulfillment for order ${atOrder.shortId}`);
+      const matchingAtOrders = atOrders.filter(o => 
+        (o.shortId === externalref || o.paymentReference === externalref) && o.status === "PENDING"
+      );
+      
+      for (const atOrder of matchingAtOrders) {
+        console.log(`🚀 [MOOLRE WEBHOOK] Triggering AT fulfillment for order ${atOrder.shortId} (ID: ${atOrder.id})`);
         await storage.updateAtOrderStatus(atOrder.id, "PAID", transactionid, message);
         
         // Trigger supplier fulfillment
@@ -479,19 +485,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateAtOrderStatus(atOrder.id, "PROCESSING", fulfillmentResult.supplier, JSON.stringify(fulfillmentResult.data || {}), supplierRef);
             console.log(`✅ [MOOLRE WEBHOOK] AT order ${atOrder.shortId} sent to supplier`);
           } else {
-            console.error(`❌ [MOOLRE WEBHOOK] AT fulfillment failed:`, fulfillmentResult.message);
+            console.error(`❌ [MOOLRE WEBHOOK] AT fulfillment failed for ${atOrder.shortId}:`, fulfillmentResult.message);
           }
         } catch (err) {
-          console.error(`❌ [MOOLRE WEBHOOK] AT fulfillment error:`, err);
+          console.error(`❌ [MOOLRE WEBHOOK] AT fulfillment error for ${atOrder.shortId}:`, err);
         }
         updated = true;
       }
 
-      // Check Telecel orders
+      // Check Telecel orders - find ALL matching orders
       const telecelOrders = await storage.getTelecelOrders();
-      const telecelOrder = telecelOrders.find(o => o.shortId === externalref);
-      if (telecelOrder && telecelOrder.status === "PENDING") {
-        console.log(`🚀 [MOOLRE WEBHOOK] Triggering Telecel fulfillment for order ${telecelOrder.shortId}`);
+      const matchingTelecelOrders = telecelOrders.filter(o => 
+        (o.shortId === externalref || o.paymentReference === externalref) && o.status === "PENDING"
+      );
+      
+      for (const telecelOrder of matchingTelecelOrders) {
+        console.log(`🚀 [MOOLRE WEBHOOK] Triggering Telecel fulfillment for order ${telecelOrder.shortId} (ID: ${telecelOrder.id})`);
         await storage.updateTelecelOrderStatus(telecelOrder.id, "PAID", transactionid, message);
         
         // Trigger supplier fulfillment
@@ -509,18 +518,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateTelecelOrderStatus(telecelOrder.id, "PROCESSING", fulfillmentResult.supplier, JSON.stringify(fulfillmentResult.data || {}), supplierRef);
             console.log(`✅ [MOOLRE WEBHOOK] Telecel order ${telecelOrder.shortId} sent to supplier`);
           } else {
-            console.error(`❌ [MOOLRE WEBHOOK] Telecel fulfillment failed:`, fulfillmentResult.message);
+            console.error(`❌ [MOOLRE WEBHOOK] Telecel fulfillment failed for ${telecelOrder.shortId}:`, fulfillmentResult.message);
           }
         } catch (err) {
-          console.error(`❌ [MOOLRE WEBHOOK] Telecel fulfillment error:`, err);
+          console.error(`❌ [MOOLRE WEBHOOK] Telecel fulfillment error for ${telecelOrder.shortId}:`, err);
         }
         updated = true;
       }
 
-      // Check DataGod orders (manual fulfillment - just update status)
+      // Check DataGod orders - find ALL matching orders (manual fulfillment - just update status)
       const datagodOrders = await storage.getDatagodOrders();
-      const datagodOrder = datagodOrders.find(o => o.shortId === externalref);
-      if (datagodOrder && datagodOrder.status === "PENDING") {
+      const matchingDatagodOrders = datagodOrders.filter(o => 
+        (o.shortId === externalref || o.paymentReference === externalref) && o.status === "PENDING"
+      );
+      
+      for (const datagodOrder of matchingDatagodOrders) {
         console.log(`✅ [MOOLRE WEBHOOK] Updating DataGod order ${datagodOrder.shortId} to PAID`);
         await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID");
         updated = true;
@@ -762,8 +774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // Generate a unique reference if not provided
-      const orderReference = reference || `FN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate a UNIQUE shortId for each order, but keep the payment reference the same for bulk orders
+      const uniqueShortId = `FN-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
       
       // Round price to integer (handle decimal prices like 5.1)
       const roundedPrice = Math.round(Number(price));
@@ -794,8 +806,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const initialStatus = gateway === 'moolre' ? "PENDING" : "PROCESSING";
 
       // Create order record in database with appropriate status
+      // Each order gets unique shortId, but shares paymentReference for bulk orders
       const order = await storage.createFastnetOrder({
-        shortId: orderReference,
+        shortId: uniqueShortId,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: roundedPrice,
@@ -836,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phoneNumber,
           dataAmount,
           price,
-          orderReference
+          uniqueShortId
         );
 
         // Update order with fulfillment result
@@ -1458,15 +1471,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // Use Paystack reference as shortId so customers can track their order
-      const orderReference = reference || `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate a UNIQUE shortId for each order
+      const uniqueShortId = `DG-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
       
       // For Moolre, create as PENDING (webhook will update to PAID)
       // For Paystack, create as PAID (payment already confirmed before this call)
       const initialStatus = gateway === 'moolre' ? "PENDING" : "PAID";
       
       const order = await storage.createDatagodOrder({
-        shortId: orderReference,
+        shortId: uniqueShortId,
         customerPhone: phoneNumber,
         packageName: dataAmount,
         packagePrice: typeof price === 'string' ? parseFloat(price) : price,
@@ -1645,7 +1658,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const orderReference = reference || `AT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate a UNIQUE shortId for each order
+      const uniqueShortId = `AT-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
       // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
       if (reference) {
@@ -1670,7 +1684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const initialStatus = gateway === 'moolre' ? "PENDING" : "PROCESSING";
 
       const order = await storage.createAtOrder({
-        shortId: orderReference,
+        shortId: uniqueShortId,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
@@ -1712,7 +1726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phoneNumber,
           dataAmount,
           price,
-          orderReference,
+          uniqueShortId,
           "codecraft",
           "at_ishare"
         );
@@ -1932,7 +1946,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const orderReference = reference || `TC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate a UNIQUE shortId for each order
+      const uniqueShortId = `TC-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
       // Check if THIS EXACT order already exists (prevent duplicates from webhook for bulk orders)
       if (reference) {
@@ -1957,7 +1972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const initialStatus = gateway === 'moolre' ? "PENDING" : "PROCESSING";
 
       const order = await storage.createTelecelOrder({
-        shortId: orderReference,
+        shortId: uniqueShortId,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
@@ -1999,7 +2014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phoneNumber,
           dataAmount,
           price,
-          orderReference,
+          uniqueShortId,
           "codecraft",
           "telecel"
         );
