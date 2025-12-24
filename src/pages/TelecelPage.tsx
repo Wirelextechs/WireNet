@@ -334,6 +334,7 @@ export default function TelecelPage() {
             dataAmount: item.pkg.dataAmount,
             price: item.pkg.price,
             reference: reference,
+            gateway: 'moolre', // Mark as Moolre payment (creates PENDING order)
           }),
         });
         if (orderResponse.ok) {

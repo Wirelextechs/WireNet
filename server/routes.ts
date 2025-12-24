@@ -400,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("📥 [MOOLRE WEBHOOK] Received:", JSON.stringify(req.body, null, 2));
 
-      const { transactionid, status, externalref, amount, payer, message, secret } = req.body;
+      const { transactionid, status, externalref, message, secret } = req.body;
 
       // Verify webhook secret
       if (!moolre.verifyWebhookSecret(secret)) {
@@ -415,80 +415,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 [MOOLRE WEBHOOK] Order: ${externalref}, Transaction: ${transactionid}, Status: ${status}`);
 
-      // Determine order status based on Moolre response code
-      let newStatus: "FULFILLED" | "PROCESSING" | "FAILED" = "PROCESSING";
+      // Determine if this is a successful payment
+      const paymentSuccessful = status === "TR000" || status === "0";
 
-      if (status === "TR000" || status === "0") {
-        // Successful payment
-        newStatus = "FULFILLED";
-      } else if (status === "TP14") {
-        // OTP required - still processing, user needs to enter OTP
-        newStatus = "PROCESSING";
-      } else if (status === "TR099") {
-        // Payment pending - prompt sent to user, awaiting confirmation
-        newStatus = "PROCESSING";
-      } else {
-        // Any other code is treated as failure
-        newStatus = "FAILED";
+      if (!paymentSuccessful) {
+        // Payment not successful yet (TP14=OTP needed, TR099=pending, etc)
+        console.log(`📊 [MOOLRE WEBHOOK] Payment not yet confirmed (status: ${status})`);
+        return res.status(200).json({ ok: true, externalref, message: "Payment not yet confirmed" });
       }
 
-      console.log(`📊 [MOOLRE WEBHOOK] Status: ${status} → Order Status: ${newStatus}`);
+      console.log(`✅ [MOOLRE WEBHOOK] Payment confirmed (TR000) for order: ${externalref}`);
 
-      // Try to find and update the order in each table
+      // Payment successful - find the order and trigger fulfillment
       let updated = false;
 
       // Check FastNet orders
       const fastnetOrders = await storage.getFastnetOrders();
       const fastnetOrder = fastnetOrders.find(o => o.shortId === externalref);
-      if (fastnetOrder) {
-        console.log(`✅ [MOOLRE WEBHOOK] Updating FastNet order ${fastnetOrder.shortId}: ${fastnetOrder.status} → ${newStatus}`);
-        await storage.updateFastnetOrderStatus(fastnetOrder.id, newStatus, transactionid, message);
+      if (fastnetOrder && fastnetOrder.status === "PENDING") {
+        console.log(`🚀 [MOOLRE WEBHOOK] Triggering FastNet fulfillment for order ${fastnetOrder.shortId}`);
+        await storage.updateFastnetOrderStatus(fastnetOrder.id, "PAID", transactionid, message);
+        
+        // Trigger supplier fulfillment
+        try {
+          const fulfillmentResult = await supplierManager.purchaseDataBundle(
+            fastnetOrder.customerPhone,
+            fastnetOrder.packageDetails,
+            fastnetOrder.packagePrice,
+            fastnetOrder.shortId
+          );
+          if (fulfillmentResult.success) {
+            await storage.updateFastnetOrderStatus(fastnetOrder.id, "PROCESSING", fulfillmentResult.supplier, JSON.stringify(fulfillmentResult.data || {}));
+            polling.scheduleStatusCheck(fastnetOrder.id, fastnetOrder.shortId, "fastnet", 10000);
+            console.log(`✅ [MOOLRE WEBHOOK] FastNet order ${fastnetOrder.shortId} sent to supplier`);
+          } else {
+            console.error(`❌ [MOOLRE WEBHOOK] FastNet fulfillment failed:`, fulfillmentResult.message);
+          }
+        } catch (err) {
+          console.error(`❌ [MOOLRE WEBHOOK] FastNet fulfillment error:`, err);
+        }
         updated = true;
       }
 
       // Check AT orders
       const atOrders = await storage.getAtOrders();
       const atOrder = atOrders.find(o => o.shortId === externalref);
-      if (atOrder) {
-        console.log(`✅ [MOOLRE WEBHOOK] Updating AT order ${atOrder.shortId}: ${atOrder.status} → ${newStatus}`);
-        await storage.updateAtOrderStatus(atOrder.id, newStatus, transactionid, message);
+      if (atOrder && atOrder.status === "PENDING") {
+        console.log(`🚀 [MOOLRE WEBHOOK] Triggering AT fulfillment for order ${atOrder.shortId}`);
+        await storage.updateAtOrderStatus(atOrder.id, "PAID", transactionid, message);
+        
+        // Trigger supplier fulfillment
+        try {
+          const fulfillmentResult = await supplierManager.purchaseDataBundle(
+            atOrder.customerPhone,
+            atOrder.packageDetails,
+            atOrder.packagePrice,
+            atOrder.shortId,
+            "codecraft",
+            "at_ishare"
+          );
+          if (fulfillmentResult.success) {
+            const supplierRef = fulfillmentResult.data?.reference_id || null;
+            await storage.updateAtOrderStatus(atOrder.id, "PROCESSING", fulfillmentResult.supplier, JSON.stringify(fulfillmentResult.data || {}), supplierRef);
+            console.log(`✅ [MOOLRE WEBHOOK] AT order ${atOrder.shortId} sent to supplier`);
+          } else {
+            console.error(`❌ [MOOLRE WEBHOOK] AT fulfillment failed:`, fulfillmentResult.message);
+          }
+        } catch (err) {
+          console.error(`❌ [MOOLRE WEBHOOK] AT fulfillment error:`, err);
+        }
         updated = true;
       }
 
       // Check Telecel orders
       const telecelOrders = await storage.getTelecelOrders();
       const telecelOrder = telecelOrders.find(o => o.shortId === externalref);
-      if (telecelOrder) {
-        console.log(`✅ [MOOLRE WEBHOOK] Updating Telecel order ${telecelOrder.shortId}: ${telecelOrder.status} → ${newStatus}`);
-        await storage.updateTelecelOrderStatus(telecelOrder.id, newStatus, transactionid, message);
+      if (telecelOrder && telecelOrder.status === "PENDING") {
+        console.log(`🚀 [MOOLRE WEBHOOK] Triggering Telecel fulfillment for order ${telecelOrder.shortId}`);
+        await storage.updateTelecelOrderStatus(telecelOrder.id, "PAID", transactionid, message);
+        
+        // Trigger supplier fulfillment
+        try {
+          const fulfillmentResult = await supplierManager.purchaseDataBundle(
+            telecelOrder.customerPhone,
+            telecelOrder.packageDetails,
+            telecelOrder.packagePrice,
+            telecelOrder.shortId,
+            "codecraft",
+            "telecel"
+          );
+          if (fulfillmentResult.success) {
+            const supplierRef = fulfillmentResult.data?.reference_id || null;
+            await storage.updateTelecelOrderStatus(telecelOrder.id, "PROCESSING", fulfillmentResult.supplier, JSON.stringify(fulfillmentResult.data || {}), supplierRef);
+            console.log(`✅ [MOOLRE WEBHOOK] Telecel order ${telecelOrder.shortId} sent to supplier`);
+          } else {
+            console.error(`❌ [MOOLRE WEBHOOK] Telecel fulfillment failed:`, fulfillmentResult.message);
+          }
+        } catch (err) {
+          console.error(`❌ [MOOLRE WEBHOOK] Telecel fulfillment error:`, err);
+        }
         updated = true;
       }
 
-      // Check DataGod orders
+      // Check DataGod orders (manual fulfillment - just update status)
       const datagodOrders = await storage.getDatagodOrders();
       const datagodOrder = datagodOrders.find(o => o.shortId === externalref);
-      if (datagodOrder) {
-        console.log(`✅ [MOOLRE WEBHOOK] Updating DataGod order ${datagodOrder.shortId}: ${datagodOrder.status} → ${newStatus}`);
-        await storage.updateDatagodOrderStatus(datagodOrder.id, newStatus, transactionid, message);
+      if (datagodOrder && datagodOrder.status === "PENDING") {
+        console.log(`✅ [MOOLRE WEBHOOK] Updating DataGod order ${datagodOrder.shortId} to PAID`);
+        await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID");
         updated = true;
       }
 
       if (updated) {
-        console.log(`✅ [MOOLRE WEBHOOK] Order ${externalref} updated to ${newStatus}`);
-
-        // If payment successful, trigger supplier fulfillment for FastNet
-        if (newStatus === "FULFILLED") {
-          const fastnetOrder = fastnetOrders.find(o => o.shortId === externalref);
-          if (fastnetOrder && fastnetOrder.status !== "FULFILLED") {
-            console.log(`🚀 [MOOLRE WEBHOOK] Scheduling supplier push for FastNet order ${fastnetOrder.shortId}`);
-            polling.scheduleStatusCheck(fastnetOrder.id, "fastnet");
-          }
-        }
-
-        return res.status(200).json({ ok: true, externalref, newStatus });
+        console.log(`✅ [MOOLRE WEBHOOK] Order ${externalref} processed successfully`);
+        return res.status(200).json({ ok: true, externalref, message: "Order processed" });
       } else {
-        console.warn(`⚠️ [MOOLRE WEBHOOK] Order ${externalref} not found`);
-        return res.status(200).json({ ok: true, externalref, message: "Order not found" });
+        console.warn(`⚠️ [MOOLRE WEBHOOK] Order ${externalref} not found or already processed`);
+        return res.status(200).json({ ok: true, externalref, message: "Order not found or already processed" });
       }
     } catch (error) {
       console.error("❌ [MOOLRE WEBHOOK] Error:", error);
@@ -713,7 +756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase Data Bundle
   app.post("/api/fastnet/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -746,17 +789,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create order record in database FIRST with status PAID
+      // For Moolre, create as PENDING (payment not yet confirmed)
+      // For Paystack or direct, create as PROCESSING (payment already confirmed)
+      const initialStatus = gateway === 'moolre' ? "PENDING" : "PROCESSING";
+
+      // Create order record in database with appropriate status
       const order = await storage.createFastnetOrder({
         shortId: orderReference,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: roundedPrice,
-        status: "PROCESSING",
+        status: initialStatus,
         paymentReference: reference || null,
       });
 
       console.log(`📝 Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
+
+      // For Moolre payments, don't fulfill yet - wait for webhook to confirm payment
+      if (gateway === 'moolre') {
+        console.log(`⏳ Moolre payment - order ${order.shortId} created as PENDING, awaiting payment confirmation`);
+        return res.json({
+          success: true,
+          message: "Order created, awaiting payment confirmation",
+          orderId: order.shortId,
+          status: "PENDING",
+        });
+      }
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
@@ -771,7 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Try to fulfill with supplier
+      // Try to fulfill with supplier (Paystack - payment already confirmed)
       let fulfillmentResult;
       try {
         fulfillmentResult = await supplierManager.purchaseDataBundle(
@@ -1391,9 +1449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DataGod Purchase endpoint (for storefront)
   app.post("/api/datagod/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
       
-      console.log("📝 DataGod purchase request:", { phoneNumber, dataAmount, price, reference });
+      console.log("📝 DataGod purchase request:", { phoneNumber, dataAmount, price, reference, gateway });
       
       if (!phoneNumber || !dataAmount || !price) {
         console.error("❌ Missing required fields:", { phoneNumber, dataAmount, price });
@@ -1403,16 +1461,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use Paystack reference as shortId so customers can track their order
       const orderReference = reference || `DG-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       
+      // For Moolre, create as PENDING (webhook will update to PAID)
+      // For Paystack, create as PAID (payment already confirmed before this call)
+      const initialStatus = gateway === 'moolre' ? "PENDING" : "PAID";
+      
       const order = await storage.createDatagodOrder({
         shortId: orderReference,
         customerPhone: phoneNumber,
         packageName: dataAmount,
         packagePrice: typeof price === 'string' ? parseFloat(price) : price,
-        status: "PAID",
+        status: initialStatus,
         paymentReference: reference || null,
       });
 
-      console.log("✅ DataGod order created via purchase:", order);
+      console.log(`✅ DataGod order created via purchase (${initialStatus}):`, order);
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
@@ -1577,7 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase AT data
   app.post("/api/at/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -1603,16 +1665,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // For Moolre, create as PENDING (payment not yet confirmed)
+      // For Paystack or direct, create as PROCESSING (payment already confirmed)
+      const initialStatus = gateway === 'moolre' ? "PENDING" : "PROCESSING";
+
       const order = await storage.createAtOrder({
         shortId: orderReference,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
-        status: "PROCESSING",
+        status: initialStatus,
         paymentReference: reference || null,
       });
 
       console.log(`📝 AT Order ${order.shortId} created with ID ${order.id} for ${phoneNumber} - ${dataAmount}`);
+
+      // For Moolre payments, don't fulfill yet - wait for webhook to confirm payment
+      if (gateway === 'moolre') {
+        console.log(`⏳ Moolre payment - AT order ${order.shortId} created as PENDING, awaiting payment confirmation`);
+        return res.json({
+          success: true,
+          message: "Order created, awaiting payment confirmation",
+          orderId: order.shortId,
+          status: "PENDING",
+        });
+      }
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
@@ -1627,6 +1704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      // Paystack - payment already confirmed, proceed to fulfill
       let fulfillmentResult;
       try {
         console.log(`🔄 Starting AT fulfillment for order ${order.id}...`);
@@ -1848,7 +1926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase TELECEL data
   app.post("/api/telecel/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -1874,16 +1952,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // For Moolre, create as PENDING (payment not yet confirmed)
+      // For Paystack or direct, create as PROCESSING (payment already confirmed)
+      const initialStatus = gateway === 'moolre' ? "PENDING" : "PROCESSING";
+
       const order = await storage.createTelecelOrder({
         shortId: orderReference,
         customerPhone: phoneNumber,
         packageDetails: dataAmount,
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
-        status: "PROCESSING",
+        status: initialStatus,
         paymentReference: reference || null,
       });
 
       console.log(`📝 TELECEL Order ${order.shortId} created with ID ${order.id} for ${phoneNumber} - ${dataAmount}`);
+
+      // For Moolre payments, don't fulfill yet - wait for webhook to confirm payment
+      if (gateway === 'moolre') {
+        console.log(`⏳ Moolre payment - Telecel order ${order.shortId} created as PENDING, awaiting payment confirmation`);
+        return res.json({
+          success: true,
+          message: "Order created, awaiting payment confirmation",
+          orderId: order.shortId,
+          status: "PENDING",
+        });
+      }
 
       // Send SMS notification (don't await - fire and forget)
       storage.getSettings().then(settings => {
@@ -1898,6 +1991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      // Paystack - payment already confirmed, proceed to fulfill
       let fulfillmentResult;
       try {
         console.log(`🔄 Starting Telecel fulfillment for order ${order.id}...`);
