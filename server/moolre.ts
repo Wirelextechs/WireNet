@@ -25,6 +25,7 @@ interface MoolrePaymentRequest {
   externalref: string; // order reference
   accountnumber: string; // merchant account
   sessionid?: string; // optional USSD session
+  otp?: string; // OTP code for verification (TP14 response)
 }
 
 interface MoolrePaymentResponse {
@@ -43,13 +44,15 @@ interface MoolrePaymentResponse {
  * @param amount - Amount in GHS
  * @param orderReference - Unique order reference
  * @param network - Network: 'mtn' or 'vodafone'
+ * @param otp - Optional OTP code (required after TP14 response)
  */
 export async function initiatePayment(
   phone: string,
   amount: number,
   orderReference: string,
-  network: string = "mtn"
-): Promise<{ success: boolean; message: string; data?: any }> {
+  network: string = "mtn",
+  otp?: string
+): Promise<{ success: boolean; message: string; data?: any; code?: string }> {
   if (!MOOLRE_USER || !MOOLRE_PUB_KEY || !MOOLRE_ACCOUNT) {
     console.error("❌ Moolre credentials not configured");
     return {
@@ -63,7 +66,7 @@ export async function initiatePayment(
     const channelMap: { [key: string]: string } = {
       mtn: "13", // MTN Mobile Money
       vodafone: "14", // Vodafone Cash
-      airtel: "15", // Airtel Money
+      airteltigo: "15", // AirtelTigo Money
     };
 
     const channel = channelMap[network.toLowerCase()] || "13";
@@ -78,11 +81,18 @@ export async function initiatePayment(
       accountnumber: MOOLRE_ACCOUNT,
     };
 
+    // Add OTP if provided (for TP14 verification)
+    if (otp) {
+      payload.otp = otp;
+      console.log(`📡 Submitting OTP for verification: ${otp}`);
+    }
+
     console.log(`📡 Initiating Moolre payment:`, {
       phone,
       amount,
       channel,
       reference: orderReference,
+      hasOtp: !!otp,
       url: MOOLRE_BASE_URL,
     });
 
@@ -105,7 +115,8 @@ export async function initiatePayment(
       console.log(`⚠️  OTP required for ${phone}`);
       return {
         success: false,
-        message: "OTP required - Please enter OTP sent to your phone",
+        code: "TP14",
+        message: "Verification code required - Please enter the code sent to your phone",
         data: result,
       };
     }
@@ -115,6 +126,7 @@ export async function initiatePayment(
       console.log(`⏳ Payment pending for order ${orderReference}`);
       return {
         success: true,
+        code: "TR099",
         message: "Payment prompt sent to customer's phone. Awaiting confirmation.",
         data: result,
       };
@@ -125,6 +137,7 @@ export async function initiatePayment(
       console.log(`✅ Moolre payment successful for ${orderReference}`);
       return {
         success: true,
+        code: result.code,
         message: result.message || "Payment initiated successfully",
         data: result,
       };
@@ -134,6 +147,7 @@ export async function initiatePayment(
     console.error(`❌ Moolre payment failed [${result.code}]:`, result.message);
     return {
       success: false,
+      code: result.code,
       message: result.message || `Payment failed with code ${result.code}`,
       data: result,
     };

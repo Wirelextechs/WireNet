@@ -499,16 +499,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Moolre payment initiation endpoint
   app.post("/api/moolre/initiate", async (req: any, res) => {
     try {
-      const { phone, amount, orderReference, network } = req.body;
+      const { phone, amount, orderReference, network, otp } = req.body;
 
       if (!phone || !amount || !orderReference) {
         return res.status(400).json({ error: "Missing required fields: phone, amount, orderReference" });
       }
 
-      console.log(`💳 [MOOLRE INITIATE] Phone: ${phone}, Amount: ${amount}, Ref: ${orderReference}, Network: ${network}`);
+      console.log(`💳 [MOOLRE INITIATE] Phone: ${phone}, Amount: ${amount}, Ref: ${orderReference}, Network: ${network}, OTP: ${otp ? 'PROVIDED' : 'NONE'}`);
 
-      // Call Moolre API to initiate payment
-      const result = await moolre.initiatePayment(phone, amount, orderReference, network || "mtn");
+      // Call Moolre API to initiate payment (with optional OTP for verification)
+      const result = await moolre.initiatePayment(phone, amount, orderReference, network || "mtn", otp);
 
       return res.status(result.success ? 200 : 400).json(result);
     } catch (error) {

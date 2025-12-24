@@ -14,7 +14,7 @@ interface MoMoPaymentModalProps {
   service: "at" | "telecel" | "fastnet" | "datagod";
 }
 
-type PaymentStatus = "idle" | "processing" | "verification_pending" | "pending" | "success" | "error";
+type PaymentStatus = "idle" | "processing" | "otp_required" | "pending" | "success" | "error";
 
 export default function MoMoPaymentModal({
   isOpen,
@@ -32,6 +32,7 @@ export default function MoMoPaymentModal({
   const [statusMessage, setStatusMessage] = useState("");
   const [firstOrderId, setFirstOrderId] = useState("");
   const [ordersCreated, setOrdersCreated] = useState(false);
+  const [otp, setOtp] = useState("");
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
@@ -98,10 +99,10 @@ export default function MoMoPaymentModal({
         setTimeout(() => {
           onSuccess(orderId || orderReference);
         }, 4000);
-      } else if (result.data?.code === "TP14" || result.code === "TP14" || result.message?.includes("verification")) {
-        // First-time payer - needs to complete verification on their PHONE
-        setStatus("verification_pending");
-        setStatusMessage("Please complete the verification sent to your phone via SMS, then click 'Try Again'.");
+      } else if (result.code === "TP14") {
+        // First-time payer - OTP sent to phone, need to collect and submit
+        setStatus("otp_required");
+        setStatusMessage("A verification code has been sent to your phone via SMS. Enter it below to continue.");
       } else if (result.code === "TP09") {
         // Channel not supported
         setStatus("error");
@@ -117,12 +118,17 @@ export default function MoMoPaymentModal({
     }
   };
 
-  const handleRetryAfterVerification = async () => {
+  const handleOtpSubmit = async () => {
+    if (!otp || otp.length < 4) {
+      setStatusMessage("Please enter the verification code sent to your phone");
+      return;
+    }
+
     setStatus("processing");
-    setStatusMessage("Checking verification status...");
+    setStatusMessage("Verifying code and initiating payment...");
 
     try {
-      // Re-initiate payment after user completes phone verification
+      // Re-submit payment with OTP code
       const response = await fetch("/api/moolre/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,6 +137,7 @@ export default function MoMoPaymentModal({
           amount: amount,
           orderReference: orderReference,
           network: payerNetwork,
+          otp: otp, // Include the OTP code
         }),
       });
 
@@ -151,17 +158,19 @@ export default function MoMoPaymentModal({
         setTimeout(() => {
           onSuccess(firstOrderId || orderReference);
         }, 4000);
-      } else if (result.data?.code === "TP14" || result.code === "TP14" || result.message?.includes("verification")) {
-        setStatus("verification_pending");
-        setStatusMessage("Verification still pending. Please complete the SMS verification on your phone, then try again.");
+      } else if (result.code === "TP14") {
+        // Still needs verification - wrong code maybe
+        setStatus("otp_required");
+        setStatusMessage("Verification failed. Please check the code and try again.");
+        setOtp(""); // Clear the OTP field
       } else {
         setStatus("error");
         setStatusMessage(result.message || "Payment failed. Please try again.");
       }
     } catch (error) {
-      console.error("Moolre retry error:", error);
+      console.error("Moolre OTP submit error:", error);
       setStatus("error");
-      setStatusMessage("Failed to process. Please try again.");
+      setStatusMessage("Failed to verify. Please try again.");
     }
   };
 
@@ -174,6 +183,7 @@ export default function MoMoPaymentModal({
     setStatusMessage("");
     setFirstOrderId("");
     setOrdersCreated(false);
+    setOtp("");
     onClose();
   };
 
@@ -182,6 +192,7 @@ export default function MoMoPaymentModal({
     setStatusMessage("");
     setOrdersCreated(false);
     setFirstOrderId("");
+    setOtp("");
   };
 
   if (!isOpen) return null;
@@ -306,31 +317,39 @@ export default function MoMoPaymentModal({
               </div>
             )}
 
-            {status === "verification_pending" && (
+            {status === "otp_required" && (
               <div className="space-y-4">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Smartphone className="h-8 w-8 text-yellow-500" />
+                    <AlertCircle className="h-8 w-8 text-yellow-500" />
                   </div>
-                  <h3 className="text-white font-bold text-lg mb-2">Complete Verification on Your Phone</h3>
+                  <h3 className="text-white font-bold text-lg mb-2">Verification Required</h3>
                   <p className="text-gray-400 text-sm">{statusMessage}</p>
                 </div>
 
-                <div className="bg-white/5 rounded-xl p-4 text-sm text-gray-300">
-                  <p className="font-medium text-white mb-2">📱 How to verify:</p>
-                  <ol className="list-decimal list-inside space-y-1">
-                    <li>Check the SMS sent to <span className="text-yellow-400">{payerPhone}</span></li>
-                    <li>Follow the instructions in the SMS (reply or dial USSD)</li>
-                    <li>Once verified, click "Try Again" below</li>
-                  </ol>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Enter Verification Code
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter code from SMS"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 text-lg h-12 text-center tracking-widest"
+                    maxLength={6}
+                  />
+                  <p className="text-gray-500 text-xs mt-1">
+                    Check your SMS for the code sent to {payerPhone}
+                  </p>
                 </div>
 
                 <Button
-                  onClick={handleRetryAfterVerification}
+                  onClick={handleOtpSubmit}
+                  disabled={!otp || otp.length < 4}
                   className="w-full h-12 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold"
                 >
-                  <RefreshCw className="h-5 w-5 mr-2" />
-                  I've Verified - Try Again
+                  Verify & Continue
                 </Button>
 
                 <button
