@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
+import MoMoPaymentModal from "@/components/ui/momo-payment-modal";
 
 interface Package {
   id: string;
@@ -44,6 +45,14 @@ export default function AtPage() {
     severity: "info",
     active: false,
   });
+  
+  // Moolre payment modal state
+  const [showMoolreModal, setShowMoolreModal] = useState(false);
+  const [moolrePayerPhone, setMoolrePayerPhone] = useState("");
+  const [moolrePayerNetwork, setMoolrePayerNetwork] = useState<"mtn" | "vodafone" | "airteltigo">("mtn");
+  const [moolrePayerPhoneError, setMoolrePayerPhoneError] = useState("");
+  const [moolreTotalAmount, setMoolreTotalAmount] = useState(0);
+  const [moolreOrderRef, setMoolreOrderRef] = useState("");
 
   useEffect(() => {
     loadPackages();
@@ -305,82 +314,56 @@ export default function AtPage() {
     const subtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
     const charge = subtotal * (transactionCharge / 100);
     const totalAmount = subtotal + charge;
-
-    const payerPhone = cart[0]?.phoneNumber;
-    if (!payerPhone) {
-      alert("Phone number required for Moolre payment");
-      setPurchasing(false);
-      return;
-    }
-
     const moolreRef = `AT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Set modal data and open it
+    setMoolreTotalAmount(totalAmount);
+    setMoolreOrderRef(moolreRef);
+    setShowMoolreModal(true);
+    setPurchasing(false);
+  };
 
-    try {
-      // Create orders first
-      const cartItems = [...cart];
-      let firstOrderId = "";
-      for (const item of cartItems) {
-        try {
-          const orderResponse = await fetch("/api/at/purchase", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              phoneNumber: item.phoneNumber,
-              dataAmount: item.pkg.dataAmount,
-              price: item.pkg.price,
-              reference: moolreRef,
-            }),
-          });
-          if (orderResponse.ok) {
-            try {
-              const orderData = await orderResponse.json();
-              if (!firstOrderId && orderData.shortId) {
-                firstOrderId = orderData.shortId;
-              }
-            } catch {
-              // Response may not be JSON
+  const handleMoolreCreateOrders = async (reference: string): Promise<string> => {
+    const cartItems = [...cart];
+    let firstOrderId = "";
+    
+    for (const item of cartItems) {
+      try {
+        const orderResponse = await fetch("/api/at/purchase", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phoneNumber: item.phoneNumber,
+            dataAmount: item.pkg.dataAmount,
+            price: item.pkg.price,
+            reference: reference,
+          }),
+        });
+        if (orderResponse.ok) {
+          try {
+            const orderData = await orderResponse.json();
+            if (!firstOrderId && orderData.shortId) {
+              firstOrderId = orderData.shortId;
             }
+          } catch {
+            // Response may not be JSON
           }
-        } catch (error) {
-          console.error("Error creating order:", error);
         }
+      } catch (error) {
+        console.error("Error creating order:", error);
       }
-
-      // Initiate Moolre payment
-      const response = await fetch("/api/moolre/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: payerPhone,
-          amount: totalAmount,
-          orderReference: moolreRef,
-          network: "mtn",
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success || result.code === "TR099") {
-        setCart([]);
-        setPhoneNumber("");
-        setSelectedPackage(null);
-        setCustomerEmail("");
-        setPurchasing(false);
-        const orderId = firstOrderId || moolreRef;
-        navigate(`/order/success/${orderId}?service=at&gateway=moolre`);
-      } else if (result.data?.code === "TP14" || result.message?.includes("OTP") || result.message?.includes("verification")) {
-        // First-time payer - OTP sent to their phone
-        alert("📱 Verification Required!\n\nA verification code has been sent to your phone. Please:\n1. Check your SMS\n2. Complete the verification\n3. Click Pay again\n\nThis only happens once for first-time users.");
-        setPurchasing(false);
-      } else {
-        alert(`Payment initiation failed: ${result.message || "Unknown error"}`);
-        setPurchasing(false);
-      }
-    } catch (error) {
-      console.error("Moolre payment error:", error);
-      alert("Failed to initiate Moolre payment. Please try again.");
-      setPurchasing(false);
     }
+    
+    return firstOrderId;
+  };
+
+  const handleMoolreSuccess = (orderId: string) => {
+    setCart([]);
+    setPhoneNumber("");
+    setSelectedPackage(null);
+    setCustomerEmail("");
+    setShowMoolreModal(false);
+    navigate(`/order/success/${orderId}?service=at&gateway=moolre`);
   };
 
   const cartSubtotal = cart.reduce((sum, item) => sum + item.pkg.price, 0);
@@ -742,6 +725,17 @@ export default function AtPage() {
           <MessageCircle className="h-6 w-6" />
         </motion.button>
       )}
+
+      {/* Moolre MoMo Payment Modal */}
+      <MoMoPaymentModal
+        isOpen={showMoolreModal}
+        onClose={() => setShowMoolreModal(false)}
+        amount={moolreTotalAmount}
+        orderReference={moolreOrderRef}
+        onSuccess={handleMoolreSuccess}
+        onCreateOrders={handleMoolreCreateOrders}
+        service="at"
+      />
     </div>
   );
 }
