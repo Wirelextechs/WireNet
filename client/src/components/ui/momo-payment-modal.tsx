@@ -125,10 +125,10 @@ export default function MoMoPaymentModal({
     }
 
     setStatus("processing");
-    setStatusMessage("Verifying code and initiating payment...");
+    setStatusMessage("Verifying code...");
 
     try {
-      // Re-submit payment with OTP code
+      // Submit payment with OTP code for verification
       const response = await fetch("/api/moolre/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,8 +143,45 @@ export default function MoMoPaymentModal({
 
       const result = await response.json();
 
-      if (result.success || result.code === "TR099") {
-        // Payment prompt sent - NOW create orders
+      if (result.code === "TP17") {
+        // Verification successful! Now re-submit WITHOUT OTP to trigger payment prompt
+        setStatusMessage("Verification successful! Initiating payment...");
+        
+        const paymentResponse = await fetch("/api/moolre/initiate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: payerPhone,
+            amount: amount,
+            orderReference: orderReference,
+            network: payerNetwork,
+            // No OTP this time - phone is now verified
+          }),
+        });
+
+        const paymentResult = await paymentResponse.json();
+
+        if (paymentResult.success || paymentResult.code === "TR099") {
+          // Payment prompt sent - NOW create orders
+          if (!ordersCreated) {
+            setStatusMessage("Creating orders...");
+            const orderId = await onCreateOrders(orderReference);
+            setFirstOrderId(orderId);
+            setOrdersCreated(true);
+          }
+          
+          setStatus("pending");
+          setStatusMessage("A payment prompt has been sent to your phone. Please enter your MoMo PIN to complete the payment.");
+          
+          setTimeout(() => {
+            onSuccess(firstOrderId || orderReference);
+          }, 4000);
+        } else {
+          setStatus("error");
+          setStatusMessage(paymentResult.message || "Payment initiation failed after verification.");
+        }
+      } else if (result.success || result.code === "TR099") {
+        // Payment prompt sent directly - NOW create orders
         if (!ordersCreated) {
           setStatusMessage("Creating orders...");
           const orderId = await onCreateOrders(orderReference);

@@ -121,6 +121,17 @@ export async function initiatePayment(
       };
     }
 
+    // Handle successful verification - need to re-submit without OTP to trigger payment
+    if (result.code === "TP17") {
+      console.log(`✅ Phone verification successful for ${phone}, now initiating payment...`);
+      return {
+        success: false,
+        code: "TP17",
+        message: "Verification successful! Initiating payment...",
+        data: result,
+      };
+    }
+
     // Handle pending payment (prompt sent to user)
     if (result.code === "TR099") {
       console.log(`⏳ Payment pending for order ${orderReference}`);
