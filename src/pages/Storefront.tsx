@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import AnnouncementBanner, { type AnnouncementSeverity } from "@/components/ui/announcement-banner";
+import { ChristmasEffects } from "@/components/ui/christmas-effects";
 
 interface Settings {
   whatsappLink?: string;
@@ -17,6 +18,7 @@ interface Settings {
   announcementLink?: string;
   announcementSeverity?: AnnouncementSeverity;
   announcementActive?: boolean;
+  christmasThemeEnabled?: boolean;
 }
 
 const categories = [
@@ -91,6 +93,7 @@ export default function Storefront() {
     announcementLink: "",
     announcementSeverity: "info",
     announcementActive: false,
+    christmasThemeEnabled: false,
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [, navigate] = useLocation();
@@ -119,6 +122,7 @@ export default function Storefront() {
           announcementLink: data.announcementLink || "",
           announcementSeverity: (data.announcementSeverity as AnnouncementSeverity) || "info",
           announcementActive: data.announcementActive === true,
+          christmasThemeEnabled: data.christmasThemeEnabled === true,
         });
       }
     } catch (error) {
@@ -161,6 +165,11 @@ export default function Storefront() {
 
   return (
     <div className="min-h-screen gradient-mesh">
+      {/* Christmas Effects */}
+      {settings.christmasThemeEnabled && (
+        <ChristmasEffects snowfall={true} lights={false} banner={true} />
+      )}
+      
       {/* Announcement Banner */}
       <AnimatePresence>
         {settings.announcementActive && (

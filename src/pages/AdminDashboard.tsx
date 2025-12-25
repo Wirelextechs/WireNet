@@ -20,6 +20,7 @@ interface Settings {
   smsEnabled?: boolean;
   smsNotificationPhones?: string[];
   activePaymentGateway?: "paystack" | "moolre";
+  christmasThemeEnabled?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -40,7 +41,9 @@ export default function AdminDashboard() {
     smsEnabled: false,
     smsNotificationPhones: [],
     activePaymentGateway: "paystack",
+    christmasThemeEnabled: false,
   });
+  const [christmasThemeEnabled, setChristmasThemeEnabled] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState("");
   const [afaLink, setAfaLink] = useState("");
   const [announcementText, setAnnouncementText] = useState("");
@@ -100,6 +103,7 @@ export default function AdminDashboard() {
           smsEnabled: data.smsEnabled === true,
           smsNotificationPhones: data.smsNotificationPhones || [],
           activePaymentGateway: data.activePaymentGateway || "paystack",
+          christmasThemeEnabled: data.christmasThemeEnabled === true,
         });
         setWhatsappLink(data.whatsappLink || "");
         setAfaLink(data.afaLink || "");
@@ -110,6 +114,7 @@ export default function AdminDashboard() {
         setSmsEnabled(data.smsEnabled === true);
         setSmsNotificationPhones(data.smsNotificationPhones || []);
         setActivePaymentGateway(data.activePaymentGateway || "paystack");
+        setChristmasThemeEnabled(data.christmasThemeEnabled === true);
       }
       
       // Check SMS balance
@@ -339,6 +344,7 @@ export default function AdminDashboard() {
           smsEnabled,
           smsNotificationPhones,
           activePaymentGateway,
+          christmasThemeEnabled,
         }),
       });
 
@@ -930,6 +936,49 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Christmas Theme Card */}
+          <Card className="border-red-200 bg-gradient-to-br from-red-50 to-green-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🎄 Christmas Theme
+              </CardTitle>
+              <CardDescription>
+                Enable festive snowfall effect and Christmas banner on your storefront
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded bg-white/80">
+                <div>
+                  <h3 className="font-semibold">Holiday Effects</h3>
+                  <p className="text-sm text-gray-600">Snowfall animation & festive banner</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status: {christmasThemeEnabled ? "🎅 Active" : "❌ Disabled"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setChristmasThemeEnabled(!christmasThemeEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    christmasThemeEnabled ? "bg-red-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      christmasThemeEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <Button
+                onClick={handleSaveSettings}
+                disabled={loading}
+                className="w-full bg-red-600 hover:bg-red-700"
+              >
+                {loading ? "Saving..." : "🎄 Save Christmas Theme"}
+              </Button>
             </CardContent>
           </Card>
 

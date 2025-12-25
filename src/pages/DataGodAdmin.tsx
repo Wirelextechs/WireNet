@@ -308,10 +308,16 @@ export default function DataGodAdmin() {
       return;
     }
 
+    // Helper to extract just the number from package name (e.g., "1GB" -> "1", "2GB" -> "2")
+    const extractPackageSize = (packageName: string) => {
+      const match = packageName?.match(/^(\d+)/);
+      return match ? match[1] : packageName;
+    };
+
     const csv = [
       ["Order ID", "Phone", "Package", "Price", "Status", "Date"].join(","),
       ...selectedOrderObjects.map(o =>
-        [o.shortId, o.customerPhone, o.packageName, o.packagePrice, o.status, new Date(o.createdAt).toLocaleString()].join(",")
+        [o.shortId, o.customerPhone, extractPackageSize(o.packageName), o.packagePrice, o.status, new Date(o.createdAt).toLocaleString()].join(",")
       ),
     ].join("\n");
 
