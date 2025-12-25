@@ -170,6 +170,7 @@ class Storage {
         }
       })(),
       activePaymentGateway: (settingsMap["activePaymentGateway"] as "paystack" | "moolre") || "paystack",
+      christmasThemeEnabled: settingsMap["christmasThemeEnabled"] === "true",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -240,6 +241,10 @@ class Storage {
     if (data.activePaymentGateway !== undefined) {
       console.log("💳 Saving activePaymentGateway:", data.activePaymentGateway);
       await this.upsertSetting("activePaymentGateway", data.activePaymentGateway);
+    }
+    if (data.christmasThemeEnabled !== undefined) {
+      console.log("🎄 Saving christmasThemeEnabled:", data.christmasThemeEnabled);
+      await this.upsertSetting("christmasThemeEnabled", String(data.christmasThemeEnabled));
     }
 
     return (await this.getSettings())!;
