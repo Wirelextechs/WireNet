@@ -478,6 +478,14 @@ export default function AdminDashboard() {
             <span className="text-2xl">📡</span>
             <span>TELECEL Admin</span>
           </Button>
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex flex-col items-center gap-2 bg-violet-50 hover:bg-violet-100 border-violet-200"
+            onClick={() => navigate("/admin/shops")}
+          >
+            <span className="text-2xl">🏪</span>
+            <span>Shop Management</span>
+          </Button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">

@@ -6,6 +6,7 @@ import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { Pool } from "pg";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import * as supplierManager from "./supplier-manager.js";
 import * as polling from "./polling.js";
 import * as codecraft from "./codecraft.js";
@@ -2247,6 +2248,761 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // ============ SHOP SYSTEM ROUTES ============
+
+  // User authentication middleware (separate from admin)
+  const isUserAuthenticated = (req: any, res: any, next: any) => {
+    if (req.session?.shopUser) {
+      req.shopUser = req.session.shopUser;
+      return next();
+    }
+    res.status(401).json({ message: "Please login to continue" });
+  };
+
+  // User signup
+  app.post("/api/user/signup", async (req, res) => {
+    try {
+      // Check if registration is open
+      const registrationOpen = await storage.getSetting("shopRegistrationOpen");
+      if (registrationOpen?.value === "false") {
+        return res.status(403).json({ message: "Shop registration is currently closed" });
+      }
+
+      const { email, password, name, phone, shopName, shopSlug } = req.body;
+
+      if (!email || !password || !name || !phone) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Validate shop slug
+      if (!shopName || !shopSlug) {
+        return res.status(400).json({ message: "Shop name and slug are required" });
+      }
+
+      const slugRegex = /^[a-z0-9-]+$/;
+      const normalizedSlug = shopSlug.toLowerCase().trim();
+      if (!slugRegex.test(normalizedSlug)) {
+        return res.status(400).json({ message: "Shop slug can only contain lowercase letters, numbers, and hyphens" });
+      }
+
+      if (normalizedSlug.length < 3 || normalizedSlug.length > 30) {
+        return res.status(400).json({ message: "Shop slug must be 3-30 characters" });
+      }
+
+      // Check if slug already taken
+      const existingShop = await storage.getShopBySlug(normalizedSlug);
+      if (existingShop) {
+        return res.status(400).json({ message: "Shop URL is already taken" });
+      }
+
+      // Reserved slugs
+      const reservedSlugs = ["admin", "api", "shop", "dashboard", "login", "signup", "settings", "fastnet", "datagod", "at", "telecel"];
+      if (reservedSlugs.includes(normalizedSlug)) {
+        return res.status(400).json({ message: "This shop URL is reserved" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user
+      const user = await storage.createUser({
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        name,
+        phone,
+        status: "active"
+      });
+
+      // Create shop
+      const shop = await storage.createShop({
+        userId: user.id,
+        shopName,
+        slug: normalizedSlug,
+        status: "pending"
+      });
+
+      res.status(201).json({
+        message: "Account created successfully! Your shop is pending approval.",
+        user: { id: user.id, email: user.email, name: user.name },
+        shop: { id: shop.id, shopName: shop.shopName, slug: shop.slug, status: shop.status }
+      });
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  // User login
+  app.post("/api/user/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const user = await storage.getUserByEmail(email.toLowerCase());
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      if (user.status === "suspended") {
+        return res.status(403).json({ message: "Your account has been suspended" });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Get user's shop
+      const shop = await storage.getShopByUserId(user.id);
+
+      (req.session as any).shopUser = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        shopId: shop?.id,
+        shopSlug: shop?.slug,
+        shopStatus: shop?.status
+      };
+
+      res.json({
+        message: "Login successful",
+        user: { id: user.id, email: user.email, name: user.name },
+        shop: shop ? { id: shop.id, shopName: shop.shopName, slug: shop.slug, status: shop.status } : null
+      });
+    } catch (error) {
+      console.error("User login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // User logout
+  app.post("/api/user/logout", (req, res) => {
+    delete (req.session as any).shopUser;
+    res.json({ message: "Logged out successfully" });
+  });
+
+  // Get current user
+  app.get("/api/user/me", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(req.shopUser.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const shop = await storage.getShopByUserId(user.id);
+      const stats = shop ? await storage.getShopStats(shop.id) : null;
+
+      res.json({
+        user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
+        shop: shop ? {
+          id: shop.id,
+          shopName: shop.shopName,
+          slug: shop.slug,
+          description: shop.description,
+          logo: shop.logo,
+          status: shop.status,
+          totalEarnings: shop.totalEarnings,
+          availableBalance: shop.availableBalance
+        } : null,
+        stats
+      });
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ message: "Failed to get user info" });
+    }
+  });
+
+  // Update shop details
+  app.put("/api/shop/settings", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const { shopName, description, logo } = req.body;
+      const updates: any = {};
+      if (shopName) updates.shopName = shopName;
+      if (description !== undefined) updates.description = description;
+      if (logo !== undefined) updates.logo = logo;
+
+      const updated = await storage.updateShop(shop.id, updates);
+      res.json({ message: "Shop updated", shop: updated });
+    } catch (error) {
+      console.error("Update shop error:", error);
+      res.status(500).json({ message: "Failed to update shop" });
+    }
+  });
+
+  // Get shop packages with markups (for shop owner)
+  app.get("/api/shop/packages", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      // Get all base packages
+      const datagodPackages = await storage.getDatagodPackages();
+      const fastnetPackages = await storage.getSettings(); // fastnet uses settings
+      const atPackages = await storage.getAtPackages();
+      const telecelPackages = await storage.getTelecelPackages();
+
+      // Get shop's configurations
+      const configs = await storage.getShopPackageConfigs(shop.id);
+      const configMap = new Map(configs.map(c => [`${c.serviceType}-${c.packageId}`, c]));
+
+      const packagesWithMarkups = {
+        datagod: datagodPackages.map(p => ({
+          ...p,
+          serviceType: "datagod",
+          config: configMap.get(`datagod-${p.id}`) || { markupAmount: 0, isEnabled: true }
+        })),
+        at: atPackages.map(p => ({
+          ...p,
+          serviceType: "at",
+          config: configMap.get(`at-${p.id}`) || { markupAmount: 0, isEnabled: true }
+        })),
+        telecel: telecelPackages.map(p => ({
+          ...p,
+          serviceType: "telecel",
+          config: configMap.get(`telecel-${p.id}`) || { markupAmount: 0, isEnabled: true }
+        }))
+      };
+
+      res.json(packagesWithMarkups);
+    } catch (error) {
+      console.error("Get shop packages error:", error);
+      res.status(500).json({ message: "Failed to get packages" });
+    }
+  });
+
+  // Update shop package config (markup and visibility)
+  app.put("/api/shop/packages", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const { serviceType, packageId, markupAmount, isEnabled } = req.body;
+
+      if (!serviceType || !packageId) {
+        return res.status(400).json({ message: "Service type and package ID are required" });
+      }
+
+      const config = await storage.upsertShopPackageConfig({
+        shopId: shop.id,
+        serviceType,
+        packageId,
+        markupAmount: markupAmount || 0,
+        isEnabled: isEnabled !== false
+      });
+
+      res.json({ message: "Package config updated", config });
+    } catch (error) {
+      console.error("Update package config error:", error);
+      res.status(500).json({ message: "Failed to update package config" });
+    }
+  });
+
+  // Bulk update shop package configs
+  app.put("/api/shop/packages/bulk", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const { configs } = req.body;
+      if (!Array.isArray(configs)) {
+        return res.status(400).json({ message: "Configs must be an array" });
+      }
+
+      const results = [];
+      for (const c of configs) {
+        const config = await storage.upsertShopPackageConfig({
+          shopId: shop.id,
+          serviceType: c.serviceType,
+          packageId: c.packageId,
+          markupAmount: c.markupAmount || 0,
+          isEnabled: c.isEnabled !== false
+        });
+        results.push(config);
+      }
+
+      res.json({ message: "Package configs updated", configs: results });
+    } catch (error) {
+      console.error("Bulk update package config error:", error);
+      res.status(500).json({ message: "Failed to update package configs" });
+    }
+  });
+
+  // Get shop orders
+  app.get("/api/shop/orders", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const [datagod, fastnet, at, telecel] = await Promise.all([
+        storage.getShopDatagodOrders(shop.id),
+        storage.getShopFastnetOrders(shop.id),
+        storage.getShopAtOrders(shop.id),
+        storage.getShopTelecelOrders(shop.id)
+      ]);
+
+      // Combine and sort by date
+      const allOrders = [
+        ...datagod.map(o => ({ ...o, service: "datagod" })),
+        ...fastnet.map(o => ({ ...o, service: "fastnet" })),
+        ...at.map(o => ({ ...o, service: "at" })),
+        ...telecel.map(o => ({ ...o, service: "telecel" }))
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      res.json({ orders: allOrders, total: allOrders.length });
+    } catch (error) {
+      console.error("Get shop orders error:", error);
+      res.status(500).json({ message: "Failed to get orders" });
+    }
+  });
+
+  // Get shop stats
+  app.get("/api/shop/stats", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const stats = await storage.getShopStats(shop.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Get shop stats error:", error);
+      res.status(500).json({ message: "Failed to get stats" });
+    }
+  });
+
+  // Request withdrawal
+  app.post("/api/withdrawals/request", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      if (shop.status !== "approved") {
+        return res.status(403).json({ message: "Your shop must be approved to request withdrawals" });
+      }
+
+      const { amount, bankName, accountNumber, accountName } = req.body;
+
+      if (!amount || !bankName || !accountNumber || !accountName) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Get withdrawal settings
+      const settings = await storage.getSettings();
+      const minWithdrawal = parseFloat((settings as any).minWithdrawalAmount || "10");
+      const withdrawalFee = parseFloat((settings as any).withdrawalFee || "0");
+
+      if (amount < minWithdrawal) {
+        return res.status(400).json({ message: `Minimum withdrawal amount is GHS ${minWithdrawal}` });
+      }
+
+      if (amount > shop.availableBalance) {
+        return res.status(400).json({ message: "Insufficient balance" });
+      }
+
+      const netAmount = amount - withdrawalFee;
+
+      const withdrawal = await storage.createWithdrawal({
+        shopId: shop.id,
+        amount,
+        fee: withdrawalFee,
+        netAmount,
+        bankName,
+        accountNumber,
+        accountName,
+        status: "pending"
+      });
+
+      // Deduct from available balance (still in total earnings)
+      await storage.deductShopBalance(shop.id, amount);
+
+      res.status(201).json({
+        message: "Withdrawal request submitted",
+        withdrawal
+      });
+    } catch (error) {
+      console.error("Withdrawal request error:", error);
+      res.status(500).json({ message: "Failed to request withdrawal" });
+    }
+  });
+
+  // Get withdrawal history
+  app.get("/api/withdrawals", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await storage.getShopByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const withdrawals = await storage.getWithdrawalsByShop(shop.id);
+      res.json({ withdrawals });
+    } catch (error) {
+      console.error("Get withdrawals error:", error);
+      res.status(500).json({ message: "Failed to get withdrawals" });
+    }
+  });
+
+  // ============ PUBLIC SHOP STOREFRONT ROUTES ============
+
+  // Get shop by slug (public)
+  app.get("/api/shop/:slug", async (req, res) => {
+    try {
+      const shop = await storage.getShopBySlug(req.params.slug);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      if (shop.status !== "approved") {
+        return res.status(404).json({ message: "Shop not available" });
+      }
+
+      res.json({
+        id: shop.id,
+        shopName: shop.shopName,
+        slug: shop.slug,
+        description: shop.description,
+        logo: shop.logo
+      });
+    } catch (error) {
+      console.error("Get shop error:", error);
+      res.status(500).json({ message: "Failed to get shop" });
+    }
+  });
+
+  // Get shop packages (public - for storefront)
+  app.get("/api/shop/:slug/packages", async (req, res) => {
+    try {
+      const shop = await storage.getShopBySlug(req.params.slug);
+      if (!shop || shop.status !== "approved") {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const service = req.query.service as string;
+
+      // Get shop's package configs
+      let configs: any[];
+      if (service) {
+        configs = await storage.getShopPackageConfigsByService(shop.id, service);
+      } else {
+        configs = await storage.getShopPackageConfigs(shop.id);
+      }
+
+      // Get base packages and apply markups
+      const result: any = {};
+
+      if (!service || service === "datagod") {
+        const packages = await storage.getDatagodPackages();
+        result.datagod = packages
+          .filter(p => p.isEnabled)
+          .map(p => {
+            const config = configs.find(c => c.serviceType === "datagod" && c.packageId === p.id);
+            if (config && !config.isEnabled) return null;
+            return {
+              id: p.id,
+              packageName: p.packageName,
+              dataValueGB: p.dataValueGB,
+              basePrice: p.priceGHS,
+              price: p.priceGHS + (config?.markupAmount || 0),
+              markup: config?.markupAmount || 0
+            };
+          })
+          .filter(Boolean);
+      }
+
+      if (!service || service === "at") {
+        const packages = await storage.getAtPackages();
+        result.at = packages
+          .filter(p => p.isEnabled)
+          .map(p => {
+            const config = configs.find(c => c.serviceType === "at" && c.packageId === p.id);
+            if (config && !config.isEnabled) return null;
+            return {
+              id: p.id,
+              dataAmount: p.dataAmount,
+              deliveryTime: p.deliveryTime,
+              basePrice: p.price,
+              price: p.price + (config?.markupAmount || 0),
+              markup: config?.markupAmount || 0
+            };
+          })
+          .filter(Boolean);
+      }
+
+      if (!service || service === "telecel") {
+        const packages = await storage.getTelecelPackages();
+        result.telecel = packages
+          .filter(p => p.isEnabled)
+          .map(p => {
+            const config = configs.find(c => c.serviceType === "telecel" && c.packageId === p.id);
+            if (config && !config.isEnabled) return null;
+            return {
+              id: p.id,
+              dataAmount: p.dataAmount,
+              deliveryTime: p.deliveryTime,
+              basePrice: p.price,
+              price: p.price + (config?.markupAmount || 0),
+              markup: config?.markupAmount || 0
+            };
+          })
+          .filter(Boolean);
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Get shop packages error:", error);
+      res.status(500).json({ message: "Failed to get packages" });
+    }
+  });
+
+  // ============ ADMIN SHOP MANAGEMENT ROUTES ============
+
+  // Get all shops (admin)
+  app.get("/api/admin/shops", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const status = req.query.status as string;
+      let shopsList;
+      
+      if (status) {
+        shopsList = await storage.getShopsByStatus(status);
+      } else {
+        shopsList = await storage.getAllShops();
+      }
+
+      // Enrich with user info and stats
+      const enrichedShops = await Promise.all(shopsList.map(async (shop) => {
+        const user = await storage.getUserById(shop.userId);
+        const stats = await storage.getShopStats(shop.id);
+        return {
+          ...shop,
+          owner: user ? { id: user.id, name: user.name, email: user.email, phone: user.phone } : null,
+          stats
+        };
+      }));
+
+      res.json({ shops: enrichedShops });
+    } catch (error) {
+      console.error("Get shops error:", error);
+      res.status(500).json({ message: "Failed to get shops" });
+    }
+  });
+
+  // Get shop details (admin)
+  app.get("/api/admin/shops/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const shopId = parseInt(req.params.id);
+      const data = await storage.getShopWithUser(shopId);
+      
+      if (!data) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      const stats = await storage.getShopStats(shopId);
+      const withdrawals = await storage.getWithdrawalsByShop(shopId);
+
+      res.json({
+        shop: data.shop,
+        owner: {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          phone: data.user.phone,
+          status: data.user.status
+        },
+        stats,
+        withdrawals
+      });
+    } catch (error) {
+      console.error("Get shop details error:", error);
+      res.status(500).json({ message: "Failed to get shop details" });
+    }
+  });
+
+  // Approve shop (admin)
+  app.put("/api/admin/shops/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const shopId = parseInt(req.params.id);
+      const shop = await storage.updateShop(shopId, { status: "approved" });
+      
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      res.json({ message: "Shop approved", shop });
+    } catch (error) {
+      console.error("Approve shop error:", error);
+      res.status(500).json({ message: "Failed to approve shop" });
+    }
+  });
+
+  // Ban shop (admin)
+  app.put("/api/admin/shops/:id/ban", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const shopId = parseInt(req.params.id);
+      const shop = await storage.updateShop(shopId, { status: "banned" });
+      
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      res.json({ message: "Shop banned", shop });
+    } catch (error) {
+      console.error("Ban shop error:", error);
+      res.status(500).json({ message: "Failed to ban shop" });
+    }
+  });
+
+  // Suspend user (admin)
+  app.put("/api/admin/users/:id/suspend", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.updateUser(userId, { status: "suspended" });
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "User suspended", user });
+    } catch (error) {
+      console.error("Suspend user error:", error);
+      res.status(500).json({ message: "Failed to suspend user" });
+    }
+  });
+
+  // Get all withdrawals (admin)
+  app.get("/api/admin/withdrawals", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const status = req.query.status as string;
+      let withdrawalsList;
+      
+      if (status) {
+        withdrawalsList = await storage.getWithdrawalsByStatus(status);
+      } else {
+        withdrawalsList = await storage.getAllWithdrawals();
+      }
+
+      // Enrich with shop info
+      const enrichedWithdrawals = await Promise.all(withdrawalsList.map(async (w) => {
+        const shop = await storage.getShopById(w.shopId);
+        const user = shop ? await storage.getUserById(shop.userId) : null;
+        return {
+          ...w,
+          shop: shop ? { id: shop.id, shopName: shop.shopName, slug: shop.slug } : null,
+          owner: user ? { name: user.name, email: user.email, phone: user.phone } : null
+        };
+      }));
+
+      res.json({ withdrawals: enrichedWithdrawals });
+    } catch (error) {
+      console.error("Get withdrawals error:", error);
+      res.status(500).json({ message: "Failed to get withdrawals" });
+    }
+  });
+
+  // Update withdrawal status (admin)
+  app.put("/api/admin/withdrawals/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const withdrawalId = parseInt(req.params.id);
+      const { status, adminNote } = req.body;
+
+      if (!["pending", "processing", "completed", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const updates: any = { status };
+      if (adminNote !== undefined) updates.adminNote = adminNote;
+      if (status === "completed") updates.processedAt = new Date();
+
+      // If rejecting, refund the amount back to shop balance
+      if (status === "rejected") {
+        const withdrawal = await storage.getWithdrawalById(withdrawalId);
+        if (withdrawal && withdrawal.status === "pending") {
+          await storage.updateShopBalance(withdrawal.shopId, withdrawal.amount);
+        }
+      }
+
+      const withdrawal = await storage.updateWithdrawal(withdrawalId, updates);
+      
+      if (!withdrawal) {
+        return res.status(404).json({ message: "Withdrawal not found" });
+      }
+
+      res.json({ message: `Withdrawal ${status}`, withdrawal });
+    } catch (error) {
+      console.error("Update withdrawal error:", error);
+      res.status(500).json({ message: "Failed to update withdrawal" });
+    }
+  });
+
+  // Update shop settings (admin) - min withdrawal, fees, registration status
+  app.put("/api/admin/shop-settings", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { minWithdrawalAmount, withdrawalFee, shopRegistrationOpen } = req.body;
+
+      if (minWithdrawalAmount !== undefined) {
+        await storage.upsertSetting("minWithdrawalAmount", String(minWithdrawalAmount));
+      }
+      if (withdrawalFee !== undefined) {
+        await storage.upsertSetting("withdrawalFee", String(withdrawalFee));
+      }
+      if (shopRegistrationOpen !== undefined) {
+        await storage.upsertSetting("shopRegistrationOpen", String(shopRegistrationOpen));
+      }
+
+      res.json({ message: "Shop settings updated" });
+    } catch (error) {
+      console.error("Update shop settings error:", error);
+      res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+  // Get shop settings (admin)
+  app.get("/api/admin/shop-settings", async (req, res) => {
+    try {
+      const minWithdrawal = await storage.getSetting("minWithdrawalAmount");
+      const withdrawalFee = await storage.getSetting("withdrawalFee");
+      const registrationOpen = await storage.getSetting("shopRegistrationOpen");
+
+      res.json({
+        minWithdrawalAmount: parseFloat(minWithdrawal?.value || "10"),
+        withdrawalFee: parseFloat(withdrawalFee?.value || "0"),
+        shopRegistrationOpen: registrationOpen?.value !== "false" // Default to true
+      });
+    } catch (error) {
+      console.error("Get shop settings error:", error);
+      res.status(500).json({ message: "Failed to get settings" });
+    }
   });
 
   const server = createServer(app);

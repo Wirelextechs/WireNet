@@ -1,6 +1,78 @@
 import { pgTable, serial, varchar, integer, timestamp, text, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
+// ============ SHOP/RESELLER SYSTEM TABLES ============
+
+// Shop Users (separate from admin_users)
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  password: varchar("password", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, suspended
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+// Shops
+export const shops = pgTable("shops", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  shopName: varchar("shop_name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(), // URL-friendly name
+  description: text("description"),
+  logo: text("logo"), // URL or base64
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, banned
+  totalEarnings: real("total_earnings").notNull().default(0),
+  availableBalance: real("available_balance").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Shop = typeof shops.$inferSelect;
+export type InsertShop = typeof shops.$inferInsert;
+
+// Shop Package Configuration (markup per package)
+export const shopPackageConfig = pgTable("shop_package_config", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull().references(() => shops.id),
+  serviceType: varchar("service_type", { length: 20 }).notNull(), // datagod, fastnet, at, telecel
+  packageId: integer("package_id").notNull(), // ID from respective package table
+  markupAmount: real("markup_amount").notNull().default(0), // Fixed GHS amount added to base price
+  isEnabled: boolean("is_enabled").notNull().default(true), // Whether to show this package
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type ShopPackageConfig = typeof shopPackageConfig.$inferSelect;
+export type InsertShopPackageConfig = typeof shopPackageConfig.$inferInsert;
+
+// Withdrawals
+export const withdrawals = pgTable("withdrawals", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull().references(() => shops.id),
+  amount: real("amount").notNull(), // Requested amount
+  fee: real("fee").notNull().default(0), // Withdrawal fee
+  netAmount: real("net_amount").notNull(), // Amount after fee (what they receive)
+  bankName: varchar("bank_name", { length: 100 }).notNull(),
+  accountNumber: varchar("account_number", { length: 50 }).notNull(),
+  accountName: varchar("account_name", { length: 255 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, processing, completed, rejected
+  adminNote: text("admin_note"), // Optional note from admin
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Withdrawal = typeof withdrawals.$inferSelect;
+export type InsertWithdrawal = typeof withdrawals.$inferInsert;
+
+// ============ ORDER TABLES (with shopId support) ============
+
 export const fastnetOrders = pgTable("fastnet_orders", {
   id: serial("id").primaryKey(),
   shortId: varchar("short_id", { length: 50 }).notNull(),
@@ -11,6 +83,8 @@ export const fastnetOrders = pgTable("fastnet_orders", {
   paymentReference: varchar("payment_reference", { length: 100 }),
   supplierUsed: varchar("supplier_used", { length: 50 }),
   supplierResponse: text("supplier_response"),
+  shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
+  shopMarkup: real("shop_markup"), // Markup amount earned by shop
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -52,6 +126,8 @@ export const datagodOrders = pgTable("datagod_orders", {
   packagePrice: real("package_price").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("PAID"),
   paymentReference: varchar("payment_reference", { length: 100 }),
+  shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
+  shopMarkup: real("shop_markup"), // Markup amount earned by shop
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -83,6 +159,8 @@ export const atOrders = pgTable("at_orders", {
   supplierUsed: varchar("supplier_used", { length: 50 }),
   supplierReference: varchar("supplier_reference", { length: 100 }),
   supplierResponse: text("supplier_response"),
+  shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
+  shopMarkup: real("shop_markup"), // Markup amount earned by shop
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -108,6 +186,8 @@ export const telecelOrders = pgTable("telecel_orders", {
   supplierUsed: varchar("supplier_used", { length: 50 }),
   supplierReference: varchar("supplier_reference", { length: 100 }),
   supplierResponse: text("supplier_response"),
+  shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
+  shopMarkup: real("shop_markup"), // Markup amount earned by shop
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

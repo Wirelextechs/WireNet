@@ -2,15 +2,20 @@ import { db } from "./db.js";
 import { 
   fastnetOrders, settings, adminUsers, datagodOrders, datagodPackages,
   atOrders, telecelOrders, atPackages, telecelPackages,
+  users, shops, shopPackageConfig, withdrawals,
   type FastnetOrder, type InsertFastnetOrder,
   type DatagodOrder, type InsertDatagodOrder,
   type DatagodPackage, type InsertDatagodPackage,
   type AtOrder, type InsertAtOrder,
   type TelecelOrder, type InsertTelecelOrder,
   type AtPackage, type InsertAtPackage,
-  type TelecelPackage, type InsertTelecelPackage
+  type TelecelPackage, type InsertTelecelPackage,
+  type User, type InsertUser,
+  type Shop, type InsertShop,
+  type ShopPackageConfig, type InsertShopPackageConfig,
+  type Withdrawal, type InsertWithdrawal
 } from "../shared/db-schema.js";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 interface Settings {
   id: string;
@@ -313,8 +318,28 @@ class Storage {
     return result[0];
   }
 
-  async getFastnetOrders(): Promise<FastnetOrder[]> {
-    return await db.select().from(fastnetOrders).orderBy(desc(fastnetOrders.createdAt));
+  async getFastnetOrders(): Promise<(FastnetOrder & { shopName: string | null })[]> {
+    const results = await db.select({
+      id: fastnetOrders.id,
+      shortId: fastnetOrders.shortId,
+      customerPhone: fastnetOrders.customerPhone,
+      packageDetails: fastnetOrders.packageDetails,
+      packagePrice: fastnetOrders.packagePrice,
+      status: fastnetOrders.status,
+      supplierUsed: fastnetOrders.supplierUsed,
+      supplierResponse: fastnetOrders.supplierResponse,
+      paymentReference: fastnetOrders.paymentReference,
+      createdAt: fastnetOrders.createdAt,
+      updatedAt: fastnetOrders.updatedAt,
+      shopId: fastnetOrders.shopId,
+      shopMarkup: fastnetOrders.shopMarkup,
+      shopName: shops.shopName,
+    })
+    .from(fastnetOrders)
+    .leftJoin(shops, eq(fastnetOrders.shopId, shops.id))
+    .orderBy(desc(fastnetOrders.createdAt));
+    
+    return results;
   }
 
   async updateFastnetOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<FastnetOrder | null> {
@@ -364,8 +389,26 @@ class Storage {
     return result[0];
   }
 
-  async getDatagodOrders(): Promise<DatagodOrder[]> {
-    return await db.select().from(datagodOrders).orderBy(desc(datagodOrders.createdAt));
+  async getDatagodOrders(): Promise<(DatagodOrder & { shopName: string | null })[]> {
+    const results = await db.select({
+      id: datagodOrders.id,
+      shortId: datagodOrders.shortId,
+      customerPhone: datagodOrders.customerPhone,
+      packageName: datagodOrders.packageName,
+      packagePrice: datagodOrders.packagePrice,
+      status: datagodOrders.status,
+      paymentReference: datagodOrders.paymentReference,
+      createdAt: datagodOrders.createdAt,
+      updatedAt: datagodOrders.updatedAt,
+      shopId: datagodOrders.shopId,
+      shopMarkup: datagodOrders.shopMarkup,
+      shopName: shops.shopName,
+    })
+    .from(datagodOrders)
+    .leftJoin(shops, eq(datagodOrders.shopId, shops.id))
+    .orderBy(desc(datagodOrders.createdAt));
+    
+    return results;
   }
 
   async updateDatagodOrderStatus(id: number, status: string): Promise<DatagodOrder | null> {
@@ -447,11 +490,30 @@ class Storage {
     return result[0];
   }
 
-  async getAtOrders(): Promise<AtOrder[]> {
+  async getAtOrders(): Promise<(AtOrder & { shopName: string | null })[]> {
     console.log("🔍 Querying at_orders table...");
-    const orders = await db.select().from(atOrders).orderBy(desc(atOrders.createdAt));
-    console.log(`🔍 Found ${orders.length} AT orders in database`);
-    return orders;
+    const results = await db.select({
+      id: atOrders.id,
+      shortId: atOrders.shortId,
+      customerPhone: atOrders.customerPhone,
+      packageDetails: atOrders.packageDetails,
+      packagePrice: atOrders.packagePrice,
+      status: atOrders.status,
+      supplierUsed: atOrders.supplierUsed,
+      supplierReference: atOrders.supplierReference,
+      supplierResponse: atOrders.supplierResponse,
+      paymentReference: atOrders.paymentReference,
+      createdAt: atOrders.createdAt,
+      updatedAt: atOrders.updatedAt,
+      shopId: atOrders.shopId,
+      shopMarkup: atOrders.shopMarkup,
+      shopName: shops.shopName,
+    })
+    .from(atOrders)
+    .leftJoin(shops, eq(atOrders.shopId, shops.id))
+    .orderBy(desc(atOrders.createdAt));
+    console.log(`🔍 Found ${results.length} AT orders in database`);
+    return results;
   }
 
   async getAtOrderById(id: number): Promise<AtOrder | null> {
@@ -507,11 +569,30 @@ class Storage {
     return result[0];
   }
 
-  async getTelecelOrders(): Promise<TelecelOrder[]> {
+  async getTelecelOrders(): Promise<(TelecelOrder & { shopName: string | null })[]> {
     console.log("🔍 Querying telecel_orders table...");
-    const orders = await db.select().from(telecelOrders).orderBy(desc(telecelOrders.createdAt));
-    console.log(`🔍 Found ${orders.length} orders in database`);
-    return orders;
+    const results = await db.select({
+      id: telecelOrders.id,
+      shortId: telecelOrders.shortId,
+      customerPhone: telecelOrders.customerPhone,
+      packageDetails: telecelOrders.packageDetails,
+      packagePrice: telecelOrders.packagePrice,
+      status: telecelOrders.status,
+      supplierUsed: telecelOrders.supplierUsed,
+      supplierReference: telecelOrders.supplierReference,
+      supplierResponse: telecelOrders.supplierResponse,
+      paymentReference: telecelOrders.paymentReference,
+      createdAt: telecelOrders.createdAt,
+      updatedAt: telecelOrders.updatedAt,
+      shopId: telecelOrders.shopId,
+      shopMarkup: telecelOrders.shopMarkup,
+      shopName: shops.shopName,
+    })
+    .from(telecelOrders)
+    .leftJoin(shops, eq(telecelOrders.shopId, shops.id))
+    .orderBy(desc(telecelOrders.createdAt));
+    console.log(`🔍 Found ${results.length} orders in database`);
+    return results;
   }
 
   async getTelecelOrderById(id: number): Promise<TelecelOrder | null> {
@@ -591,6 +672,250 @@ class Storage {
   async deleteTelecelPackage(id: number): Promise<boolean> {
     const result = await db.delete(telecelPackages).where(eq(telecelPackages.id, id)).returning();
     return result.length > 0;
+  }
+
+  // ============ SHOP SYSTEM METHODS ============
+
+  // Users
+  async createUser(data: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(data).returning();
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    const result = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getUserById(id: number): Promise<User | null> {
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | null> {
+    const result = await db.update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  // Shops
+  async createShop(data: InsertShop): Promise<Shop> {
+    const result = await db.insert(shops).values(data).returning();
+    return result[0];
+  }
+
+  async getShopById(id: number): Promise<Shop | null> {
+    const result = await db.select().from(shops).where(eq(shops.id, id)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getShopBySlug(slug: string): Promise<Shop | null> {
+    const result = await db.select().from(shops).where(eq(shops.slug, slug.toLowerCase())).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getShopByUserId(userId: number): Promise<Shop | null> {
+    const result = await db.select().from(shops).where(eq(shops.userId, userId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getAllShops(): Promise<Shop[]> {
+    return await db.select().from(shops).orderBy(desc(shops.createdAt));
+  }
+
+  async getShopsByStatus(status: string): Promise<Shop[]> {
+    return await db.select().from(shops).where(eq(shops.status, status)).orderBy(desc(shops.createdAt));
+  }
+
+  async updateShop(id: number, data: Partial<InsertShop>): Promise<Shop | null> {
+    const result = await db.update(shops)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(shops.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async updateShopBalance(shopId: number, markupAmount: number): Promise<void> {
+    await db.update(shops)
+      .set({
+        totalEarnings: sql`${shops.totalEarnings} + ${markupAmount}`,
+        availableBalance: sql`${shops.availableBalance} + ${markupAmount}`,
+        updatedAt: new Date()
+      })
+      .where(eq(shops.id, shopId));
+  }
+
+  async deductShopBalance(shopId: number, amount: number): Promise<void> {
+    await db.update(shops)
+      .set({
+        availableBalance: sql`${shops.availableBalance} - ${amount}`,
+        updatedAt: new Date()
+      })
+      .where(eq(shops.id, shopId));
+  }
+
+  // Shop Package Config
+  async createShopPackageConfig(data: InsertShopPackageConfig): Promise<ShopPackageConfig> {
+    const result = await db.insert(shopPackageConfig).values(data).returning();
+    return result[0];
+  }
+
+  async getShopPackageConfigs(shopId: number): Promise<ShopPackageConfig[]> {
+    return await db.select().from(shopPackageConfig).where(eq(shopPackageConfig.shopId, shopId));
+  }
+
+  async getShopPackageConfigsByService(shopId: number, serviceType: string): Promise<ShopPackageConfig[]> {
+    return await db.select().from(shopPackageConfig)
+      .where(and(
+        eq(shopPackageConfig.shopId, shopId),
+        eq(shopPackageConfig.serviceType, serviceType)
+      ));
+  }
+
+  async getShopPackageConfig(shopId: number, serviceType: string, packageId: number): Promise<ShopPackageConfig | null> {
+    const result = await db.select().from(shopPackageConfig)
+      .where(and(
+        eq(shopPackageConfig.shopId, shopId),
+        eq(shopPackageConfig.serviceType, serviceType),
+        eq(shopPackageConfig.packageId, packageId)
+      ))
+      .limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async updateShopPackageConfig(id: number, data: Partial<InsertShopPackageConfig>): Promise<ShopPackageConfig | null> {
+    const result = await db.update(shopPackageConfig)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(shopPackageConfig.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async upsertShopPackageConfig(data: InsertShopPackageConfig): Promise<ShopPackageConfig> {
+    const existing = await this.getShopPackageConfig(data.shopId, data.serviceType, data.packageId);
+    if (existing) {
+      const result = await this.updateShopPackageConfig(existing.id, data);
+      return result!;
+    }
+    return await this.createShopPackageConfig(data);
+  }
+
+  async deleteShopPackageConfig(id: number): Promise<boolean> {
+    const result = await db.delete(shopPackageConfig).where(eq(shopPackageConfig.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Withdrawals
+  async createWithdrawal(data: InsertWithdrawal): Promise<Withdrawal> {
+    const result = await db.insert(withdrawals).values(data).returning();
+    return result[0];
+  }
+
+  async getWithdrawalById(id: number): Promise<Withdrawal | null> {
+    const result = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getWithdrawalsByShop(shopId: number): Promise<Withdrawal[]> {
+    return await db.select().from(withdrawals)
+      .where(eq(withdrawals.shopId, shopId))
+      .orderBy(desc(withdrawals.createdAt));
+  }
+
+  async getAllWithdrawals(): Promise<Withdrawal[]> {
+    return await db.select().from(withdrawals).orderBy(desc(withdrawals.createdAt));
+  }
+
+  async getWithdrawalsByStatus(status: string): Promise<Withdrawal[]> {
+    return await db.select().from(withdrawals)
+      .where(eq(withdrawals.status, status))
+      .orderBy(desc(withdrawals.createdAt));
+  }
+
+  async updateWithdrawal(id: number, data: Partial<InsertWithdrawal & { processedAt?: Date }>): Promise<Withdrawal | null> {
+    const result = await db.update(withdrawals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(withdrawals.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  // Shop Orders - get orders for a specific shop
+  async getShopFastnetOrders(shopId: number): Promise<FastnetOrder[]> {
+    return await db.select().from(fastnetOrders)
+      .where(eq(fastnetOrders.shopId, shopId))
+      .orderBy(desc(fastnetOrders.createdAt));
+  }
+
+  async getShopDatagodOrders(shopId: number): Promise<DatagodOrder[]> {
+    return await db.select().from(datagodOrders)
+      .where(eq(datagodOrders.shopId, shopId))
+      .orderBy(desc(datagodOrders.createdAt));
+  }
+
+  async getShopAtOrders(shopId: number): Promise<AtOrder[]> {
+    return await db.select().from(atOrders)
+      .where(eq(atOrders.shopId, shopId))
+      .orderBy(desc(atOrders.createdAt));
+  }
+
+  async getShopTelecelOrders(shopId: number): Promise<TelecelOrder[]> {
+    return await db.select().from(telecelOrders)
+      .where(eq(telecelOrders.shopId, shopId))
+      .orderBy(desc(telecelOrders.createdAt));
+  }
+
+  // Get shop stats
+  async getShopStats(shopId: number): Promise<{
+    totalOrders: number;
+    totalEarnings: number;
+    availableBalance: number;
+    pendingWithdrawals: number;
+  }> {
+    const shop = await this.getShopById(shopId);
+    if (!shop) {
+      return { totalOrders: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 };
+    }
+
+    const fastnetCount = await db.select({ count: sql<number>`count(*)` })
+      .from(fastnetOrders).where(eq(fastnetOrders.shopId, shopId));
+    const datagodCount = await db.select({ count: sql<number>`count(*)` })
+      .from(datagodOrders).where(eq(datagodOrders.shopId, shopId));
+    const atCount = await db.select({ count: sql<number>`count(*)` })
+      .from(atOrders).where(eq(atOrders.shopId, shopId));
+    const telecelCount = await db.select({ count: sql<number>`count(*)` })
+      .from(telecelOrders).where(eq(telecelOrders.shopId, shopId));
+
+    const pendingWithdrawals = await db.select({ sum: sql<number>`COALESCE(SUM(amount), 0)` })
+      .from(withdrawals)
+      .where(and(
+        eq(withdrawals.shopId, shopId),
+        eq(withdrawals.status, "pending")
+      ));
+
+    const totalOrders = 
+      Number(fastnetCount[0]?.count || 0) + 
+      Number(datagodCount[0]?.count || 0) + 
+      Number(atCount[0]?.count || 0) + 
+      Number(telecelCount[0]?.count || 0);
+
+    return {
+      totalOrders,
+      totalEarnings: shop.totalEarnings,
+      availableBalance: shop.availableBalance,
+      pendingWithdrawals: Number(pendingWithdrawals[0]?.sum || 0)
+    };
+  }
+
+  // Get shop with user info
+  async getShopWithUser(shopId: number): Promise<{ shop: Shop; user: User } | null> {
+    const shop = await this.getShopById(shopId);
+    if (!shop) return null;
+    const user = await this.getUserById(shop.userId);
+    if (!user) return null;
+    return { shop, user };
   }
 }
 

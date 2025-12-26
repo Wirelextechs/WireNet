@@ -14,6 +14,9 @@ interface Order {
   status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED" | "FAILED";
   supplierUsed?: string;
   createdAt: Date;
+  shopId?: number;
+  shopName?: string;
+  shopMarkup?: number;
 }
 
 interface Package {
@@ -403,6 +406,7 @@ export default function AtAdmin() {
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Phone</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Package</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Price</div>
+                  <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Shop</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Status</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Date</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Action</div>
@@ -413,6 +417,7 @@ export default function AtAdmin() {
                     <div style={styles.tableCell}>{order.customerPhone}</div>
                     <div style={styles.tableCell}>{order.packageDetails}</div>
                     <div style={styles.tableCell}>GH₵{order.packagePrice}</div>
+                    <div style={styles.tableCell}>{order.shopName || "-"}</div>
                     <div style={styles.tableCell}>
                       <select
                         value={order.status}

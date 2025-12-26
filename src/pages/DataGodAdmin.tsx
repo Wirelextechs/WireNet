@@ -15,6 +15,9 @@ interface Order {
   paymentReference?: string;
   createdAt: string;
   updatedAt?: string;
+  shopId?: number;
+  shopName?: string;
+  shopMarkup?: number;
 }
 
 interface Package {
@@ -315,9 +318,9 @@ export default function DataGodAdmin() {
     };
 
     const csv = [
-      ["Order ID", "Phone", "Package", "Price", "Status", "Date"].join(","),
+      ["Order ID", "Phone", "Package", "Price", "Shop", "Status", "Date"].join(","),
       ...selectedOrderObjects.map(o =>
-        [o.shortId, o.customerPhone, extractPackageSize(o.packageName), o.packagePrice, o.status, new Date(o.createdAt).toLocaleString()].join(",")
+        [o.shortId, o.customerPhone, extractPackageSize(o.packageName), o.packagePrice, o.shopName || "", o.status, new Date(o.createdAt).toLocaleString()].join(",")
       ),
     ].join("\n");
 
@@ -486,6 +489,7 @@ export default function DataGodAdmin() {
                         <th style={styles.tableCell}>Phone</th>
                         <th style={styles.tableCell}>Package</th>
                         <th style={styles.tableCell}>Price</th>
+                        <th style={styles.tableCell}>Shop</th>
                         <th style={styles.tableCell}>Status</th>
                         <th style={styles.tableCell}>Date</th>
                         <th style={styles.tableCell}>Action</th>
@@ -494,13 +498,13 @@ export default function DataGodAdmin() {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                          <td colSpan={9} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
                             Loading...
                           </td>
                         </tr>
                       ) : filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                          <td colSpan={9} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
                             No orders found
                           </td>
                         </tr>
@@ -518,6 +522,7 @@ export default function DataGodAdmin() {
                             <td style={styles.tableCell}>{order.customerPhone}</td>
                             <td style={styles.tableCell}>{order.packageName}</td>
                             <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
+                            <td style={styles.tableCell}>{order.shopName || "-"}</td>
                             <td style={styles.tableCell}>
                               <select
                                 value={order.status}

@@ -13,6 +13,11 @@ import FastNetAdmin from "@/pages/FastNetAdmin";
 import AtAdmin from "@/pages/AtAdmin";
 import TelecelAdmin from "@/pages/TelecelAdmin";
 import OrderSuccess from "@/pages/OrderSuccess";
+import UserSignup from "@/pages/UserSignup";
+import UserLogin from "@/pages/UserLogin";
+import ShopDashboard from "@/pages/ShopDashboard";
+import ShopStorefront from "@/pages/ShopStorefront";
+import ShopManagement from "@/pages/ShopManagement";
 import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -36,6 +41,7 @@ function AppContent() {
       <Route path="/" component={Storefront} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/shops" component={ShopManagement} />
       <Route path="/datagod" component={DataGodPage} />
       <Route path="/fastnet" component={FastNetPage} />
       <Route path="/at" component={AtPage} />
@@ -45,6 +51,10 @@ function AppContent() {
       <Route path="/admin/at" component={AtAdmin} />
       <Route path="/admin/telecel" component={TelecelAdmin} />
       <Route path="/order/success/:orderId" component={OrderSuccess} />
+      <Route path="/signup" component={UserSignup} />
+      <Route path="/login" component={UserLogin} />
+      <Route path="/dashboard" component={ShopDashboard} />
+      <Route path="/shop/:slug" component={ShopStorefront} />
     </Router>
   );
 }

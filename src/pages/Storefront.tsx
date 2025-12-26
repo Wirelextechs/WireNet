@@ -237,6 +237,15 @@ export default function Storefront() {
             )}
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button 
+                variant="ghost"
+                onClick={() => navigate("/login")}
+                className="gap-2"
+              >
+                Start a Shop
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
                 onClick={() => navigate("/admin/login")}
                 className="gradient-primary text-white border-0 shadow-lg shadow-violet-500/25"
               >
@@ -279,6 +288,16 @@ export default function Storefront() {
                     WhatsApp
                   </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  className="justify-start gap-2"
+                  onClick={() => {
+                    navigate("/login");
+                    setMenuOpen(false);
+                  }}
+                >
+                  Start a Shop
+                </Button>
                 <Button
                   className="justify-start gradient-primary text-white"
                   onClick={() => {

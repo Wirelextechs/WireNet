@@ -15,6 +15,9 @@ interface Order {
   status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED" | "FAILED";
   supplierUsed?: string;
   createdAt: Date;
+  shopId?: number;
+  shopName?: string;
+  shopMarkup?: number;
 }
 
 interface Package {
@@ -111,7 +114,10 @@ export default function FastNetAdmin() {
           packageDetails: o.packageDetails || o.package_details,
           packagePrice: o.packagePrice || o.package_price,
           supplierUsed: o.supplierUsed || o.supplier_used,
-          createdAt: new Date(o.createdAt || o.created_at) 
+          createdAt: new Date(o.createdAt || o.created_at),
+          shopId: o.shopId || o.shop_id,
+          shopName: o.shopName || o.shop_name,
+          shopMarkup: o.shopMarkup || o.shop_markup
         })));
       } else if (response.status === 401) {
         console.log("Not authenticated - orders will be empty until login");
@@ -594,6 +600,7 @@ export default function FastNetAdmin() {
                         <th style={styles.tableCell}>Phone</th>
                         <th style={styles.tableCell}>Package</th>
                         <th style={styles.tableCell}>Price</th>
+                        <th style={styles.tableCell}>Shop</th>
                         <th style={styles.tableCell}>Status</th>
                         <th style={styles.tableCell}>Supplier</th>
                         <th style={styles.tableCell}>Date</th>
@@ -608,6 +615,7 @@ export default function FastNetAdmin() {
                           <td style={styles.tableCell}>{order.customerPhone}</td>
                           <td style={styles.tableCell}>{order.packageDetails}</td>
                           <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
+                          <td style={styles.tableCell}>{order.shopName || "-"}</td>
                           <td style={styles.tableCell}>
                             <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} style={{ ...styles.statusSelect, backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "FAILED" ? "#dc3545" : "#007bff" }}>
                               <option value="PAID">Paid</option>
