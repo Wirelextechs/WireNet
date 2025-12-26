@@ -2283,7 +2283,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
+      let existingUser;
+      try {
+        existingUser = await storage.getUserByEmail(email);
+      } catch (dbError: any) {
+        // If users table doesn't exist, the shop system isn't set up
+        if (dbError.code === '42703' || dbError.code === '42P01') {
+          console.error("Shop system tables not found. Run the migration: drizzle/0004_add_shop_system.sql");
+          return res.status(503).json({ message: "Shop registration is not available yet. Please try again later." });
+        }
+        throw dbError;
+      }
       if (existingUser) {
         return res.status(400).json({ message: "Email already registered" });
       }
