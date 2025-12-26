@@ -319,27 +319,37 @@ class Storage {
   }
 
   async getFastnetOrders(): Promise<(FastnetOrder & { shopName: string | null })[]> {
-    const results = await db.select({
-      id: fastnetOrders.id,
-      shortId: fastnetOrders.shortId,
-      customerPhone: fastnetOrders.customerPhone,
-      packageDetails: fastnetOrders.packageDetails,
-      packagePrice: fastnetOrders.packagePrice,
-      status: fastnetOrders.status,
-      supplierUsed: fastnetOrders.supplierUsed,
-      supplierResponse: fastnetOrders.supplierResponse,
-      paymentReference: fastnetOrders.paymentReference,
-      createdAt: fastnetOrders.createdAt,
-      updatedAt: fastnetOrders.updatedAt,
-      shopId: fastnetOrders.shopId,
-      shopMarkup: fastnetOrders.shopMarkup,
-      shopName: shops.shopName,
-    })
-    .from(fastnetOrders)
-    .leftJoin(shops, eq(fastnetOrders.shopId, shops.id))
-    .orderBy(desc(fastnetOrders.createdAt));
-    
-    return results;
+    try {
+      const results = await db.select({
+        id: fastnetOrders.id,
+        shortId: fastnetOrders.shortId,
+        customerPhone: fastnetOrders.customerPhone,
+        packageDetails: fastnetOrders.packageDetails,
+        packagePrice: fastnetOrders.packagePrice,
+        status: fastnetOrders.status,
+        supplierUsed: fastnetOrders.supplierUsed,
+        supplierResponse: fastnetOrders.supplierResponse,
+        paymentReference: fastnetOrders.paymentReference,
+        createdAt: fastnetOrders.createdAt,
+        updatedAt: fastnetOrders.updatedAt,
+        shopId: fastnetOrders.shopId,
+        shopMarkup: fastnetOrders.shopMarkup,
+        shopName: shops.shopName,
+      })
+      .from(fastnetOrders)
+      .leftJoin(shops, eq(fastnetOrders.shopId, shops.id))
+      .orderBy(desc(fastnetOrders.createdAt));
+      
+      return results;
+    } catch (error: any) {
+      // If shops table doesn't exist, fall back to simple query
+      if (error.code === '42P01' || error.code === '42703') {
+        console.log("Shops table not found, using simple order query");
+        const results = await db.select().from(fastnetOrders).orderBy(desc(fastnetOrders.createdAt));
+        return results.map(r => ({ ...r, shopName: null }));
+      }
+      throw error;
+    }
   }
 
   async updateFastnetOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<FastnetOrder | null> {
@@ -390,25 +400,35 @@ class Storage {
   }
 
   async getDatagodOrders(): Promise<(DatagodOrder & { shopName: string | null })[]> {
-    const results = await db.select({
-      id: datagodOrders.id,
-      shortId: datagodOrders.shortId,
-      customerPhone: datagodOrders.customerPhone,
-      packageName: datagodOrders.packageName,
-      packagePrice: datagodOrders.packagePrice,
-      status: datagodOrders.status,
-      paymentReference: datagodOrders.paymentReference,
-      createdAt: datagodOrders.createdAt,
-      updatedAt: datagodOrders.updatedAt,
-      shopId: datagodOrders.shopId,
-      shopMarkup: datagodOrders.shopMarkup,
-      shopName: shops.shopName,
-    })
-    .from(datagodOrders)
-    .leftJoin(shops, eq(datagodOrders.shopId, shops.id))
-    .orderBy(desc(datagodOrders.createdAt));
-    
-    return results;
+    try {
+      const results = await db.select({
+        id: datagodOrders.id,
+        shortId: datagodOrders.shortId,
+        customerPhone: datagodOrders.customerPhone,
+        packageName: datagodOrders.packageName,
+        packagePrice: datagodOrders.packagePrice,
+        status: datagodOrders.status,
+        paymentReference: datagodOrders.paymentReference,
+        createdAt: datagodOrders.createdAt,
+        updatedAt: datagodOrders.updatedAt,
+        shopId: datagodOrders.shopId,
+        shopMarkup: datagodOrders.shopMarkup,
+        shopName: shops.shopName,
+      })
+      .from(datagodOrders)
+      .leftJoin(shops, eq(datagodOrders.shopId, shops.id))
+      .orderBy(desc(datagodOrders.createdAt));
+      
+      return results;
+    } catch (error: any) {
+      // If shops table doesn't exist, fall back to simple query
+      if (error.code === '42P01' || error.code === '42703') {
+        console.log("Shops table not found, using simple order query");
+        const results = await db.select().from(datagodOrders).orderBy(desc(datagodOrders.createdAt));
+        return results.map(r => ({ ...r, shopName: null }));
+      }
+      throw error;
+    }
   }
 
   async updateDatagodOrderStatus(id: number, status: string): Promise<DatagodOrder | null> {
@@ -492,28 +512,38 @@ class Storage {
 
   async getAtOrders(): Promise<(AtOrder & { shopName: string | null })[]> {
     console.log("🔍 Querying at_orders table...");
-    const results = await db.select({
-      id: atOrders.id,
-      shortId: atOrders.shortId,
-      customerPhone: atOrders.customerPhone,
-      packageDetails: atOrders.packageDetails,
-      packagePrice: atOrders.packagePrice,
-      status: atOrders.status,
-      supplierUsed: atOrders.supplierUsed,
-      supplierReference: atOrders.supplierReference,
-      supplierResponse: atOrders.supplierResponse,
-      paymentReference: atOrders.paymentReference,
-      createdAt: atOrders.createdAt,
-      updatedAt: atOrders.updatedAt,
-      shopId: atOrders.shopId,
-      shopMarkup: atOrders.shopMarkup,
-      shopName: shops.shopName,
-    })
-    .from(atOrders)
-    .leftJoin(shops, eq(atOrders.shopId, shops.id))
-    .orderBy(desc(atOrders.createdAt));
-    console.log(`🔍 Found ${results.length} AT orders in database`);
-    return results;
+    try {
+      const results = await db.select({
+        id: atOrders.id,
+        shortId: atOrders.shortId,
+        customerPhone: atOrders.customerPhone,
+        packageDetails: atOrders.packageDetails,
+        packagePrice: atOrders.packagePrice,
+        status: atOrders.status,
+        supplierUsed: atOrders.supplierUsed,
+        supplierReference: atOrders.supplierReference,
+        supplierResponse: atOrders.supplierResponse,
+        paymentReference: atOrders.paymentReference,
+        createdAt: atOrders.createdAt,
+        updatedAt: atOrders.updatedAt,
+        shopId: atOrders.shopId,
+        shopMarkup: atOrders.shopMarkup,
+        shopName: shops.shopName,
+      })
+      .from(atOrders)
+      .leftJoin(shops, eq(atOrders.shopId, shops.id))
+      .orderBy(desc(atOrders.createdAt));
+      console.log(`🔍 Found ${results.length} AT orders in database`);
+      return results;
+    } catch (error: any) {
+      // If shops table doesn't exist, fall back to simple query
+      if (error.code === '42P01' || error.code === '42703') {
+        console.log("Shops table not found, using simple AT order query");
+        const results = await db.select().from(atOrders).orderBy(desc(atOrders.createdAt));
+        return results.map(r => ({ ...r, shopName: null }));
+      }
+      throw error;
+    }
   }
 
   async getAtOrderById(id: number): Promise<AtOrder | null> {
@@ -571,28 +601,38 @@ class Storage {
 
   async getTelecelOrders(): Promise<(TelecelOrder & { shopName: string | null })[]> {
     console.log("🔍 Querying telecel_orders table...");
-    const results = await db.select({
-      id: telecelOrders.id,
-      shortId: telecelOrders.shortId,
-      customerPhone: telecelOrders.customerPhone,
-      packageDetails: telecelOrders.packageDetails,
-      packagePrice: telecelOrders.packagePrice,
-      status: telecelOrders.status,
-      supplierUsed: telecelOrders.supplierUsed,
-      supplierReference: telecelOrders.supplierReference,
-      supplierResponse: telecelOrders.supplierResponse,
-      paymentReference: telecelOrders.paymentReference,
-      createdAt: telecelOrders.createdAt,
-      updatedAt: telecelOrders.updatedAt,
-      shopId: telecelOrders.shopId,
-      shopMarkup: telecelOrders.shopMarkup,
-      shopName: shops.shopName,
-    })
-    .from(telecelOrders)
-    .leftJoin(shops, eq(telecelOrders.shopId, shops.id))
-    .orderBy(desc(telecelOrders.createdAt));
-    console.log(`🔍 Found ${results.length} orders in database`);
-    return results;
+    try {
+      const results = await db.select({
+        id: telecelOrders.id,
+        shortId: telecelOrders.shortId,
+        customerPhone: telecelOrders.customerPhone,
+        packageDetails: telecelOrders.packageDetails,
+        packagePrice: telecelOrders.packagePrice,
+        status: telecelOrders.status,
+        supplierUsed: telecelOrders.supplierUsed,
+        supplierReference: telecelOrders.supplierReference,
+        supplierResponse: telecelOrders.supplierResponse,
+        paymentReference: telecelOrders.paymentReference,
+        createdAt: telecelOrders.createdAt,
+        updatedAt: telecelOrders.updatedAt,
+        shopId: telecelOrders.shopId,
+        shopMarkup: telecelOrders.shopMarkup,
+        shopName: shops.shopName,
+      })
+      .from(telecelOrders)
+      .leftJoin(shops, eq(telecelOrders.shopId, shops.id))
+      .orderBy(desc(telecelOrders.createdAt));
+      console.log(`🔍 Found ${results.length} orders in database`);
+      return results;
+    } catch (error: any) {
+      // If shops table doesn't exist, fall back to simple query
+      if (error.code === '42P01' || error.code === '42703') {
+        console.log("Shops table not found, using simple Telecel order query");
+        const results = await db.select().from(telecelOrders).orderBy(desc(telecelOrders.createdAt));
+        return results.map(r => ({ ...r, shopName: null }));
+      }
+      throw error;
+    }
   }
 
   async getTelecelOrderById(id: number): Promise<TelecelOrder | null> {
