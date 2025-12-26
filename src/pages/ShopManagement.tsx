@@ -563,12 +563,12 @@ export default function ShopManagement() {
                         console.error("Failed to toggle registration:", error);
                       }
                     }}
-                    className={`w-14 h-7 rounded-full transition-colors cursor-pointer ${
+                    className={`relative w-14 h-7 rounded-full transition-colors cursor-pointer ${
                       settings.shopRegistrationOpen ? "bg-green-500" : "bg-gray-300"
                     }`}
                   >
-                    <div className={`w-6 h-6 bg-white rounded-full shadow transform transition-transform ${
-                      settings.shopRegistrationOpen ? "translate-x-7" : "translate-x-0.5"
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-all ${
+                      settings.shopRegistrationOpen ? "left-7" : "left-0.5"
                     }`} />
                   </button>
                 </div>
