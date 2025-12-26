@@ -3,8 +3,8 @@ import { createInsertSchema } from "drizzle-zod";
 
 // ============ SHOP/RESELLER SYSTEM TABLES ============
 
-// Shop Users (separate from admin_users)
-export const users = pgTable("users", {
+// Shop Users (separate from admin_users and Supabase auth users)
+export const shopUsers = pgTable("shop_users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
@@ -15,13 +15,13 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
+export type ShopUser = typeof shopUsers.$inferSelect;
+export type InsertShopUser = typeof shopUsers.$inferInsert;
 
 // Shops
 export const shops = pgTable("shops", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => shopUsers.id),
   shopName: varchar("shop_name", { length: 100 }).notNull(),
   slug: varchar("slug", { length: 100 }).notNull().unique(), // URL-friendly name
   description: text("description"),

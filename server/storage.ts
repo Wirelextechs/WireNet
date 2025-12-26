@@ -2,7 +2,7 @@ import { db } from "./db.js";
 import { 
   fastnetOrders, settings, adminUsers, datagodOrders, datagodPackages,
   atOrders, telecelOrders, atPackages, telecelPackages,
-  users, shops, shopPackageConfig, withdrawals,
+  shopUsers, shops, shopPackageConfig, withdrawals,
   type FastnetOrder, type InsertFastnetOrder,
   type DatagodOrder, type InsertDatagodOrder,
   type DatagodPackage, type InsertDatagodPackage,
@@ -10,7 +10,7 @@ import {
   type TelecelOrder, type InsertTelecelOrder,
   type AtPackage, type InsertAtPackage,
   type TelecelPackage, type InsertTelecelPackage,
-  type User, type InsertUser,
+  type ShopUser, type InsertShopUser,
   type Shop, type InsertShop,
   type ShopPackageConfig, type InsertShopPackageConfig,
   type Withdrawal, type InsertWithdrawal
@@ -676,26 +676,26 @@ class Storage {
 
   // ============ SHOP SYSTEM METHODS ============
 
-  // Users
-  async createUser(data: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(data).returning();
+  // Shop Users
+  async createShopUser(data: InsertShopUser): Promise<ShopUser> {
+    const result = await db.insert(shopUsers).values(data).returning();
     return result[0];
   }
 
-  async getUserByEmail(email: string): Promise<User | null> {
-    const result = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+  async getShopUserByEmail(email: string): Promise<ShopUser | null> {
+    const result = await db.select().from(shopUsers).where(eq(shopUsers.email, email.toLowerCase())).limit(1);
     return result.length > 0 ? result[0] : null;
   }
 
-  async getUserById(id: number): Promise<User | null> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  async getShopUserById(id: number): Promise<ShopUser | null> {
+    const result = await db.select().from(shopUsers).where(eq(shopUsers.id, id)).limit(1);
     return result.length > 0 ? result[0] : null;
   }
 
-  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | null> {
-    const result = await db.update(users)
+  async updateShopUser(id: number, data: Partial<InsertShopUser>): Promise<ShopUser | null> {
+    const result = await db.update(shopUsers)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(users.id, id))
+      .where(eq(shopUsers.id, id))
       .returning();
     return result.length > 0 ? result[0] : null;
   }
@@ -910,10 +910,10 @@ class Storage {
   }
 
   // Get shop with user info
-  async getShopWithUser(shopId: number): Promise<{ shop: Shop; user: User } | null> {
+  async getShopWithUser(shopId: number): Promise<{ shop: Shop; user: ShopUser } | null> {
     const shop = await this.getShopById(shopId);
     if (!shop) return null;
-    const user = await this.getUserById(shop.userId);
+    const user = await this.getShopUserById(shop.userId);
     if (!user) return null;
     return { shop, user };
   }

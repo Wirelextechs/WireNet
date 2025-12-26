@@ -1,9 +1,9 @@
 -- Shop System Migration
--- Add users, shops, shop_package_config, withdrawals tables
+-- Add shop_users, shops, shop_package_config, withdrawals tables
 -- Add shopId and shopMarkup columns to order tables
 
--- Users table (shop owners)
-CREATE TABLE IF NOT EXISTS users (
+-- Shop Users table (shop owners) - named shop_users to avoid conflict with Supabase auth users
+CREATE TABLE IF NOT EXISTS shop_users (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Shops table
 CREATE TABLE IF NOT EXISTS shops (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id),
+  user_id INTEGER NOT NULL REFERENCES shop_users(id),
   shop_name VARCHAR(100) NOT NULL,
   slug VARCHAR(100) NOT NULL UNIQUE,
   description TEXT,

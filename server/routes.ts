@@ -2285,9 +2285,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already exists
       let existingUser;
       try {
-        existingUser = await storage.getUserByEmail(email);
+        existingUser = await storage.getShopUserByEmail(email);
       } catch (dbError: any) {
-        // If users table doesn't exist, the shop system isn't set up
+        // If shop_users table doesn't exist, the shop system isn't set up
         if (dbError.code === '42703' || dbError.code === '42P01') {
           console.error("Shop system tables not found. Run the migration: drizzle/0004_add_shop_system.sql");
           return res.status(503).json({ message: "Shop registration is not available yet. Please try again later." });
@@ -2328,8 +2328,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
-      const user = await storage.createUser({
+      // Create shop user
+      const user = await storage.createShopUser({
         email: email.toLowerCase(),
         password: hashedPassword,
         name,
@@ -2365,7 +2365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
-      const user = await storage.getUserByEmail(email.toLowerCase());
+      const user = await storage.getShopUserByEmail(email.toLowerCase());
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -2411,7 +2411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user
   app.get("/api/user/me", isUserAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserById(req.shopUser.id);
+      const user = await storage.getShopUserById(req.shopUser.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2812,7 +2812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enrich with user info and stats
       const enrichedShops = await Promise.all(shopsList.map(async (shop) => {
-        const user = await storage.getUserById(shop.userId);
+        const user = await storage.getShopUserById(shop.userId);
         const stats = await storage.getShopStats(shop.id);
         return {
           ...shop,
@@ -2897,7 +2897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/users/:id/suspend", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      const user = await storage.updateUser(userId, { status: "suspended" });
+      const user = await storage.updateShopUser(userId, { status: "suspended" });
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -2925,7 +2925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enrich with shop info
       const enrichedWithdrawals = await Promise.all(withdrawalsList.map(async (w) => {
         const shop = await storage.getShopById(w.shopId);
-        const user = shop ? await storage.getUserById(shop.userId) : null;
+        const user = shop ? await storage.getShopUserById(shop.userId) : null;
         return {
           ...w,
           shop: shop ? { id: shop.id, shopName: shop.shopName, slug: shop.slug } : null,
