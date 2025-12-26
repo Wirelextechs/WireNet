@@ -546,6 +546,7 @@ export default function ShopManagement() {
                     <p className="text-xs text-gray-500">Allow new users to register shops (changes instantly)</p>
                   </div>
                   <button
+                    type="button"
                     onClick={async () => {
                       const newValue = !settings.shopRegistrationOpen;
                       try {
@@ -563,13 +564,31 @@ export default function ShopManagement() {
                         console.error("Failed to toggle registration:", error);
                       }
                     }}
-                    className={`relative w-14 h-7 rounded-full transition-colors cursor-pointer ${
-                      settings.shopRegistrationOpen ? "bg-green-500" : "bg-gray-300"
-                    }`}
+                    style={{
+                      width: '56px',
+                      height: '28px',
+                      borderRadius: '14px',
+                      backgroundColor: settings.shopRegistrationOpen ? '#22c55e' : '#d1d5db',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      border: 'none',
+                      padding: 0,
+                      transition: 'background-color 0.2s'
+                    }}
                   >
-                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-all ${
-                      settings.shopRegistrationOpen ? "left-7" : "left-0.5"
-                    }`} />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: settings.shopRegistrationOpen ? '30px' : '2px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: 'white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        transition: 'left 0.2s'
+                      }}
+                    />
                   </button>
                 </div>
                 <p className={`text-sm font-medium ${settings.shopRegistrationOpen ? 'text-green-600' : 'text-red-600'}`}>
