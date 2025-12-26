@@ -532,26 +532,37 @@ export default function ShopManagement() {
                 <div className="flex items-center justify-between">
                   <div>
                     <label className="text-sm font-medium">Shop Registration</label>
-                    <p className="text-xs text-gray-500">Allow new users to register shops</p>
+                    <p className="text-xs text-gray-500">Allow new users to register shops (changes instantly)</p>
                   </div>
                   <button
-                    onClick={() => {
-                      if (editingSettings) {
-                        setTempSettings(prev => ({ ...prev, shopRegistrationOpen: !prev.shopRegistrationOpen }));
+                    onClick={async () => {
+                      const newValue = !settings.shopRegistrationOpen;
+                      try {
+                        const response = await fetch("/api/admin/shop-settings", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ shopRegistrationOpen: newValue })
+                        });
+                        if (response.ok) {
+                          setSettings(prev => ({ ...prev, shopRegistrationOpen: newValue }));
+                          setTempSettings(prev => ({ ...prev, shopRegistrationOpen: newValue }));
+                        }
+                      } catch (error) {
+                        console.error("Failed to toggle registration:", error);
                       }
                     }}
-                    disabled={!editingSettings}
-                    className={`w-14 h-7 rounded-full transition-colors ${editingSettings ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'} ${
-                      (editingSettings ? tempSettings.shopRegistrationOpen : settings.shopRegistrationOpen) ? "bg-green-500" : "bg-gray-300"
+                    className={`w-14 h-7 rounded-full transition-colors cursor-pointer ${
+                      settings.shopRegistrationOpen ? "bg-green-500" : "bg-gray-300"
                     }`}
                   >
                     <div className={`w-6 h-6 bg-white rounded-full shadow transform transition-transform ${
-                      (editingSettings ? tempSettings.shopRegistrationOpen : settings.shopRegistrationOpen) ? "translate-x-7" : "translate-x-0.5"
+                      settings.shopRegistrationOpen ? "translate-x-7" : "translate-x-0.5"
                     }`} />
                   </button>
                 </div>
-                <p className={`text-sm font-medium ${(editingSettings ? tempSettings.shopRegistrationOpen : settings.shopRegistrationOpen) ? 'text-green-600' : 'text-red-600'}`}>
-                  {(editingSettings ? tempSettings.shopRegistrationOpen : settings.shopRegistrationOpen) ? '✓ Registration is OPEN' : '✗ Registration is CLOSED'}
+                <p className={`text-sm font-medium ${settings.shopRegistrationOpen ? 'text-green-600' : 'text-red-600'}`}>
+                  {settings.shopRegistrationOpen ? '✓ Registration is OPEN' : '✗ Registration is CLOSED'}
                 </p>
               </div>
               
