@@ -2822,8 +2822,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       res.json({ shops: enrichedShops });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get shops error:", error);
+      // Return empty array if tables don't exist yet
+      if (error.code === '42P01' || error.code === '42703') {
+        return res.json({ shops: [] });
+      }
       res.status(500).json({ message: "Failed to get shops" });
     }
   });
@@ -2934,8 +2938,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       res.json({ withdrawals: enrichedWithdrawals });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get withdrawals error:", error);
+      // Return empty array if tables don't exist yet
+      if (error.code === '42P01' || error.code === '42703') {
+        return res.json({ withdrawals: [] });
+      }
       res.status(500).json({ message: "Failed to get withdrawals" });
     }
   });

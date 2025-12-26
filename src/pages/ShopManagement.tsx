@@ -21,12 +21,15 @@ interface Shop {
 }
 
 interface ShopWithUser extends Shop {
-  user: {
+  owner: {
     id: number;
     email: string;
     name: string;
     phone: string;
-    status: string;
+  } | null;
+  stats?: {
+    totalOrders: number;
+    totalEarnings: number;
   };
 }
 
@@ -76,10 +79,15 @@ export default function ShopManagement() {
       const response = await fetch("/api/admin/shops", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        setShops(data);
+        // API returns { shops: [...] } or just [...]
+        setShops(Array.isArray(data) ? data : (data.shops || []));
+      } else {
+        // Table may not exist yet
+        setShops([]);
       }
     } catch (error) {
       console.error("Failed to load shops:", error);
+      setShops([]);
     } finally {
       setLoading(false);
     }
@@ -90,10 +98,13 @@ export default function ShopManagement() {
       const response = await fetch("/api/admin/withdrawals", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        setWithdrawals(data);
+        setWithdrawals(Array.isArray(data) ? data : (data.withdrawals || []));
+      } else {
+        setWithdrawals([]);
       }
     } catch (error) {
       console.error("Failed to load withdrawals:", error);
+      setWithdrawals([]);
     }
   };
 
@@ -188,8 +199,8 @@ export default function ShopManagement() {
   const filteredShops = shops.filter(shop => {
     const matchesSearch = 
       shop.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop.user.name.toLowerCase().includes(searchTerm.toLowerCase());
+      (shop.owner?.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (shop.owner?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || shop.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -351,11 +362,11 @@ export default function ShopManagement() {
                               <p className="text-xs text-gray-500">/shop/{shop.slug}</p>
                             </div>
                           </td>
-                          <td className="py-3 px-4">{shop.user.name}</td>
+                          <td className="py-3 px-4">{shop.owner?.name || "N/A"}</td>
                           <td className="py-3 px-4">
                             <div>
-                              <p className="text-xs">{shop.user.email}</p>
-                              <p className="text-xs text-gray-500">{shop.user.phone}</p>
+                              <p className="text-xs">{shop.owner?.email || "N/A"}</p>
+                              <p className="text-xs text-gray-500">{shop.owner?.phone || "N/A"}</p>
                             </div>
                           </td>
                           <td className="py-3 px-4">GHS {shop.totalEarnings.toFixed(2)}</td>
