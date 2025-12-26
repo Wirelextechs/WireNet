@@ -327,7 +327,15 @@ export default function ShopDashboard() {
   }
 
   if (!shop || !user) {
-    return null;
+    // Redirect to login if not authenticated
+    navigate("/login");
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
   }
 
   const getStatusBadge = (status: string) => {

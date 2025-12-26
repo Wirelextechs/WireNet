@@ -2416,8 +2416,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const shop = await storage.getShopByUserId(user.id);
-      const stats = shop ? await storage.getShopStats(shop.id) : null;
+      let shop = null;
+      let stats = null;
+      
+      try {
+        shop = await storage.getShopByUserId(user.id);
+        stats = shop ? await storage.getShopStats(shop.id) : null;
+      } catch (err: any) {
+        // Tables might not exist yet
+        if (err.code !== '42P01' && err.code !== '42703') {
+          throw err;
+        }
+      }
 
       res.json({
         user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
@@ -2433,8 +2443,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } : null,
         stats
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get user error:", error);
+      // Handle missing tables gracefully
+      if (error.code === '42P01' || error.code === '42703') {
+        return res.status(503).json({ message: "Shop system not yet configured" });
+      }
       res.status(500).json({ message: "Failed to get user info" });
     }
   });
