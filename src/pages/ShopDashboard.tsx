@@ -171,7 +171,7 @@ export default function ShopDashboard() {
             serviceType: "datagod",
             packageId: String(p.id),
             packageName: p.name,
-            basePrice: p.price,
+            basePrice: p.basePrice,
             markupAmount: p.config?.markupAmount || 0,
             isEnabled: p.config?.isEnabled !== false
           }));
@@ -181,7 +181,7 @@ export default function ShopDashboard() {
             serviceType: "at",
             packageId: String(p.id),
             packageName: p.name,
-            basePrice: p.price,
+            basePrice: p.basePrice,
             markupAmount: p.config?.markupAmount || 0,
             isEnabled: p.config?.isEnabled !== false
           }));
@@ -191,7 +191,7 @@ export default function ShopDashboard() {
             serviceType: "telecel",
             packageId: String(p.id),
             packageName: p.name,
-            basePrice: p.price,
+            basePrice: p.basePrice,
             markupAmount: p.config?.markupAmount || 0,
             isEnabled: p.config?.isEnabled !== false
           }));
