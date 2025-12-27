@@ -120,20 +120,22 @@ export default function ShopDashboard() {
           setShop(data.shop);
           setShopDescription(data.shop.description || "");
           
-          // Load all data only if shop exists
-          await Promise.all([
+          // Load all data only if shop exists (don't wait for these to complete)
+          Promise.all([
             loadStats(),
             loadPackages(),
             loadOrders(),
             loadWithdrawals(),
             loadShopSettings()
-          ]);
+          ]).catch(err => console.error("Error loading shop data:", err));
         } else {
           // User exists but no shop - might need to create one
           console.log("User has no shop yet");
         }
       } else {
+        console.error("Failed to fetch user:", response.status);
         navigate("/login");
+        return;
       }
     } catch (error) {
       console.error("Auth check failed:", error);
@@ -437,20 +439,21 @@ export default function ShopDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
-              <Store className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-xl">{shop.shopName}</h1>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(shop.status)}`}>
-                  {shop.status}
-                </span>
-                <button onClick={copyShopLink} className="flex items-center gap-1 hover:text-violet-600">
-                  wirenet.top/shop/{shop.slug}
+      {shop && user && (
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
+                <Store className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="font-bold text-xl">{shop.shopName}</h1>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(shop.status)}`}>
+                    {shop.status}
+                  </span>
+                  <button onClick={copyShopLink} className="flex items-center gap-1 hover:text-violet-600">
+                    wirenet.top/shop/{shop.slug}
                   {copied ? <CheckCircle size={14} className="text-green-500" /> : <Copy size={14} />}
                 </button>
               </div>
@@ -470,8 +473,10 @@ export default function ShopDashboard() {
           </div>
         </div>
       </header>
+      )}
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs and Content */}
+      {shop && user ? (
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex gap-2 border-b mb-6">
           {[
@@ -917,6 +922,11 @@ export default function ShopDashboard() {
           </Card>
         )}
       </div>
+      ) : (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      )}
     </div>
   );
 }
