@@ -82,10 +82,26 @@ export default function ShopStorefront() {
 
   const loadPackages = async (serviceType: string) => {
     try {
-      const response = await fetch(`/api/shop/${slug}/packages?serviceType=${serviceType}`);
+      const response = await fetch(`/api/shop/${slug}/packages?service=${serviceType}`);
       if (response.ok) {
         const data = await response.json();
-        setPackages(prev => ({ ...prev, [serviceType]: data }));
+        // API returns { serviceType: [...packages] } - extract and transform the array
+        const rawPkgs = Array.isArray(data) ? data : (data[serviceType] || []);
+        
+        // Transform API response to match ShopPackage interface
+        const transformedPkgs: ShopPackage[] = rawPkgs.map((p: any) => ({
+          serviceType: serviceType,
+          packageId: String(p.id),
+          packageName: p.packageName || p.dataAmount || `${p.dataValueGB}GB`,
+          basePrice: p.basePrice ?? p.price ?? 0,
+          markupAmount: p.markup ?? 0,
+          finalPrice: p.price ?? (p.basePrice + (p.markup || 0)),
+          capacity: p.dataValueGB ? `${p.dataValueGB}GB` : p.dataAmount,
+          network: serviceType === "fastnet" || serviceType === "datagod" ? "MTN" : 
+                   serviceType === "at" ? "AirtelTigo" : "Telecel"
+        }));
+        
+        setPackages(prev => ({ ...prev, [serviceType]: transformedPkgs }));
       }
     } catch (err) {
       console.error("Failed to load packages:", err);

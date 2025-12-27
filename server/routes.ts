@@ -2563,7 +2563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const config = await storage.upsertShopPackageConfig({
         shopId: shop.id,
         serviceType,
-        packageId,
+        packageId: parseInt(packageId, 10), // Ensure packageId is integer
         markupAmount: markupAmount || 0,
         isEnabled: isEnabled !== false
       });
@@ -2593,7 +2593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const config = await storage.upsertShopPackageConfig({
           shopId: shop.id,
           serviceType: c.serviceType,
-          packageId: c.packageId,
+          packageId: parseInt(c.packageId, 10), // Ensure packageId is integer
           markupAmount: c.markupAmount || 0,
           isEnabled: c.isEnabled !== false
         });

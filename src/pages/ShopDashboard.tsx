@@ -284,11 +284,11 @@ export default function ShopDashboard() {
         };
       });
 
-      const response = await fetch("/api/shop/packages", {
-        method: "POST",
+      const response = await fetch("/api/shop/packages/bulk", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ packages: updates })
+        body: JSON.stringify({ configs: updates })
       });
 
       if (response.ok) {
