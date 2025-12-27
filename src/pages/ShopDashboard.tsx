@@ -70,7 +70,13 @@ export default function ShopDashboard() {
   const [, navigate] = useLocation();
   const [shop, setShop] = useState<Shop | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [stats, setStats] = useState<ShopStats | null>(null);
+  const [stats, setStats] = useState<ShopStats>({
+    totalOrders: 0,
+    totalRevenue: 0,
+    totalEarnings: 0,
+    availableBalance: 0,
+    pendingWithdrawals: 0
+  });
   const [packages, setPackages] = useState<PackageConfig[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -154,7 +160,42 @@ export default function ShopDashboard() {
       const response = await fetch("/api/shop/packages", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        setPackages(data);
+        // API returns { datagod: [...], at: [...], telecel: [...] }
+        // Convert to flat array with serviceType included
+        const flatPackages: PackageConfig[] = [];
+        
+        if (data.datagod) {
+          data.datagod.forEach((p: any) => flatPackages.push({
+            serviceType: "datagod",
+            packageId: String(p.id),
+            packageName: p.name,
+            basePrice: p.price,
+            markupAmount: p.config?.markupAmount || 0,
+            isEnabled: p.config?.isEnabled !== false
+          }));
+        }
+        if (data.at) {
+          data.at.forEach((p: any) => flatPackages.push({
+            serviceType: "at",
+            packageId: String(p.id),
+            packageName: p.name,
+            basePrice: p.price,
+            markupAmount: p.config?.markupAmount || 0,
+            isEnabled: p.config?.isEnabled !== false
+          }));
+        }
+        if (data.telecel) {
+          data.telecel.forEach((p: any) => flatPackages.push({
+            serviceType: "telecel",
+            packageId: String(p.id),
+            packageName: p.name,
+            basePrice: p.price,
+            markupAmount: p.config?.markupAmount || 0,
+            isEnabled: p.config?.isEnabled !== false
+          }));
+        }
+        
+        setPackages(flatPackages);
       }
     } catch (error) {
       console.error("Failed to load packages:", error);
@@ -166,7 +207,8 @@ export default function ShopDashboard() {
       const response = await fetch("/api/shop/orders", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        setOrders(data);
+        // API returns { orders: [...], total: n }
+        setOrders(Array.isArray(data) ? data : (data.orders || []));
       }
     } catch (error) {
       console.error("Failed to load orders:", error);
@@ -178,7 +220,8 @@ export default function ShopDashboard() {
       const response = await fetch("/api/withdrawals", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        setWithdrawals(data);
+        // Handle both array and { withdrawals: [...] } formats
+        setWithdrawals(Array.isArray(data) ? data : (data.withdrawals || []));
       }
     } catch (error) {
       console.error("Failed to load withdrawals:", error);
@@ -454,7 +497,7 @@ export default function ShopDashboard() {
         </div>
 
         {/* Overview Tab */}
-        {activeTab === "overview" && stats && (
+        {activeTab === "overview" && (
           <div className="space-y-6">
             {shop.status === "pending" && (
               <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
