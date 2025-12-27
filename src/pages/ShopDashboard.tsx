@@ -107,18 +107,25 @@ export default function ShopDashboard() {
       const response = await fetch("/api/user/me", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
+        console.log("User data:", data); // Debug log
         setUser(data.user);
-        setShop(data.shop);
-        setShopDescription(data.shop.description || "");
         
-        // Load all data
-        await Promise.all([
-          loadStats(),
-          loadPackages(),
-          loadOrders(),
-          loadWithdrawals(),
-          loadShopSettings()
-        ]);
+        if (data.shop) {
+          setShop(data.shop);
+          setShopDescription(data.shop.description || "");
+          
+          // Load all data only if shop exists
+          await Promise.all([
+            loadStats(),
+            loadPackages(),
+            loadOrders(),
+            loadWithdrawals(),
+            loadShopSettings()
+          ]);
+        } else {
+          // User exists but no shop - might need to create one
+          console.log("User has no shop yet");
+        }
       } else {
         navigate("/login");
       }
@@ -326,13 +333,33 @@ export default function ShopDashboard() {
     );
   }
 
-  if (!shop || !user) {
+  if (!user) {
     // Redirect to login if not authenticated
     navigate("/login");
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!shop) {
+    // User is logged in but has no shop
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <Store className="h-16 w-16 text-violet-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Shop Found</h2>
+          <p className="text-gray-600 mb-4">Your account doesn't have a shop associated with it yet. This could happen if:</p>
+          <ul className="text-left text-gray-600 mb-6 space-y-2">
+            <li>• Your shop registration is still pending approval</li>
+            <li>• You haven't completed the shop setup</li>
+          </ul>
+          <Button onClick={() => navigate("/login")} variant="outline">
+            Back to Login
+          </Button>
         </div>
       </div>
     );
