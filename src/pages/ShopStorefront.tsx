@@ -70,7 +70,8 @@ export default function ShopStorefront() {
       const response = await fetch(`/api/shop/${slug}`);
       if (response.ok) {
         const data = await response.json();
-        setShop(data.shop);
+        // API returns shop data directly or in data.shop wrapper
+        setShop(data.shop || data);
       } else {
         setError("Shop not found");
       }
