@@ -522,7 +522,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Orders</p>
-                      <p className="text-2xl font-bold">{stats.totalOrders}</p>
+                      <p className="text-2xl font-bold">{stats.totalOrders ?? 0}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -536,7 +536,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Revenue</p>
-                      <p className="text-2xl font-bold">GHS {stats.totalRevenue.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">GHS {(stats.totalRevenue ?? 0).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -550,7 +550,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Earnings</p>
-                      <p className="text-2xl font-bold">GHS {stats.totalEarnings.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">GHS {(stats.totalEarnings ?? 0).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -564,7 +564,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Available Balance</p>
-                      <p className="text-2xl font-bold">GHS {stats.availableBalance.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">GHS {(stats.availableBalance ?? 0).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>
