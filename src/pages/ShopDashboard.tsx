@@ -657,7 +657,7 @@ export default function ShopDashboard() {
                           return (
                             <tr key={key} className="border-b">
                               <td className="py-2 px-2">{pkg.packageName}</td>
-                              <td className="py-2 px-2">GHS {pkg.basePrice.toFixed(2)}</td>
+                              <td className="py-2 px-2">GHS {(pkg.basePrice ?? 0).toFixed(2)}</td>
                               <td className="py-2 px-2">
                                 <Input
                                   type="number"
@@ -669,7 +669,7 @@ export default function ShopDashboard() {
                                 />
                               </td>
                               <td className="py-2 px-2 font-semibold">
-                                GHS {(pkg.basePrice + markup).toFixed(2)}
+                                GHS {((pkg.basePrice ?? 0) + markup).toFixed(2)}
                               </td>
                               <td className="py-2 px-2">
                                 <button

@@ -2516,17 +2516,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const packagesWithMarkups = {
         datagod: datagodPackages.map(p => ({
-          ...p,
+          id: p.id,
+          name: p.packageName,
+          basePrice: p.priceGHS,
           serviceType: "datagod",
           config: configMap.get(`datagod-${p.id}`) || { markupAmount: 0, isEnabled: true }
         })),
         at: atPackages.map(p => ({
-          ...p,
+          id: p.id,
+          name: p.dataAmount,
+          basePrice: p.price,
           serviceType: "at",
           config: configMap.get(`at-${p.id}`) || { markupAmount: 0, isEnabled: true }
         })),
         telecel: telecelPackages.map(p => ({
-          ...p,
+          id: p.id,
+          name: p.dataAmount,
+          basePrice: p.price,
           serviceType: "telecel",
           config: configMap.get(`telecel-${p.id}`) || { markupAmount: 0, isEnabled: true }
         }))
