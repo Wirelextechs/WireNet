@@ -2791,16 +2791,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const service = req.query.service as string;
 
-      // Get shop's package configs
-      let configs: any[];
-      if (service) {
-        configs = await storage.getShopPackageConfigsByService(shop.id, service);
-      } else {
-        configs = await storage.getShopPackageConfigs(shop.id);
+      // Get shop's package configs (may fail if table doesn't exist)
+      let configs: any[] = [];
+      try {
+        if (service) {
+          configs = await storage.getShopPackageConfigsByService(shop.id, service);
+        } else {
+          configs = await storage.getShopPackageConfigs(shop.id);
+        }
+      } catch (configErr: any) {
+        console.log("Shop package configs not available:", configErr.code);
+        // Continue with empty configs - will use base prices
       }
 
       // Get base packages and apply markups
       const result: any = {};
+
+      if (!service || service === "fastnet") {
+        // FastNet uses the same packages structure - get from settings or use DataGod as base
+        // For now, return empty array since FastNet doesn't have separate package table
+        result.fastnet = [];
+      }
 
       if (!service || service === "datagod") {
         const packages = await storage.getDatagodPackages();
@@ -2860,9 +2871,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Get shop packages error:", error);
-      res.status(500).json({ message: "Failed to get packages" });
+      // Return empty result instead of 500 error
+      const service = req.query.service as string;
+      const emptyResult: any = {};
+      if (!service || service === "fastnet") emptyResult.fastnet = [];
+      if (!service || service === "datagod") emptyResult.datagod = [];
+      if (!service || service === "at") emptyResult.at = [];
+      if (!service || service === "telecel") emptyResult.telecel = [];
+      res.json(emptyResult);
     }
   });
 

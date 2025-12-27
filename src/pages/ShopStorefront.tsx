@@ -48,6 +48,7 @@ export default function ShopStorefront() {
     at: [],
     telecel: []
   });
+  const [loadedServices, setLoadedServices] = useState<Set<string>>(new Set());
   const [settings, setSettings] = useState<Settings>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -103,8 +104,12 @@ export default function ShopStorefront() {
         
         setPackages(prev => ({ ...prev, [serviceType]: transformedPkgs }));
       }
+      // Mark service as loaded regardless of success (to stop showing loader)
+      setLoadedServices(prev => new Set(prev).add(serviceType));
     } catch (err) {
       console.error("Failed to load packages:", err);
+      // Mark as loaded even on error to stop infinite loading
+      setLoadedServices(prev => new Set(prev).add(serviceType));
     }
   };
 
@@ -315,10 +320,17 @@ export default function ShopStorefront() {
               Select a {serviceConfigs.find(s => s.id === selectedService)?.name} Package
             </h2>
             
-            {packages[selectedService as keyof PackagesByService].length === 0 ? (
+            {!loadedServices.has(selectedService) ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto mb-4"></div>
                 <p className="text-gray-500">Loading packages...</p>
+              </div>
+            ) : packages[selectedService as keyof PackagesByService].length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-4">No packages available for this service yet.</p>
+                <Button variant="outline" onClick={() => setSelectedService(null)}>
+                  <ArrowLeft size={18} className="mr-2" /> Choose another service
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
