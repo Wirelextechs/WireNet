@@ -124,7 +124,7 @@ export default function ShopManagement() {
   const approveShop = async (shopId: number) => {
     try {
       const response = await fetch(`/api/admin/shops/${shopId}/approve`, {
-        method: "POST",
+        method: "PUT",
         credentials: "include"
       });
       if (response.ok) {
@@ -139,7 +139,7 @@ export default function ShopManagement() {
     if (!confirm("Are you sure you want to ban this shop?")) return;
     try {
       const response = await fetch(`/api/admin/shops/${shopId}/ban`, {
-        method: "POST",
+        method: "PUT",
         credentials: "include"
       });
       if (response.ok) {
