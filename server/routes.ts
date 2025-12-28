@@ -2504,6 +2504,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const datagodPackages = await storage.getDatagodPackages();
       const atPackages = await storage.getAtPackages();
       const telecelPackages = await storage.getTelecelPackages();
+      
+      // Fetch FastNet packages from Supabase
+      let fastnetPackages: any[] = [];
+      try {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const response = await fetch(
+            `${supabaseUrl}/rest/v1/packages?category=eq.fastnet&enabled=eq.true&order=price.asc`,
+            {
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+              }
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            fastnetPackages = data.map((p: any) => ({
+              id: p.id,
+              dataAmount: `${p.data_amount}GB`,
+              price: Number(p.price),
+              deliveryTime: p.delivery_time || "5-20 min"
+            }));
+          }
+        }
+      } catch (fastnetErr) {
+        console.log("Failed to fetch FastNet packages:", fastnetErr);
+      }
 
       // Get shop's configurations (may fail if table doesn't exist)
       let configs: any[] = [];
@@ -2515,6 +2544,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const configMap = new Map(configs.map(c => [`${c.serviceType}-${c.packageId}`, c]));
 
       const packagesWithMarkups = {
+        fastnet: fastnetPackages.map(p => ({
+          id: p.id,
+          name: p.dataAmount,
+          basePrice: p.price,
+          serviceType: "fastnet",
+          config: configMap.get(`fastnet-${p.id}`) || { markupAmount: 0, isEnabled: true }
+        })),
         datagod: datagodPackages.map(p => ({
           id: p.id,
           name: p.packageName,
@@ -2542,7 +2578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Get shop packages error:", error);
       // Return empty packages on any error
-      res.json({ datagod: [], at: [], telecel: [] });
+      res.json({ fastnet: [], datagod: [], at: [], telecel: [] });
     }
   });
 
@@ -2808,9 +2844,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result: any = {};
 
       if (!service || service === "fastnet") {
-        // FastNet uses the same packages structure - get from settings or use DataGod as base
-        // For now, return empty array since FastNet doesn't have separate package table
-        result.fastnet = [];
+        // Fetch FastNet packages from Supabase
+        try {
+          const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+          const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+          if (supabaseUrl && supabaseKey) {
+            const response = await fetch(
+              `${supabaseUrl}/rest/v1/packages?category=eq.fastnet&enabled=eq.true&order=price.asc`,
+              {
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                }
+              }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              result.fastnet = data.map((p: any) => {
+                const config = configs.find(c => c.serviceType === "fastnet" && String(c.packageId) === String(p.id));
+                if (config && !config.isEnabled) return null;
+                return {
+                  id: p.id,
+                  dataAmount: `${p.data_amount}GB`,
+                  packageName: `${p.data_amount}GB`,
+                  deliveryTime: p.delivery_time || "5-20 min",
+                  basePrice: Number(p.price),
+                  price: Number(p.price) + (config?.markupAmount || 0),
+                  markup: config?.markupAmount || 0
+                };
+              }).filter(Boolean);
+            } else {
+              result.fastnet = [];
+            }
+          } else {
+            result.fastnet = [];
+          }
+        } catch (fastnetErr) {
+          console.log("Failed to fetch FastNet packages:", fastnetErr);
+          result.fastnet = [];
+        }
       }
 
       if (!service || service === "datagod") {

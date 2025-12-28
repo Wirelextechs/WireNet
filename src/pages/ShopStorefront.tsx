@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { MessageCircle, Zap, Smartphone, Radio, Sparkles, ChevronRight, Store, ArrowLeft, ShoppingCart } from "lucide-react";
+import { MessageCircle, Zap, Smartphone, Radio, Sparkles, ChevronRight, Store, ArrowLeft, ShoppingCart, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import MoMoPaymentModal from "@/components/ui/momo-payment-modal";
 
 interface Shop {
   id: number;
@@ -57,7 +58,15 @@ export default function ShopStorefront() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<ShopPackage | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("customer@wirenet.com");
   const [orderError, setOrderError] = useState("");
+  const [purchasing, setPurchasing] = useState(false);
+  const [transactionCharge, setTransactionCharge] = useState(0);
+  
+  // Payment modal state
+  const [showMoolreModal, setShowMoolreModal] = useState(false);
+  const [moolreTotalAmount, setMoolreTotalAmount] = useState(0);
+  const [moolreOrderRef, setMoolreOrderRef] = useState("");
 
   useEffect(() => {
     if (slug) {
@@ -119,6 +128,7 @@ export default function ShopStorefront() {
       if (response.ok) {
         const data = await response.json();
         setSettings(data);
+        setTransactionCharge(data.transactionCharge ?? 0);
       }
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -136,7 +146,7 @@ export default function ShopStorefront() {
   };
 
   const handleOrder = async () => {
-    if (!selectedPackage || !phoneNumber) {
+    if (!selectedPackage || !phoneNumber || !selectedService) {
       setOrderError("Please select a package and enter a phone number");
       return;
     }
@@ -148,17 +158,174 @@ export default function ShopStorefront() {
       return;
     }
 
-    // Redirect to the appropriate service page with shop parameters
-    const params = new URLSearchParams({
-      phone: cleanPhone,
-      package: selectedPackage.packageId,
-      price: selectedPackage.finalPrice.toString(),
-      shopId: shop?.id?.toString() || "",
-      shopMarkup: selectedPackage.markupAmount.toString(),
-      shopName: shop?.shopName || ""
-    });
+    setOrderError("");
+    setPurchasing(true);
+
+    try {
+      // Get active payment gateway from settings
+      const settingsResponse = await fetch("/api/settings");
+      const settingsData = await settingsResponse.json();
+      const activeGateway = settingsData.activePaymentGateway || "paystack";
+
+      if (activeGateway === "moolre") {
+        await handleMoolreCheckout(cleanPhone);
+      } else {
+        await handlePaystackCheckout(cleanPhone);
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      setOrderError("Payment system error. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
+  const handlePaystackCheckout = async (cleanPhone: string) => {
+    const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      setOrderError("Payment configuration error - Paystack key not found");
+      setPurchasing(false);
+      return;
+    }
+
+    if (!(window as any).PaystackPop) {
+      setOrderError("Payment system not loaded. Please refresh the page.");
+      setPurchasing(false);
+      return;
+    }
+
+    if (!selectedPackage || !selectedService) return;
+
+    const charge = selectedPackage.finalPrice * (transactionCharge / 100);
+    const totalAmount = selectedPackage.finalPrice + charge;
+
+    try {
+      const handler = (window as any).PaystackPop.setup({
+        key: publicKey,
+        email: customerEmail,
+        amount: Math.ceil(totalAmount * 100),
+        currency: "GHS",
+        ref: `SHOP-${shop?.slug || "unknown"}-${selectedService?.toUpperCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        metadata: {
+          wirenet: {
+            service: selectedService,
+            phoneNumber: cleanPhone,
+            dataAmount: selectedPackage.packageName,
+            price: selectedPackage.finalPrice,
+            shopId: shop?.id,
+            shopName: shop?.shopName,
+            shopMarkup: selectedPackage.markupAmount,
+          },
+        },
+        callback: async function(response: any) {
+          // Create order with shop context
+          try {
+            const purchaseEndpoint = getPurchaseEndpoint(selectedService);
+            await fetch(purchaseEndpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                phoneNumber: cleanPhone,
+                dataAmount: selectedPackage.packageName,
+                price: selectedPackage.finalPrice,
+                reference: response.reference,
+                shopId: shop?.id,
+                shopMarkup: selectedPackage.markupAmount,
+                shopName: shop?.shopName,
+              }),
+            });
+          } catch (error) {
+            console.error("Error creating order:", error);
+          }
+          
+          // Navigate to success page
+          setSelectedPackage(null);
+          setPhoneNumber("");
+          setPurchasing(false);
+          navigate(`/order/success/${response.reference}?service=${selectedService}&shop=${shop?.slug}`);
+        },
+        onClose: () => {
+          setOrderError("Transaction cancelled");
+          setPurchasing(false);
+        },
+      });
+
+      handler.openIframe();
+    } catch (error) {
+      console.error("Paystack initialization error:", error);
+      setOrderError("Failed to initialize payment. Please try again.");
+      setPurchasing(false);
+    }
+  };
+
+  const handleMoolreCheckout = async (cleanPhone: string) => {
+    if (!selectedPackage || !selectedService) return;
     
-    navigate(`/${selectedService}?${params.toString()}`);
+    const charge = selectedPackage.finalPrice * (transactionCharge / 100);
+    const totalAmount = selectedPackage.finalPrice + charge;
+    const moolreRef = `SHOP-${shop?.slug || "unknown"}-${selectedService?.toUpperCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Store the phone number in state for order creation
+    (window as any).__shopOrderPhone = cleanPhone;
+    
+    // Set modal data and open it
+    setMoolreTotalAmount(totalAmount);
+    setMoolreOrderRef(moolreRef);
+    setShowMoolreModal(true);
+    setPurchasing(false);
+  };
+
+  const handleMoolreCreateOrders = async (reference: string): Promise<string> => {
+    if (!selectedPackage || !selectedService) return "";
+    
+    const cleanPhone = (window as any).__shopOrderPhone || phoneNumber.replace(/\D/g, "");
+    
+    try {
+      const purchaseEndpoint = getPurchaseEndpoint(selectedService);
+      const orderResponse = await fetch(purchaseEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: cleanPhone,
+          dataAmount: selectedPackage.packageName,
+          price: selectedPackage.finalPrice,
+          reference: reference,
+          gateway: 'moolre',
+          shopId: shop?.id,
+          shopMarkup: selectedPackage.markupAmount,
+          shopName: shop?.shopName,
+        }),
+      });
+      
+      if (orderResponse.ok) {
+        try {
+          const orderData = await orderResponse.json();
+          return orderData.shortId || "";
+        } catch {
+          return "";
+        }
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+    }
+    
+    return "";
+  };
+
+  const getPurchaseEndpoint = (service: string): string => {
+    switch (service) {
+      case "fastnet": return "/api/fastnet/purchase";
+      case "datagod": return "/api/datagod/purchase";
+      case "at": return "/api/at/purchase";
+      case "telecel": return "/api/telecel/purchase";
+      default: return "/api/datagod/purchase";
+    }
+  };
+
+  const handleMoolreSuccess = (orderId: string) => {
+    setShowMoolreModal(false);
+    setSelectedPackage(null);
+    setPhoneNumber("");
+    navigate(`/order/success/${orderId}?service=${selectedService}&shop=${shop?.slug}`);
   };
 
   const serviceConfigs = [
@@ -418,10 +585,20 @@ export default function ShopStorefront() {
                 
                 <Button
                   onClick={handleOrder}
+                  disabled={purchasing}
                   className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
                 >
-                  <ShoppingCart size={18} className="mr-2" />
-                  Place Order
+                  {purchasing ? (
+                    <>
+                      <Loader2 size={18} className="mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart size={18} className="mr-2" />
+                      Place Order
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -434,12 +611,26 @@ export default function ShopStorefront() {
         <div className="mx-auto max-w-5xl px-4 py-6 text-center text-sm text-gray-500">
           <p>
             Powered by{" "}
-            <a href="/" className="text-violet-600 hover:underline">
+            <span className="text-violet-600 font-medium">
               WireNet
-            </a>
+            </span>
           </p>
         </div>
       </footer>
+
+      {/* Moolre Payment Modal */}
+      <MoMoPaymentModal
+        isOpen={showMoolreModal}
+        onClose={() => {
+          setShowMoolreModal(false);
+          setPurchasing(false);
+        }}
+        amount={moolreTotalAmount}
+        orderReference={moolreOrderRef}
+        onSuccess={handleMoolreSuccess}
+        onCreateOrders={handleMoolreCreateOrders}
+        service={selectedService as "at" | "telecel" | "fastnet" | "datagod" || "datagod"}
+      />
     </div>
   );
 }

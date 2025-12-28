@@ -162,10 +162,20 @@ export default function ShopDashboard() {
       const response = await fetch("/api/shop/packages", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        // API returns { datagod: [...], at: [...], telecel: [...] }
+        // API returns { fastnet: [...], datagod: [...], at: [...], telecel: [...] }
         // Convert to flat array with serviceType included
         const flatPackages: PackageConfig[] = [];
         
+        if (data.fastnet) {
+          data.fastnet.forEach((p: any) => flatPackages.push({
+            serviceType: "fastnet",
+            packageId: String(p.id),
+            packageName: p.name,
+            basePrice: p.basePrice,
+            markupAmount: p.config?.markupAmount || 0,
+            isEnabled: p.config?.isEnabled !== false
+          }));
+        }
         if (data.datagod) {
           data.datagod.forEach((p: any) => flatPackages.push({
             serviceType: "datagod",
