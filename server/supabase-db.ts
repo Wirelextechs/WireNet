@@ -2,35 +2,56 @@
 // Uses fetch() to call Supabase REST API
 
 const getSupabaseConfig = () => {
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+  // Check multiple env var names - Vercel uses different naming
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  const key = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  
+  if (!url || !key) {
+    console.error('Supabase env vars check:');
+    console.error('  SUPABASE_URL:', !!process.env.SUPABASE_URL);
+    console.error('  VITE_SUPABASE_URL:', !!process.env.VITE_SUPABASE_URL);
+    console.error('  SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
+    console.error('  VITE_SUPABASE_ANON_KEY:', !!process.env.VITE_SUPABASE_ANON_KEY);
+  }
+  
   return { url, key };
 };
 
 const supabaseFetch = async (endpoint: string, options: RequestInit = {}) => {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) {
+    console.error('Supabase configuration missing - URL:', !!url, 'Key:', !!key);
     throw new Error('Supabase configuration missing');
   }
 
-  const response = await fetch(`${url}/rest/v1/${endpoint}`, {
-    ...options,
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Prefer': options.method === 'POST' ? 'return=representation' : 'return=representation',
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(`${url}/rest/v1/${endpoint}`, {
+      ...options,
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'Prefer': options.method === 'POST' ? 'return=representation' : 'return=representation',
+        ...options.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Supabase error: ${response.status} - ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`Supabase error for ${endpoint}:`, response.status, error);
+      // For GET requests, return empty array if table doesn't exist (404) or no rows (406)
+      if ((response.status === 404 || response.status === 406) && !options.method) {
+        return [];
+      }
+      throw new Error(`Supabase error: ${response.status} - ${error}`);
+    }
+
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+  } catch (err: any) {
+    console.error(`Supabase fetch error for ${endpoint}:`, err.message);
+    throw err;
   }
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
 };
 
 // Shop Users
