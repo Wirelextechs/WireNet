@@ -2537,7 +2537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (configErr: any) {
         console.log("Shop package configs not available:", configErr);
       }
-      const configMap = new Map(configs.map((c: any) => [`${c.service_type}-${c.package_id}`, c]));
+      const configMap = new Map(configs.map((c: any) => [`${c.service_type}-${String(c.package_id)}`, c]));
 
       const packagesWithMarkups = {
         fastnet: fastnetPackages.map(p => ({
@@ -2545,9 +2545,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: p.dataAmount,
           basePrice: p.price,
           serviceType: "fastnet",
-          config: configMap.get(`fastnet-${p.id}`) ? {
-            markupAmount: parseFloat(configMap.get(`fastnet-${p.id}`)?.markup_amount) || 0,
-            isEnabled: configMap.get(`fastnet-${p.id}`)?.is_enabled !== false
+          config: configMap.get(`fastnet-${String(p.id)}`) ? {
+            markupAmount: parseFloat(configMap.get(`fastnet-${String(p.id)}`)?.markup_amount) || 0,
+            isEnabled: configMap.get(`fastnet-${String(p.id)}`)?.is_enabled !== false
           } : { markupAmount: 0, isEnabled: true }
         })),
         datagod: datagodPackages.map(p => ({
@@ -2555,9 +2555,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: p.packageName,
           basePrice: p.priceGHS,
           serviceType: "datagod",
-          config: configMap.get(`datagod-${p.id}`) ? {
-            markupAmount: parseFloat(configMap.get(`datagod-${p.id}`)?.markup_amount) || 0,
-            isEnabled: configMap.get(`datagod-${p.id}`)?.is_enabled !== false
+          config: configMap.get(`datagod-${String(p.id)}`) ? {
+            markupAmount: parseFloat(configMap.get(`datagod-${String(p.id)}`)?.markup_amount) || 0,
+            isEnabled: configMap.get(`datagod-${String(p.id)}`)?.is_enabled !== false
           } : { markupAmount: 0, isEnabled: true }
         })),
         at: atPackages.map(p => ({
@@ -2565,9 +2565,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: p.dataAmount,
           basePrice: p.price,
           serviceType: "at",
-          config: configMap.get(`at-${p.id}`) ? {
-            markupAmount: parseFloat(configMap.get(`at-${p.id}`)?.markup_amount) || 0,
-            isEnabled: configMap.get(`at-${p.id}`)?.is_enabled !== false
+          config: configMap.get(`at-${String(p.id)}`) ? {
+            markupAmount: parseFloat(configMap.get(`at-${String(p.id)}`)?.markup_amount) || 0,
+            isEnabled: configMap.get(`at-${String(p.id)}`)?.is_enabled !== false
           } : { markupAmount: 0, isEnabled: true }
         })),
         telecel: telecelPackages.map(p => ({
@@ -2575,9 +2575,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: p.dataAmount,
           basePrice: p.price,
           serviceType: "telecel",
-          config: configMap.get(`telecel-${p.id}`) ? {
-            markupAmount: parseFloat(configMap.get(`telecel-${p.id}`)?.markup_amount) || 0,
-            isEnabled: configMap.get(`telecel-${p.id}`)?.is_enabled !== false
+          config: configMap.get(`telecel-${String(p.id)}`) ? {
+            markupAmount: parseFloat(configMap.get(`telecel-${String(p.id)}`)?.markup_amount) || 0,
+            isEnabled: configMap.get(`telecel-${String(p.id)}`)?.is_enabled !== false
           } : { markupAmount: 0, isEnabled: true }
         }))
       };
@@ -2896,7 +2896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result.datagod = packages
           .filter(p => p.isEnabled)
           .map(p => {
-            const config = configs.find(c => c.serviceType === "datagod" && c.packageId === p.id);
+            const config = configs.find(c => c.serviceType === "datagod" && String(c.packageId) === String(p.id));
             if (config && !config.isEnabled) return null;
             return {
               id: p.id,
@@ -2915,7 +2915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result.at = packages
           .filter(p => p.isEnabled)
           .map(p => {
-            const config = configs.find(c => c.serviceType === "at" && c.packageId === p.id);
+            const config = configs.find(c => c.serviceType === "at" && String(c.packageId) === String(p.id));
             if (config && !config.isEnabled) return null;
             return {
               id: p.id,
@@ -2934,7 +2934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result.telecel = packages
           .filter(p => p.isEnabled)
           .map(p => {
-            const config = configs.find(c => c.serviceType === "telecel" && c.packageId === p.id);
+            const config = configs.find(c => c.serviceType === "telecel" && String(c.packageId) === String(p.id));
             if (config && !config.isEnabled) return null;
             return {
               id: p.id,

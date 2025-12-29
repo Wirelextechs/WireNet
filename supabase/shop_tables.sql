@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS shop_users (
   email TEXT UNIQUE NOT NULL,
   phone TEXT NOT NULL,
   password_hash TEXT NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

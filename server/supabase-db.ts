@@ -152,6 +152,7 @@ export const shopConfigDB = {
     
     if (existing) {
       // Update existing
+      console.log(`Updating config for ${config.service_type}-${config.package_id}: markup=${config.markup_amount}`);
       const data = await supabaseFetch(`shop_package_config?id=eq.${existing.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -160,13 +161,15 @@ export const shopConfigDB = {
           updated_at: new Date().toISOString(),
         }),
       });
-      return data?.[0];
+      return data?.[0] || existing;
     } else {
       // Insert new
+      console.log(`Creating new config for ${config.service_type}-${config.package_id}: markup=${config.markup_amount}`);
       const data = await supabaseFetch('shop_package_config', {
         method: 'POST',
         body: JSON.stringify({
           ...config,
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }),
       });
