@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS shop_users (
   phone VARCHAR(20) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+
+  
+   NOT NULL
 );
 
 -- Shops table
