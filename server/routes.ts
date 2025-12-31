@@ -2659,32 +2659,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk update shop package configs
   app.put("/api/shop/packages/bulk", isUserAuthenticated, async (req: any, res) => {
     try {
+      console.log("=== Bulk update packages request ===");
+      console.log("User ID:", req.shopUser?.id);
+      
       const shop = await shopsDB.getByUserId(req.shopUser.id);
       if (!shop) {
         return res.status(404).json({ message: "Shop not found" });
       }
+      
+      console.log("Shop found:", shop.id);
 
       const { configs } = req.body;
+      console.log("Received configs:", JSON.stringify(configs, null, 2));
+      
       if (!Array.isArray(configs)) {
         return res.status(400).json({ message: "Configs must be an array" });
       }
 
       const results = [];
       for (const c of configs) {
-        const config = await shopConfigDB.upsert({
-          shop_id: shop.id,
-          service_type: c.serviceType,
-          package_id: String(c.packageId),
-          markup_amount: c.markupAmount || 0,
-          is_enabled: c.isEnabled !== false
-        });
-        results.push(config);
+        try {
+          console.log(`Upserting config for ${c.serviceType}-${c.packageId}: markup=${c.markupAmount}`);
+          const config = await shopConfigDB.upsert({
+            shop_id: shop.id,
+            service_type: c.serviceType,
+            package_id: String(c.packageId),
+            markup_amount: c.markupAmount || 0,
+            is_enabled: c.isEnabled !== false
+          });
+          console.log(`Success: ${c.serviceType}-${c.packageId}`, JSON.stringify(config));
+          results.push(config);
+        } catch (itemError: any) {
+          console.error(`Failed to upsert ${c.serviceType}-${c.packageId}:`, itemError.message);
+          throw itemError;
+        }
       }
 
+      console.log("All configs updated successfully");
       res.json({ message: "Package configs updated", configs: results });
-    } catch (error) {
-      console.error("Bulk update package config error:", error);
-      res.status(500).json({ message: "Failed to update package configs" });
+    } catch (error: any) {
+      console.error("Bulk update package config error:", error.message || error);
+      console.error("Full error:", error);
+      res.status(500).json({ message: "Failed to update package configs", debug: error.message });
     }
   });
 
