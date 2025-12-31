@@ -304,6 +304,8 @@ class Storage {
     paymentReference?: string;
     supplierUsed?: string;
     supplierResponse?: string;
+    shopId?: number;
+    shopMarkup?: number;
   }): Promise<FastnetOrder> {
     const result = await db.insert(fastnetOrders).values({
       shortId: data.shortId,
@@ -314,6 +316,8 @@ class Storage {
       paymentReference: data.paymentReference || null,
       supplierUsed: data.supplierUsed || null,
       supplierResponse: data.supplierResponse || null,
+      shopId: data.shopId || null,
+      shopMarkup: data.shopMarkup || null,
     }).returning();
     return result[0];
   }
@@ -353,6 +357,10 @@ class Storage {
   }
 
   async updateFastnetOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<FastnetOrder | null> {
+    // First get the order to see if it has a shopId
+    const orderBefore = await db.select().from(fastnetOrders).where(eq(fastnetOrders.id, id)).limit(1);
+    const order = orderBefore.length > 0 ? orderBefore[0] : null;
+    
     const updateData: Partial<InsertFastnetOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -366,7 +374,34 @@ class Storage {
       .where(eq(fastnetOrders.id, id))
       .returning();
     
-    return result.length > 0 ? result[0] : null;
+    const updatedOrder = result.length > 0 ? result[0] : null;
+    
+    // Update shop balance if order was fulfilled and belongs to a shop
+    if (updatedOrder && status === "FULFILLED" && order && order.shopId && order.shopMarkup) {
+      console.log(`💰 Updating shop ${order.shopId} balance with markup: ${order.shopMarkup}`);
+      try {
+        const shop = await db.select().from(shops).where(eq(shops.id, order.shopId)).limit(1);
+        if (shop.length > 0) {
+          const currentShop = shop[0];
+          const newEarnings = (currentShop.totalEarnings || 0) + order.shopMarkup;
+          const newBalance = (currentShop.availableBalance || 0) + order.shopMarkup;
+          
+          await db.update(shops)
+            .set({
+              totalEarnings: newEarnings,
+              availableBalance: newBalance,
+              updatedAt: new Date(),
+            })
+            .where(eq(shops.id, order.shopId));
+          
+          console.log(`✅ Shop balance updated: +${order.shopMarkup}`);
+        }
+      } catch (err) {
+        console.error(`❌ Failed to update shop balance:`, err);
+      }
+    }
+    
+    return updatedOrder;
   }
 
   async getFastnetOrderByShortId(shortId: string): Promise<FastnetOrder | null> {
@@ -387,6 +422,8 @@ class Storage {
     packagePrice: number;
     status?: string;
     paymentReference?: string;
+    shopId?: number;
+    shopMarkup?: number;
   }): Promise<DatagodOrder> {
     const result = await db.insert(datagodOrders).values({
       shortId: data.shortId,
@@ -395,6 +432,8 @@ class Storage {
       packagePrice: data.packagePrice,
       status: data.status || "PAID",
       paymentReference: data.paymentReference || null,
+      shopId: data.shopId || null,
+      shopMarkup: data.shopMarkup || null,
     }).returning();
     return result[0];
   }
@@ -497,6 +536,8 @@ class Storage {
     status?: string;
     paymentReference?: string;
     supplierReference?: string;
+    shopId?: number;
+    shopMarkup?: number;
   }): Promise<AtOrder> {
     const result = await db.insert(atOrders).values({
       shortId: data.shortId,
@@ -506,6 +547,8 @@ class Storage {
       status: data.status || "PAID",
       paymentReference: data.paymentReference || null,
       supplierReference: data.supplierReference || null,
+      shopId: data.shopId || null,
+      shopMarkup: data.shopMarkup || null,
     }).returning();
     return result[0];
   }
@@ -586,6 +629,8 @@ class Storage {
     status?: string;
     paymentReference?: string;
     supplierReference?: string;
+    shopId?: number;
+    shopMarkup?: number;
   }): Promise<TelecelOrder> {
     const result = await db.insert(telecelOrders).values({
       shortId: data.shortId,
@@ -595,6 +640,8 @@ class Storage {
       status: data.status || "PAID",
       paymentReference: data.paymentReference || null,
       supplierReference: data.supplierReference || null,
+      shopId: data.shopId || null,
+      shopMarkup: data.shopMarkup || null,
     }).returning();
     return result[0];
   }

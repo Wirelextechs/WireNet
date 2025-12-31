@@ -128,6 +128,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const item = items[index] || {};
         const phoneNumber = String(item.phoneNumber || "");
         const email = item.email ? String(item.email) : undefined;
+        const shopId = item.shopId ? Number(item.shopId) : undefined;
+        const shopMarkup = item.shopMarkup ? Number(item.shopMarkup) : undefined;
 
         if (service === "fastnet") {
           const dataAmount = String(item.dataAmount || "");
@@ -148,6 +150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             customerPhone: phoneNumber,
             packageDetails: dataAmount,
             packagePrice: price,
+            shopId,
+            shopMarkup,
             status: "PROCESSING",
             paymentReference: reference,
           });
@@ -203,6 +207,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             packagePrice: price,
             status: "PROCESSING",
             paymentReference: reference,
+            shopId,
+            shopMarkup,
           });
           created++;
 
@@ -255,6 +261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             packagePrice: price,
             status: "PROCESSING",
             paymentReference: reference,
+            shopId,
+            shopMarkup,
           });
           created++;
 
@@ -307,6 +315,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             packagePrice: price,
             status: "PAID",
             paymentReference: reference,
+            shopId,
+            shopMarkup,
           });
           created++;
         }
