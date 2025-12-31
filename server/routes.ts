@@ -864,6 +864,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
       
+      console.log(`📝 [FastNet Purchase] Request received:`, { 
+        phoneNumber, 
+        dataAmount, 
+        price, 
+        gateway, 
+        shopId: shopId || "none",
+        shopMarkup: shopMarkup || "none"
+      });
+      
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
       }
@@ -901,6 +910,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create order record in database with appropriate status
       // Each order gets unique shortId, but shares paymentReference for bulk orders
+      console.log(`📝 [FastNet Purchase] Creating order with: shortId=${uniqueShortId}, shopId=${shopId || "null"}, shopMarkup=${shopMarkup || "null"}`);
+      
       const order = await storage.createFastnetOrder({
         shortId: uniqueShortId,
         customerPhone: phoneNumber,
