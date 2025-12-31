@@ -619,7 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview",
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: "lax",
@@ -2399,10 +2399,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shopStatus: shop?.status
       };
 
-      res.json({
-        message: "Login successful",
-        user: { id: user.id, email: user.email, name: user.name },
-        shop: shop ? { id: shop.id, shopName: shop.shop_name, slug: shop.slug, status: shop.status } : null
+      // Save session before responding
+      (req.session as any).save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+
+        res.json({
+          message: "Login successful",
+          user: { id: user.id, email: user.email, name: user.name },
+          shop: shop ? { id: shop.id, shopName: shop.shop_name, slug: shop.slug, status: shop.status } : null
+        });
       });
     } catch (error) {
       console.error("User login error:", error);
