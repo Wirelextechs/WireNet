@@ -734,71 +734,27 @@ class Storage {
       console.log(`🔍 [Storage] Querying orders for shop ${shopId}...`);
       
       const [fastnetOrds, datagodOrds, atOrds, telecelOrds] = await Promise.all([
-        db.select({
-          id: fastnetOrders.id,
-          shortId: fastnetOrders.shortId,
-          customerPhone: fastnetOrders.customerPhone,
-          packageName: fastnetOrders.packageName,
-          packagePrice: fastnetOrders.packagePrice,
-          status: fastnetOrders.status,
-          paymentReference: fastnetOrders.paymentReference,
-          createdAt: fastnetOrders.createdAt,
-          shopId: fastnetOrders.shopId,
-          shopMarkup: fastnetOrders.shopMarkup,
-        }).from(fastnetOrders).where(eq(fastnetOrders.shopId, shopId)),
-        
-        db.select({
-          id: datagodOrders.id,
-          shortId: datagodOrders.shortId,
-          customerPhone: datagodOrders.customerPhone,
-          packageName: datagodOrders.packageName,
-          packagePrice: datagodOrders.packagePrice,
-          status: datagodOrders.status,
-          paymentReference: datagodOrders.paymentReference,
-          createdAt: datagodOrders.createdAt,
-          shopId: datagodOrders.shopId,
-          shopMarkup: datagodOrders.shopMarkup,
-        }).from(datagodOrders).where(eq(datagodOrders.shopId, shopId)),
-        
-        db.select({
-          id: atOrders.id,
-          shortId: atOrders.shortId,
-          customerPhone: atOrders.customerPhone,
-          packageName: atOrders.packageName,
-          packagePrice: atOrders.packagePrice,
-          status: atOrders.status,
-          paymentReference: atOrders.paymentReference,
-          createdAt: atOrders.createdAt,
-          shopId: atOrders.shopId,
-          shopMarkup: atOrders.shopMarkup,
-        }).from(atOrders).where(eq(atOrders.shopId, shopId)),
-        
-        db.select({
-          id: telecelOrders.id,
-          shortId: telecelOrders.shortId,
-          customerPhone: telecelOrders.customerPhone,
-          packageDetails: telecelOrders.packageDetails,
-          packagePrice: telecelOrders.packagePrice,
-          status: telecelOrders.status,
-          paymentReference: telecelOrders.paymentReference,
-          createdAt: telecelOrders.createdAt,
-          shopId: telecelOrders.shopId,
-          shopMarkup: telecelOrders.shopMarkup,
-        }).from(telecelOrders).where(eq(telecelOrders.shopId, shopId)),
+        db.select().from(fastnetOrders).where(eq(fastnetOrders.shopId, shopId)),
+        db.select().from(datagodOrders).where(eq(datagodOrders.shopId, shopId)),
+        db.select().from(atOrders).where(eq(atOrders.shopId, shopId)),
+        db.select().from(telecelOrders).where(eq(telecelOrders.shopId, shopId)),
       ]);
       
       console.log(`🔍 [Storage] Query results - FastNet: ${fastnetOrds.length}, DataGod: ${datagodOrds.length}, AT: ${atOrds.length}, Telecel: ${telecelOrds.length}`);
       
       // Combine all orders with service type and sort by created date descending
       const allOrders = [
-        ...fastnetOrds.map(o => ({ ...o, serviceType: 'fastnet', packageName: o.packageName })),
-        ...datagodOrds.map(o => ({ ...o, serviceType: 'datagod', packageName: o.packageName })),
-        ...atOrds.map(o => ({ ...o, serviceType: 'at', packageName: o.packageName })),
-        ...telecelOrds.map(o => ({ ...o, serviceType: 'telecel', packageName: o.packageDetails })),
+        ...fastnetOrds.map(o => ({ ...o, serviceType: 'fastnet' })),
+        ...datagodOrds.map(o => ({ ...o, serviceType: 'datagod' })),
+        ...atOrds.map(o => ({ ...o, serviceType: 'at' })),
+        ...telecelOrds.map(o => ({ ...o, serviceType: 'telecel' })),
       ];
       
       const sorted = allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       console.log(`🔍 [Storage] Total ${sorted.length} orders for shop ${shopId}`);
+      if (sorted.length > 0) {
+        console.log(`   Sample order:`, { shortId: sorted[0].shortId, shopMarkup: sorted[0].shopMarkup, serviceType: sorted[0].serviceType });
+      }
       
       return sorted;
     } catch (error) {
