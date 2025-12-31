@@ -2382,6 +2382,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Attempting to get user by email:", email.toLowerCase());
         user = await shopUsersDB.getByEmail(email.toLowerCase());
         console.log("User lookup result:", user ? "Found" : "Not found");
+        if (user) {
+          console.log("User object keys:", Object.keys(user));
+          console.log("User object:", JSON.stringify(user, null, 2));
+        }
       } catch (dbError: any) {
         console.error("Database error during login:", dbError.message || dbError);
         console.error("Full error:", dbError);
