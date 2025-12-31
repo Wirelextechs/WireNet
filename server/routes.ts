@@ -37,6 +37,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug endpoint to check environment and Supabase connectivity
+  app.get("/api/debug/config", (req, res) => {
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+    const sessionSecret = process.env.SESSION_SECRET || '';
+    
+    res.json({
+      supabaseUrl: supabaseUrl ? "✓ Set" : "✗ Missing",
+      supabaseKey: supabaseKey ? "✓ Set" : "✗ Missing",
+      sessionSecret: sessionSecret ? "✓ Set" : "✗ Missing",
+      databaseUrl: process.env.DATABASE_URL ? "✓ Set" : "✗ Missing",
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
+    });
+  });
+
   // Paystack webhook (used to recover/create orders even if client callback fails)
   app.post("/api/paystack/webhook", async (req: any, res) => {
     try {
@@ -2363,9 +2379,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user from Supabase
       let user;
       try {
+        console.log("Attempting to get user by email:", email.toLowerCase());
         user = await shopUsersDB.getByEmail(email.toLowerCase());
+        console.log("User lookup result:", user ? "Found" : "Not found");
       } catch (dbError: any) {
-        console.error("Database error during login:", dbError);
+        console.error("Database error during login:", dbError.message || dbError);
+        console.error("Full error:", dbError);
         return res.status(503).json({ message: "Database error. Please try again later." });
       }
       
@@ -2373,9 +2392,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      const validPassword = await bcrypt.compare(password, user.password_hash);
-      if (!validPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
+      try {
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+      } catch (bcryptError: any) {
+        console.error("Password comparison error:", bcryptError);
+        return res.status(500).json({ message: "Login failed" });
       }
 
       // Get user's shop from Supabase
