@@ -740,6 +740,82 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
+  // Get all shop orders from all service tables
+  async getShopOrdersByShopId(shopId: number): Promise<any[]> {
+    try {
+      const [fastnetOrds, datagodOrds, atOrds, telecelOrds] = await Promise.all([
+        db.select({
+          id: fastnetOrders.id,
+          shortId: fastnetOrders.shortId,
+          serviceType: sql`'fastnet'`,
+          customerPhone: fastnetOrders.customerPhone,
+          packageName: fastnetOrders.packageName,
+          packagePrice: fastnetOrders.packagePrice,
+          status: fastnetOrders.status,
+          paymentReference: fastnetOrders.paymentReference,
+          createdAt: fastnetOrders.createdAt,
+          shopId: fastnetOrders.shopId,
+          shopMarkup: fastnetOrders.shopMarkup,
+        }).from(fastnetOrders).where(eq(fastnetOrders.shopId, shopId)),
+        
+        db.select({
+          id: datagodOrders.id,
+          shortId: datagodOrders.shortId,
+          serviceType: sql`'datagod'`,
+          customerPhone: datagodOrders.customerPhone,
+          packageName: datagodOrders.packageName,
+          packagePrice: datagodOrders.packagePrice,
+          status: datagodOrders.status,
+          paymentReference: datagodOrders.paymentReference,
+          createdAt: datagodOrders.createdAt,
+          shopId: datagodOrders.shopId,
+          shopMarkup: datagodOrders.shopMarkup,
+        }).from(datagodOrders).where(eq(datagodOrders.shopId, shopId)),
+        
+        db.select({
+          id: atOrders.id,
+          shortId: atOrders.shortId,
+          serviceType: sql`'at'`,
+          customerPhone: atOrders.customerPhone,
+          packageName: atOrders.packageName,
+          packagePrice: atOrders.packagePrice,
+          status: atOrders.status,
+          paymentReference: atOrders.paymentReference,
+          createdAt: atOrders.createdAt,
+          shopId: atOrders.shopId,
+          shopMarkup: atOrders.shopMarkup,
+        }).from(atOrders).where(eq(atOrders.shopId, shopId)),
+        
+        db.select({
+          id: telecelOrders.id,
+          shortId: telecelOrders.shortId,
+          serviceType: sql`'telecel'`,
+          customerPhone: telecelOrders.customerPhone,
+          packageDetails: telecelOrders.packageDetails,
+          packagePrice: telecelOrders.packagePrice,
+          status: telecelOrders.status,
+          paymentReference: telecelOrders.paymentReference,
+          createdAt: telecelOrders.createdAt,
+          shopId: telecelOrders.shopId,
+          shopMarkup: telecelOrders.shopMarkup,
+        }).from(telecelOrders).where(eq(telecelOrders.shopId, shopId)),
+      ]);
+      
+      // Combine all orders and sort by created date descending
+      const allOrders = [
+        ...fastnetOrds.map(o => ({ ...o, packageName: o.packageName })),
+        ...datagodOrds.map(o => ({ ...o, packageName: o.packageName })),
+        ...atOrds.map(o => ({ ...o, packageName: o.packageName })),
+        ...telecelOrds.map(o => ({ ...o, packageName: o.packageDetails })),
+      ];
+      
+      return allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error("Error fetching shop orders:", error);
+      return [];
+    }
+  }
+
   // AT Packages
   async createAtPackage(data: InsertAtPackage): Promise<AtPackage> {
     const result = await db.insert(atPackages).values(data).returning();

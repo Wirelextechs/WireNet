@@ -2722,14 +2722,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ orders: [], total: 0 });
       }
 
-      // Get orders from Supabase
-      let allOrders: any[] = [];
+      // Get orders from all service tables using the new storage method
+      const allOrders = await storage.getShopOrdersByShopId(shop.id);
       
-      try {
-        allOrders = await shopOrdersDB.getByShopId(shop.id);
-      } catch (orderErr: any) {
-        console.log("Error fetching shop orders:", orderErr);
-      }
+      console.log(`✅ Fetched ${allOrders.length} orders for shop ${shop.id}`);
 
       res.json({ orders: allOrders, total: allOrders.length });
     } catch (error: any) {
@@ -2747,18 +2743,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        const orderStats = await shopOrdersDB.getStats(shop.id);
+        // Get all orders for this shop
+        const shopOrders = await storage.getShopOrdersByShopId(shop.id);
+        const totalOrders = shopOrders.length;
+        
+        // Calculate total earnings from orders
+        let totalEarningsFromOrders = 0;
+        shopOrders.forEach((order: any) => {
+          totalEarningsFromOrders += parseFloat(order.shopMarkup) || 0;
+        });
+        
+        // Use shop's tracked balance (which is updated when payments are confirmed)
         res.json({
-          totalOrders: orderStats.totalOrders,
-          totalEarnings: parseFloat(shop.total_earnings) || 0,
-          availableBalance: parseFloat(shop.available_balance) || 0,
+          totalOrders,
+          totalEarnings: parseFloat(shop.totalEarnings) || totalEarningsFromOrders,
+          availableBalance: parseFloat(shop.availableBalance) || 0,
           pendingWithdrawals: 0
         });
       } catch (statsError: any) {
+        console.error("Stats calculation error:", statsError);
         return res.json({
           totalOrders: 0,
-          totalEarnings: parseFloat(shop.total_earnings) || 0,
-          availableBalance: parseFloat(shop.available_balance) || 0,
+          totalEarnings: parseFloat(shop.totalEarnings) || 0,
+          availableBalance: parseFloat(shop.availableBalance) || 0,
           pendingWithdrawals: 0
         });
       }

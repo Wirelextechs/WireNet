@@ -108,6 +108,20 @@ export default function ShopDashboard() {
     checkAuth();
   }, []);
 
+  // Refresh data every 5 seconds to show new orders and balance updates
+  useEffect(() => {
+    if (!shop || !user) return;
+    
+    const interval = setInterval(() => {
+      Promise.all([
+        loadStats(),
+        loadOrders()
+      ]).catch(err => console.error("Error refreshing dashboard:", err));
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [shop, user]);
+
   const checkAuth = async () => {
     try {
       const response = await fetch("/api/user/me", { credentials: "include" });
