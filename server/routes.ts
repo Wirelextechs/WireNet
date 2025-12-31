@@ -53,6 +53,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug endpoint to show order statistics (with/without shops)
+  app.get("/api/debug/order-stats", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const fastnetOrders = await storage.getFastnetOrders();
+      const datagodOrders = await storage.getDatagodOrders();
+      const atOrders = await storage.getAtOrders();
+      const telecelOrders = await storage.getTelecelOrders();
+
+      const calculateStats = (orders: any[]) => {
+        const withShop = orders.filter(o => o.shopId || o.shop_id).length;
+        const withoutShop = orders.filter(o => !o.shopId && !o.shop_id).length;
+        return { total: orders.length, withShop, withoutShop };
+      };
+
+      res.json({
+        fastnet: calculateStats(fastnetOrders),
+        datagod: calculateStats(datagodOrders),
+        at: calculateStats(atOrders),
+        telecel: calculateStats(telecelOrders),
+        total: {
+          all: fastnetOrders.length + datagodOrders.length + atOrders.length + telecelOrders.length,
+          withShop: [fastnetOrders, datagodOrders, atOrders, telecelOrders]
+            .flat()
+            .filter(o => o.shopId || o.shop_id).length,
+          withoutShop: [fastnetOrders, datagodOrders, atOrders, telecelOrders]
+            .flat()
+            .filter(o => !o.shopId && !o.shop_id).length,
+        }
+      });
+    } catch (error: any) {
+      console.error("Order stats error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Paystack webhook (used to recover/create orders even if client callback fails)
   app.post("/api/paystack/webhook", async (req: any, res) => {
     try {

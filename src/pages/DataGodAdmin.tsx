@@ -522,7 +522,18 @@ export default function DataGodAdmin() {
                             <td style={styles.tableCell}>{order.customerPhone}</td>
                             <td style={styles.tableCell}>{order.packageName}</td>
                             <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
-                            <td style={styles.tableCell}>{order.shopName || "-"}</td>
+                            <td style={styles.tableCell}>
+                              <span style={{ 
+                                padding: "4px 8px", 
+                                borderRadius: "4px",
+                                backgroundColor: order.shopName ? "#e8f5e9" : "#fff3e0",
+                                color: order.shopName ? "#2e7d32" : "#e65100",
+                                fontSize: "12px",
+                                fontWeight: "500"
+                              }}>
+                                {order.shopName ? order.shopName : "(Direct)"}
+                              </span>
+                            </td>
                             <td style={styles.tableCell}>
                               <select
                                 value={order.status}

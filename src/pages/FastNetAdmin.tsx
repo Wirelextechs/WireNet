@@ -615,7 +615,18 @@ export default function FastNetAdmin() {
                           <td style={styles.tableCell}>{order.customerPhone}</td>
                           <td style={styles.tableCell}>{order.packageDetails}</td>
                           <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
-                          <td style={styles.tableCell}>{order.shopName || "-"}</td>
+                          <td style={styles.tableCell}>
+                            <span style={{ 
+                              padding: "4px 8px", 
+                              borderRadius: "4px",
+                              backgroundColor: order.shopName ? "#e8f5e9" : "#fff3e0",
+                              color: order.shopName ? "#2e7d32" : "#e65100",
+                              fontSize: "12px",
+                              fontWeight: "500"
+                            }}>
+                              {order.shopName ? order.shopName : "(Direct)"}
+                            </span>
+                          </td>
                           <td style={styles.tableCell}>
                             <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} style={{ ...styles.statusSelect, backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "FAILED" ? "#dc3545" : "#007bff" }}>
                               <option value="PAID">Paid</option>

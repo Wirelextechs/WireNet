@@ -417,7 +417,18 @@ export default function AtAdmin() {
                     <div style={styles.tableCell}>{order.customerPhone}</div>
                     <div style={styles.tableCell}>{order.packageDetails}</div>
                     <div style={styles.tableCell}>GH₵{order.packagePrice}</div>
-                    <div style={styles.tableCell}>{order.shopName || "-"}</div>
+                    <div style={styles.tableCell}>
+                      <span style={{ 
+                        padding: "4px 8px", 
+                        borderRadius: "4px",
+                        backgroundColor: order.shopName ? "#e8f5e9" : "#fff3e0",
+                        color: order.shopName ? "#2e7d32" : "#e65100",
+                        fontSize: "12px",
+                        fontWeight: "500"
+                      }}>
+                        {order.shopName ? order.shopName : "(Direct)"}
+                      </span>
+                    </div>
                     <div style={styles.tableCell}>
                       <select
                         value={order.status}
