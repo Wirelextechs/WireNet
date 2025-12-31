@@ -306,6 +306,7 @@ class Storage {
     supplierResponse?: string;
     shopId?: number;
     shopMarkup?: number;
+    paymentConfirmed?: boolean;
   }): Promise<FastnetOrder> {
     const result = await db.insert(fastnetOrders).values({
       shortId: data.shortId,
@@ -318,6 +319,7 @@ class Storage {
       supplierResponse: data.supplierResponse || null,
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
+      paymentConfirmed: data.paymentConfirmed ?? (!!data.paymentReference), // True if Paystack confirmed (has paymentReference)
     }).returning();
     
     const order = result[0];
@@ -376,7 +378,7 @@ class Storage {
     }
   }
 
-  async updateFastnetOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<FastnetOrder | null> {
+  async updateFastnetOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, paymentConfirmed?: boolean): Promise<FastnetOrder | null> {
     const updateData: Partial<InsertFastnetOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -384,6 +386,7 @@ class Storage {
     
     if (supplierUsed) updateData.supplierUsed = supplierUsed;
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
+    if (paymentConfirmed !== undefined) updateData.paymentConfirmed = paymentConfirmed;
 
     const result = await db.update(fastnetOrders)
       .set(updateData)
@@ -413,6 +416,7 @@ class Storage {
     paymentReference?: string;
     shopId?: number;
     shopMarkup?: number;
+    paymentConfirmed?: boolean;
   }): Promise<DatagodOrder> {
     const result = await db.insert(datagodOrders).values({
       shortId: data.shortId,
@@ -423,6 +427,7 @@ class Storage {
       paymentReference: data.paymentReference || null,
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
+      paymentConfirmed: data.paymentConfirmed ?? (!!data.paymentReference), // True if Paystack confirmed (has paymentReference)
     }).returning();
     
     const order = result[0];
@@ -467,9 +472,16 @@ class Storage {
     }
   }
 
-  async updateDatagodOrderStatus(id: number, status: string): Promise<DatagodOrder | null> {
+  async updateDatagodOrderStatus(id: number, status: string, paymentConfirmed?: boolean): Promise<DatagodOrder | null> {
+    const updateData: { status: string; updatedAt: Date; paymentConfirmed?: boolean } = {
+      status,
+      updatedAt: new Date(),
+    };
+    
+    if (paymentConfirmed !== undefined) updateData.paymentConfirmed = paymentConfirmed;
+
     const result = await db.update(datagodOrders)
-      .set({ status, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(datagodOrders.id, id))
       .returning();
     return result.length > 0 ? result[0] : null;
@@ -535,6 +547,7 @@ class Storage {
     supplierReference?: string;
     shopId?: number;
     shopMarkup?: number;
+    paymentConfirmed?: boolean;
   }): Promise<AtOrder> {
     const result = await db.insert(atOrders).values({
       shortId: data.shortId,
@@ -546,6 +559,7 @@ class Storage {
       supplierReference: data.supplierReference || null,
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
+      paymentConfirmed: data.paymentConfirmed ?? (!!data.paymentReference), // True if Paystack confirmed (has paymentReference)
     }).returning();
     
     const order = result[0];
@@ -599,7 +613,7 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
-  async updateAtOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, supplierReference?: string): Promise<AtOrder | null> {
+  async updateAtOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, supplierReference?: string, paymentConfirmed?: boolean): Promise<AtOrder | null> {
     const updateData: Partial<InsertAtOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -608,6 +622,7 @@ class Storage {
     if (supplierUsed) updateData.supplierUsed = supplierUsed;
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
     if (supplierReference) updateData.supplierReference = supplierReference;
+    if (paymentConfirmed !== undefined) updateData.paymentConfirmed = paymentConfirmed;
 
     console.log(`🔧 Updating AT order ${id} with status ${status}`, updateData);
     
@@ -636,6 +651,7 @@ class Storage {
     supplierReference?: string;
     shopId?: number;
     shopMarkup?: number;
+    paymentConfirmed?: boolean;
   }): Promise<TelecelOrder> {
     const result = await db.insert(telecelOrders).values({
       shortId: data.shortId,
@@ -647,6 +663,7 @@ class Storage {
       supplierReference: data.supplierReference || null,
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
+      paymentConfirmed: data.paymentConfirmed ?? (!!data.paymentReference), // True if Paystack confirmed (has paymentReference)
     }).returning();
     
     const order = result[0];
@@ -700,7 +717,7 @@ class Storage {
     return result.length > 0 ? result[0] : null;
   }
 
-  async updateTelecelOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, supplierReference?: string): Promise<TelecelOrder | null> {
+  async updateTelecelOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string, supplierReference?: string, paymentConfirmed?: boolean): Promise<TelecelOrder | null> {
     const updateData: Partial<InsertTelecelOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -709,6 +726,7 @@ class Storage {
     if (supplierUsed) updateData.supplierUsed = supplierUsed;
     if (supplierResponse) updateData.supplierResponse = supplierResponse;
     if (supplierReference) updateData.supplierReference = supplierReference;
+    if (paymentConfirmed !== undefined) updateData.paymentConfirmed = paymentConfirmed;
 
     console.log(`🔧 Updating Telecel order ${id} with status ${status}`, updateData);
     
@@ -718,8 +736,6 @@ class Storage {
       .returning();
     
     console.log(`✅ Telecel order ${id} updated. Result:`, result);
-    return result.length > 0 ? result[0] : null;
-    
     return result.length > 0 ? result[0] : null;
   }
 

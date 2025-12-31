@@ -487,12 +487,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 [MOOLRE WEBHOOK] Order: ${externalref}, Transaction: ${transactionid}, Code: ${code}, TxStatus: ${txstatus}`);
 
-      // Determine if this is a successful payment
-      // Moolre success: code="P01" and txstatus=1, OR legacy codes TR000/0
-      const paymentSuccessful = (code === "P01" && txstatus === 1) || code === "TR000" || code === "0";
+      // Moolre success: ONLY code="P01" with txstatus=1 means payment is confirmed
+      // TR000 is just the prompt sent to customer (not confirmed yet)
+      const paymentConfirmed = (code === "P01" && txstatus === 1);
 
-      if (!paymentSuccessful) {
-        // Payment not successful yet
+      if (!paymentConfirmed) {
+        // Payment not confirmed yet
         console.log(`📊 [MOOLRE WEBHOOK] Payment not confirmed (code: ${code}, txstatus: ${txstatus})`);
         return res.status(200).json({ ok: true, externalref, message: "Payment not yet confirmed" });
       }
@@ -530,7 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const fastnetOrder of matchingFastnetOrders) {
         console.log(`🚀 [MOOLRE WEBHOOK] Triggering FastNet fulfillment for order ${fastnetOrder.shortId} (ID: ${fastnetOrder.id})`);
-        await storage.updateFastnetOrderStatus(fastnetOrder.id, "PAID", transactionid, message);
+        await storage.updateFastnetOrderStatus(fastnetOrder.id, "PAID", transactionid, message, undefined, true);
         
         // Trigger supplier fulfillment
         try {
@@ -561,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const atOrder of matchingAtOrders) {
         console.log(`🚀 [MOOLRE WEBHOOK] Triggering AT fulfillment for order ${atOrder.shortId} (ID: ${atOrder.id})`);
-        await storage.updateAtOrderStatus(atOrder.id, "PAID", transactionid, message);
+        await storage.updateAtOrderStatus(atOrder.id, "PAID", transactionid, message, undefined, true);
         
         // Trigger supplier fulfillment
         try {
@@ -594,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const telecelOrder of matchingTelecelOrders) {
         console.log(`🚀 [MOOLRE WEBHOOK] Triggering Telecel fulfillment for order ${telecelOrder.shortId} (ID: ${telecelOrder.id})`);
-        await storage.updateTelecelOrderStatus(telecelOrder.id, "PAID", transactionid, message);
+        await storage.updateTelecelOrderStatus(telecelOrder.id, "PAID", transactionid, message, undefined, true);
         
         // Trigger supplier fulfillment
         try {
@@ -627,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const datagodOrder of matchingDatagodOrders) {
         console.log(`✅ [MOOLRE WEBHOOK] Updating DataGod order ${datagodOrder.shortId} to PAID`);
-        await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID");
+        await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID", true);
         updated = true;
       }
 
@@ -2814,14 +2814,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Get all orders for this shop
         const shopOrders = await storage.getShopOrdersByShopId(shop.id);
-        const totalOrders = shopOrders.length;
         
-        console.log(`📊 [Shop Stats] Shop ${shop.id} has ${totalOrders} orders`);
+        // Only count orders with confirmed payments
+        const confirmedOrders = shopOrders.filter(o => o.paymentConfirmed === true);
+        const totalOrders = confirmedOrders.length;
         
-        // Calculate total revenue and shop markup from orders
+        console.log(`📊 [Shop Stats] Shop ${shop.id} has ${totalOrders} confirmed orders (out of ${shopOrders.length} total)`);
+        
+        // Calculate total revenue and shop markup from confirmed orders only
         let totalRevenue = 0;
         let totalEarningsFromOrders = 0;
-        shopOrders.forEach((order: any) => {
+        confirmedOrders.forEach((order: any) => {
           // For order value/revenue, use packagePrice (all order tables use this field)
           const price = parseFloat(order.packagePrice) || 0;
           totalRevenue += price;

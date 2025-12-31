@@ -85,6 +85,7 @@ export const fastnetOrders = pgTable("fastnet_orders", {
   supplierResponse: text("supplier_response"),
   shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
   shopMarkup: real("shop_markup"), // Markup amount earned by shop
+  paymentConfirmed: boolean("payment_confirmed").notNull().default(false), // Payment confirmed by gateway (Paystack/Moolre P01)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -128,6 +129,7 @@ export const datagodOrders = pgTable("datagod_orders", {
   paymentReference: varchar("payment_reference", { length: 100 }),
   shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
   shopMarkup: real("shop_markup"), // Markup amount earned by shop
+  paymentConfirmed: boolean("payment_confirmed").notNull().default(false), // Payment confirmed by gateway (Paystack/Moolre P01)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -161,6 +163,7 @@ export const atOrders = pgTable("at_orders", {
   supplierResponse: text("supplier_response"),
   shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
   shopMarkup: real("shop_markup"), // Markup amount earned by shop
+  paymentConfirmed: boolean("payment_confirmed").notNull().default(false), // Payment confirmed by gateway (Paystack/Moolre P01)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -188,6 +191,7 @@ export const telecelOrders = pgTable("telecel_orders", {
   supplierResponse: text("supplier_response"),
   shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
   shopMarkup: real("shop_markup"), // Markup amount earned by shop
+  paymentConfirmed: boolean("payment_confirmed").notNull().default(false), // Payment confirmed by gateway (Paystack/Moolre P01)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
