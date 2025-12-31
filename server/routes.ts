@@ -2760,15 +2760,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get shop orders
   app.get("/api/shop/orders", isUserAuthenticated, async (req: any, res) => {
     try {
+      console.log(`📋 [Shop Orders] Fetching orders for user ${req.shopUser.id}`);
+      
       const shop = await shopsDB.getByUserId(req.shopUser.id);
       if (!shop) {
+        console.log(`❌ [Shop Orders] Shop not found for user ${req.shopUser.id}`);
         return res.json({ orders: [], total: 0 });
       }
+
+      console.log(`📋 [Shop Orders] Found shop ${shop.id}, querying for orders...`);
 
       // Get orders from all service tables using the new storage method
       const allOrders = await storage.getShopOrdersByShopId(shop.id);
       
-      console.log(`✅ Fetched ${allOrders.length} orders for shop ${shop.id}`);
+      console.log(`✅ [Shop Orders] Fetched ${allOrders.length} orders for shop ${shop.id}`);
+      if (allOrders.length > 0) {
+        console.log(`   First order:`, allOrders[0]);
+      }
 
       res.json({ orders: allOrders, total: allOrders.length });
     } catch (error: any) {
@@ -2782,13 +2790,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const shop = await shopsDB.getByUserId(req.shopUser.id);
       if (!shop) {
+        console.log(`❌ Shop not found for user ${req.shopUser.id}`);
         return res.json({ totalOrders: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 });
       }
+
+      console.log(`📊 [Shop Stats] Fetching stats for shop ${shop.id}:`, {
+        id: shop.id,
+        totalEarnings: shop.totalEarnings,
+        availableBalance: shop.availableBalance
+      });
 
       try {
         // Get all orders for this shop
         const shopOrders = await storage.getShopOrdersByShopId(shop.id);
         const totalOrders = shopOrders.length;
+        
+        console.log(`📊 [Shop Stats] Shop ${shop.id} has ${totalOrders} orders`);
         
         // Calculate total earnings from orders
         let totalEarningsFromOrders = 0;
@@ -2797,12 +2814,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Use shop's tracked balance (which is updated when payments are confirmed)
-        res.json({
+        const stats = {
           totalOrders,
           totalEarnings: parseFloat(shop.totalEarnings) || totalEarningsFromOrders,
           availableBalance: parseFloat(shop.availableBalance) || 0,
           pendingWithdrawals: 0
-        });
+        };
+        
+        console.log(`📊 [Shop Stats] Returning stats:`, stats);
+        res.json(stats);
       } catch (statsError: any) {
         console.error("Stats calculation error:", statsError);
         return res.json({

@@ -324,34 +324,13 @@ class Storage {
     
     // Update shop balance immediately when payment is confirmed
     if (order && data.shopId && data.shopMarkup) {
+      console.log(`📝 [FastNet] Order created with shopId=${data.shopId}, shopMarkup=${data.shopMarkup}. Now updating balance...`);
       await this.updateShopBalance(data.shopId, data.shopMarkup);
+    } else if (order) {
+      console.log(`📝 [FastNet] Order created without shop (direct order). shopId=${data.shopId}, shopMarkup=${data.shopMarkup}`);
     }
     
     return order;
-  }
-
-  private async updateShopBalance(shopId: number, markupAmount: number): Promise<void> {
-    try {
-      console.log(`💰 Updating shop ${shopId} balance with markup: ${markupAmount}`);
-      const shop = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
-      if (shop.length > 0) {
-        const currentShop = shop[0];
-        const newEarnings = (currentShop.totalEarnings || 0) + markupAmount;
-        const newBalance = (currentShop.availableBalance || 0) + markupAmount;
-        
-        await db.update(shops)
-          .set({
-            totalEarnings: newEarnings,
-            availableBalance: newBalance,
-            updatedAt: new Date(),
-          })
-          .where(eq(shops.id, shopId));
-        
-        console.log(`✅ Shop balance updated: +${markupAmount}`);
-      }
-    } catch (err) {
-      console.error(`❌ Failed to update shop balance:`, err);
-    }
   }
 
   async getFastnetOrders(): Promise<(FastnetOrder & { shopName: string | null })[]> {
@@ -752,6 +731,8 @@ class Storage {
   // Get all shop orders from all service tables
   async getShopOrdersByShopId(shopId: number): Promise<any[]> {
     try {
+      console.log(`🔍 [Storage] Querying orders for shop ${shopId}...`);
+      
       const [fastnetOrds, datagodOrds, atOrds, telecelOrds] = await Promise.all([
         db.select({
           id: fastnetOrders.id,
@@ -810,6 +791,8 @@ class Storage {
         }).from(telecelOrders).where(eq(telecelOrders.shopId, shopId)),
       ]);
       
+      console.log(`🔍 [Storage] Query results - FastNet: ${fastnetOrds.length}, DataGod: ${datagodOrds.length}, AT: ${atOrds.length}, Telecel: ${telecelOrds.length}`);
+      
       // Combine all orders and sort by created date descending
       const allOrders = [
         ...fastnetOrds.map(o => ({ ...o, packageName: o.packageName })),
@@ -818,7 +801,10 @@ class Storage {
         ...telecelOrds.map(o => ({ ...o, packageName: o.packageDetails })),
       ];
       
-      return allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const sorted = allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      console.log(`🔍 [Storage] Total ${sorted.length} orders for shop ${shopId}`);
+      
+      return sorted;
     } catch (error) {
       console.error("Error fetching shop orders:", error);
       return [];
@@ -935,13 +921,23 @@ class Storage {
   }
 
   async updateShopBalance(shopId: number, markupAmount: number): Promise<void> {
-    await db.update(shops)
-      .set({
-        totalEarnings: sql`${shops.totalEarnings} + ${markupAmount}`,
-        availableBalance: sql`${shops.availableBalance} + ${markupAmount}`,
-        updatedAt: new Date()
-      })
-      .where(eq(shops.id, shopId));
+    try {
+      console.log(`💰 [Shop] Updating shop ${shopId} balance with markup: ${markupAmount}`);
+      const result = await db.update(shops)
+        .set({
+          totalEarnings: sql`${shops.totalEarnings} + ${markupAmount}`,
+          availableBalance: sql`${shops.availableBalance} + ${markupAmount}`,
+          updatedAt: new Date()
+        })
+        .where(eq(shops.id, shopId))
+        .returning();
+      
+      if (result.length > 0) {
+        console.log(`✅ [Shop] Balance updated. New balance: ${result[0].availableBalance}, New earnings: ${result[0].totalEarnings}`);
+      }
+    } catch (err) {
+      console.error(`❌ [Shop] Failed to update shop balance:`, err);
+    }
   }
 
   async deductShopBalance(shopId: number, amount: number): Promise<void> {
