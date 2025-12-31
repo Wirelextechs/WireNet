@@ -650,8 +650,8 @@ export default function ShopDashboard() {
                             <td className="py-2 px-2">{new Date(order.createdAt).toLocaleDateString()}</td>
                             <td className="py-2 px-2">{order.phoneNumber}</td>
                             <td className="py-2 px-2">{order.capacity} ({order.network})</td>
-                            <td className="py-2 px-2">GHS {order.price.toFixed(2)}</td>
-                            <td className="py-2 px-2 text-green-600">+GHS {(order.shopMarkup || 0).toFixed(2)}</td>
+                            <td className="py-2 px-2">GHS {typeof order.price === 'number' ? order.price.toFixed(2) : '0.00'}</td>
+                            <td className="py-2 px-2 text-green-600">+GHS {(typeof order.shopMarkup === 'number' ? order.shopMarkup : 0).toFixed(2)}</td>
                             <td className="py-2 px-2">
                               <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(order.status)}`}>
                                 {order.status}
@@ -778,8 +778,8 @@ export default function ShopDashboard() {
                           <td className="py-2 px-2 capitalize">{order.serviceType}</td>
                           <td className="py-2 px-2">{order.phoneNumber}</td>
                           <td className="py-2 px-2">{order.capacity}</td>
-                          <td className="py-2 px-2">GHS {order.price.toFixed(2)}</td>
-                          <td className="py-2 px-2 text-green-600">+GHS {(order.shopMarkup || 0).toFixed(2)}</td>
+                          <td className="py-2 px-2">GHS {typeof order.price === 'number' ? order.price.toFixed(2) : '0.00'}</td>
+                          <td className="py-2 px-2 text-green-600">+GHS {(typeof order.shopMarkup === 'number' ? order.shopMarkup : 0).toFixed(2)}</td>
                           <td className="py-2 px-2">
                             <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(order.status)}`}>
                               {order.status}
@@ -820,7 +820,7 @@ export default function ShopDashboard() {
                   
                   <div>
                     <label className="text-sm font-medium">Available Balance</label>
-                    <p className="text-2xl font-bold text-green-600">GHS {stats?.availableBalance.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-green-600">GHS {((stats?.availableBalance ?? 0) as number).toFixed(2)}</p>
                   </div>
                   
                   <div className="space-y-2">
@@ -893,9 +893,9 @@ export default function ShopDashboard() {
                         {withdrawals.map((w) => (
                           <tr key={w.id} className="border-b">
                             <td className="py-2 px-2">{new Date(w.requestedAt).toLocaleDateString()}</td>
-                            <td className="py-2 px-2">GHS {w.amount.toFixed(2)}</td>
-                            <td className="py-2 px-2">GHS {w.fee.toFixed(2)}</td>
-                            <td className="py-2 px-2 font-semibold">GHS {w.netAmount.toFixed(2)}</td>
+                            <td className="py-2 px-2">GHS {(typeof w.amount === 'number' ? w.amount : 0).toFixed(2)}</td>
+                            <td className="py-2 px-2">GHS {(typeof w.fee === 'number' ? w.fee : 0).toFixed(2)}</td>
+                            <td className="py-2 px-2 font-semibold">GHS {(typeof w.netAmount === 'number' ? w.netAmount : 0).toFixed(2)}</td>
                             <td className="py-2 px-2">
                               <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(w.status)}`}>
                                 {w.status}
