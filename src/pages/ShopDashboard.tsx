@@ -164,7 +164,14 @@ export default function ShopDashboard() {
       const response = await fetch("/api/shop/stats", { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
-        setStats(data);
+        // Ensure all required fields are present and are numbers
+        setStats({
+          totalOrders: typeof data.totalOrders === 'number' ? data.totalOrders : 0,
+          totalRevenue: typeof data.totalRevenue === 'number' ? data.totalRevenue : 0,
+          totalEarnings: typeof data.totalEarnings === 'number' ? data.totalEarnings : 0,
+          availableBalance: typeof data.availableBalance === 'number' ? data.availableBalance : 0,
+          pendingWithdrawals: typeof data.pendingWithdrawals === 'number' ? data.pendingWithdrawals : 0
+        });
       }
     } catch (error) {
       console.error("Failed to load stats:", error);
@@ -560,7 +567,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Revenue</p>
-                      <p className="text-2xl font-bold">GHS {(stats.totalRevenue ?? 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">GHS {((stats?.totalRevenue ?? 0) as number).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -574,7 +581,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Earnings</p>
-                      <p className="text-2xl font-bold">GHS {(stats.totalEarnings ?? 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">GHS {((stats?.totalEarnings ?? 0) as number).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -588,7 +595,7 @@ export default function ShopDashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Available Balance</p>
-                      <p className="text-2xl font-bold">GHS {(stats.availableBalance ?? 0).toFixed(2)}</p>
+                      <p className="text-2xl font-bold">GHS {((stats?.availableBalance ?? 0) as number).toFixed(2)}</p>
                     </div>
                   </div>
                 </CardContent>

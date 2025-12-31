@@ -2802,7 +2802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
       if (!shop) {
         console.log(`❌ Shop not found for user ${req.shopUser.id}`);
-        return res.json({ totalOrders: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 });
+        return res.json({ totalOrders: 0, totalRevenue: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 });
       }
 
       console.log(`📊 [Shop Stats] Fetching stats for shop ${shop.id}:`, {
@@ -2818,15 +2818,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log(`📊 [Shop Stats] Shop ${shop.id} has ${totalOrders} orders`);
         
-        // Calculate total earnings from orders
+        // Calculate total revenue and shop markup from orders
+        let totalRevenue = 0;
         let totalEarningsFromOrders = 0;
         shopOrders.forEach((order: any) => {
+          // For order value/revenue, use amount if available
+          const amount = parseFloat(order.amount) || 0;
+          totalRevenue += amount;
+          // Shop earnings is the markup amount
           totalEarningsFromOrders += parseFloat(order.shopMarkup) || 0;
         });
         
         // Use shop's tracked balance (which is updated when payments are confirmed)
         const stats = {
           totalOrders,
+          totalRevenue: totalRevenue || 0,
           totalEarnings: parseFloat(shop.totalEarnings) || totalEarningsFromOrders,
           availableBalance: parseFloat(shop.availableBalance) || 0,
           pendingWithdrawals: 0
@@ -2838,6 +2844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Stats calculation error:", statsError);
         return res.json({
           totalOrders: 0,
+          totalRevenue: 0,
           totalEarnings: parseFloat(shop.totalEarnings) || 0,
           availableBalance: parseFloat(shop.availableBalance) || 0,
           pendingWithdrawals: 0
@@ -2845,7 +2852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       console.error("Get shop stats error:", error);
-      res.json({ totalOrders: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 });
+      res.json({ totalOrders: 0, totalRevenue: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 });
     }
   });
 
