@@ -2822,9 +2822,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let totalRevenue = 0;
         let totalEarningsFromOrders = 0;
         shopOrders.forEach((order: any) => {
-          // For order value/revenue, use amount if available
-          const amount = parseFloat(order.amount) || 0;
-          totalRevenue += amount;
+          // For order value/revenue, use packagePrice (all order tables use this field)
+          const price = parseFloat(order.packagePrice) || 0;
+          totalRevenue += price;
           // Shop earnings is the markup amount
           totalEarningsFromOrders += parseFloat(order.shopMarkup) || 0;
         });

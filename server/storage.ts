@@ -753,7 +753,7 @@ class Storage {
       const sorted = allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       console.log(`🔍 [Storage] Total ${sorted.length} orders for shop ${shopId}`);
       if (sorted.length > 0) {
-        console.log(`   Sample order:`, { shortId: sorted[0].shortId, shopMarkup: sorted[0].shopMarkup, serviceType: sorted[0].serviceType });
+        console.log(`   Sample order:`, { shortId: sorted[0].shortId, packagePrice: sorted[0].packagePrice, shopMarkup: sorted[0].shopMarkup, serviceType: sorted[0].serviceType });
       }
       
       return sorted;
