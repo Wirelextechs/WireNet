@@ -319,7 +319,39 @@ class Storage {
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
     }).returning();
-    return result[0];
+    
+    const order = result[0];
+    
+    // Update shop balance immediately when payment is confirmed
+    if (order && data.shopId && data.shopMarkup) {
+      await this.updateShopBalance(data.shopId, data.shopMarkup);
+    }
+    
+    return order;
+  }
+
+  private async updateShopBalance(shopId: number, markupAmount: number): Promise<void> {
+    try {
+      console.log(`💰 Updating shop ${shopId} balance with markup: ${markupAmount}`);
+      const shop = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1);
+      if (shop.length > 0) {
+        const currentShop = shop[0];
+        const newEarnings = (currentShop.totalEarnings || 0) + markupAmount;
+        const newBalance = (currentShop.availableBalance || 0) + markupAmount;
+        
+        await db.update(shops)
+          .set({
+            totalEarnings: newEarnings,
+            availableBalance: newBalance,
+            updatedAt: new Date(),
+          })
+          .where(eq(shops.id, shopId));
+        
+        console.log(`✅ Shop balance updated: +${markupAmount}`);
+      }
+    } catch (err) {
+      console.error(`❌ Failed to update shop balance:`, err);
+    }
   }
 
   async getFastnetOrders(): Promise<(FastnetOrder & { shopName: string | null })[]> {
@@ -357,10 +389,6 @@ class Storage {
   }
 
   async updateFastnetOrderStatus(id: number, status: string, supplierUsed?: string, supplierResponse?: string): Promise<FastnetOrder | null> {
-    // First get the order to see if it has a shopId
-    const orderBefore = await db.select().from(fastnetOrders).where(eq(fastnetOrders.id, id)).limit(1);
-    const order = orderBefore.length > 0 ? orderBefore[0] : null;
-    
     const updateData: Partial<InsertFastnetOrder> & { updatedAt: Date } = {
       status,
       updatedAt: new Date(),
@@ -374,34 +402,7 @@ class Storage {
       .where(eq(fastnetOrders.id, id))
       .returning();
     
-    const updatedOrder = result.length > 0 ? result[0] : null;
-    
-    // Update shop balance if order was fulfilled and belongs to a shop
-    if (updatedOrder && status === "FULFILLED" && order && order.shopId && order.shopMarkup) {
-      console.log(`💰 Updating shop ${order.shopId} balance with markup: ${order.shopMarkup}`);
-      try {
-        const shop = await db.select().from(shops).where(eq(shops.id, order.shopId)).limit(1);
-        if (shop.length > 0) {
-          const currentShop = shop[0];
-          const newEarnings = (currentShop.totalEarnings || 0) + order.shopMarkup;
-          const newBalance = (currentShop.availableBalance || 0) + order.shopMarkup;
-          
-          await db.update(shops)
-            .set({
-              totalEarnings: newEarnings,
-              availableBalance: newBalance,
-              updatedAt: new Date(),
-            })
-            .where(eq(shops.id, order.shopId));
-          
-          console.log(`✅ Shop balance updated: +${order.shopMarkup}`);
-        }
-      } catch (err) {
-        console.error(`❌ Failed to update shop balance:`, err);
-      }
-    }
-    
-    return updatedOrder;
+    return result.length > 0 ? result[0] : null;
   }
 
   async getFastnetOrderByShortId(shortId: string): Promise<FastnetOrder | null> {
@@ -435,7 +436,15 @@ class Storage {
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
     }).returning();
-    return result[0];
+    
+    const order = result[0];
+    
+    // Update shop balance immediately when payment is confirmed
+    if (order && data.shopId && data.shopMarkup) {
+      await this.updateShopBalance(data.shopId, data.shopMarkup);
+    }
+    
+    return order;
   }
 
   async getDatagodOrders(): Promise<(DatagodOrder & { shopName: string | null })[]> {
@@ -550,7 +559,15 @@ class Storage {
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
     }).returning();
-    return result[0];
+    
+    const order = result[0];
+    
+    // Update shop balance immediately when payment is confirmed
+    if (order && data.shopId && data.shopMarkup) {
+      await this.updateShopBalance(data.shopId, data.shopMarkup);
+    }
+    
+    return order;
   }
 
   async getAtOrders(): Promise<(AtOrder & { shopName: string | null })[]> {
@@ -643,7 +660,15 @@ class Storage {
       shopId: data.shopId || null,
       shopMarkup: data.shopMarkup || null,
     }).returning();
-    return result[0];
+    
+    const order = result[0];
+    
+    // Update shop balance immediately when payment is confirmed
+    if (order && data.shopId && data.shopMarkup) {
+      await this.updateShopBalance(data.shopId, data.shopMarkup);
+    }
+    
+    return order;
   }
 
   async getTelecelOrders(): Promise<(TelecelOrder & { shopName: string | null })[]> {
