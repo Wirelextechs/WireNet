@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS shop_package_config (
   id SERIAL PRIMARY KEY,
   shop_id INTEGER NOT NULL REFERENCES shops(id),
   service_type VARCHAR(20) NOT NULL,
-  package_id INTEGER NOT NULL,
+  package_id TEXT NOT NULL,
   markup_amount REAL NOT NULL DEFAULT 0,
   is_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW() NOT NULL,
