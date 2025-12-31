@@ -34,6 +34,7 @@ export default function OrderSuccess() {
   
   const searchParams = new URLSearchParams(window.location.search);
   const service = searchParams.get("service") || "datagod";
+  const shopSlug = searchParams.get("shop");
 
   useEffect(() => {
     if (orderId) {
@@ -305,20 +306,20 @@ export default function OrderSuccess() {
                   className="flex gap-3"
                 >
                   <Button
-                    onClick={() => navigate("/")}
+                    onClick={() => shopSlug ? navigate(`/shop/${shopSlug}`) : navigate("/")}
                     variant="outline"
                     className="flex-1 rounded-xl"
                   >
                     <Home className="h-4 w-4 mr-2" />
-                    Home
+                    Back to Store
                   </Button>
                   <Button
-                    onClick={() => {
-                      if (service === "at") navigate("/at");
-                      else if (service === "telecel") navigate("/telecel");
-                      else if (service === "fastnet") navigate("/fastnet");
-                      else navigate("/datagod");
-                    }}
+                    onClick={() => shopSlug ? navigate(`/shop/${shopSlug}`) : (
+                      service === "at" ? navigate("/at") :
+                      service === "telecel" ? navigate("/telecel") :
+                      service === "fastnet" ? navigate("/fastnet") :
+                      navigate("/datagod")
+                    )}
                     className={`flex-1 bg-gradient-to-r ${getServiceColor()} text-white rounded-xl`}
                   >
                     Buy More
