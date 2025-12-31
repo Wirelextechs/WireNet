@@ -2403,7 +2403,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (bcryptError: any) {
         console.error("Password comparison error:", bcryptError);
-        return res.status(500).json({ message: "Login failed" });
+        console.error("User object for debugging:", JSON.stringify(user));
+        console.error("password_hash field:", user.password_hash);
+        return res.status(500).json({ 
+          message: "Login failed",
+          debug: {
+            error: bcryptError.message,
+            userHasPasswordHash: !!user.password_hash,
+            userKeys: Object.keys(user)
+          }
+        });
       }
 
       // Get user's shop from Supabase
