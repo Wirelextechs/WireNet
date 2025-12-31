@@ -131,20 +131,40 @@ export default function ShopDashboard() {
         setUser(data.user);
         
         if (data.shop) {
+          console.log("Setting shop:", data.shop);
           setShop(data.shop);
           setShopDescription(data.shop.description || "");
           
-          // Load all data only if shop exists (don't wait for these to complete)
+          // Load all data but don't block on errors - set loading to false even if they fail
           Promise.all([
-            loadStats(),
-            loadPackages(),
-            loadOrders(),
-            loadWithdrawals(),
-            loadShopSettings()
-          ]).catch(err => console.error("Error loading shop data:", err));
+            loadStats().catch(err => {
+              console.error("Error loading stats:", err);
+              return null;
+            }),
+            loadPackages().catch(err => {
+              console.error("Error loading packages:", err);
+              return null;
+            }),
+            loadOrders().catch(err => {
+              console.error("Error loading orders:", err);
+              return null;
+            }),
+            loadWithdrawals().catch(err => {
+              console.error("Error loading withdrawals:", err);
+              return null;
+            }),
+            loadShopSettings().catch(err => {
+              console.error("Error loading shop settings:", err);
+              return null;
+            })
+          ]).finally(() => {
+            // Ensure loading is set to false even if all promises fail
+            setLoading(false);
+          });
         } else {
           // User exists but no shop - might need to create one
           console.log("User has no shop yet");
+          setLoading(false);
         }
       } else {
         console.error("Failed to fetch user:", response.status);
@@ -155,6 +175,7 @@ export default function ShopDashboard() {
       console.error("Auth check failed:", error);
       navigate("/login");
     } finally {
+      // This will run immediately, so also set in finally of Promise.all above
       setLoading(false);
     }
   };
