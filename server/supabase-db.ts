@@ -56,7 +56,7 @@ const supabaseFetch = async (endpoint: string, options: RequestInit = {}) => {
 
 // Shop Users
 export const shopUsersDB = {
-  async create(user: { name: string; email: string; phone: string; password_hash: string }) {
+  async create(user: { name: string; email: string; phone: string; password: string }) {
     const data = await supabaseFetch('shop_users', {
       method: 'POST',
       body: JSON.stringify(user),

@@ -2344,7 +2344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create shop user in Supabase
       const user = await shopUsersDB.create({
         email: email.toLowerCase(),
-        password_hash: hashedPassword,
+        password: hashedPassword,
         name,
         phone,
       });
@@ -2397,19 +2397,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        const validPassword = await bcrypt.compare(password, user.password_hash);
+        const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
           return res.status(401).json({ message: "Invalid credentials" });
         }
       } catch (bcryptError: any) {
         console.error("Password comparison error:", bcryptError);
         console.error("User object for debugging:", JSON.stringify(user));
-        console.error("password_hash field:", user.password_hash);
+        console.error("password field:", user.password);
         return res.status(500).json({ 
           message: "Login failed",
           debug: {
             error: bcryptError.message,
-            userHasPasswordHash: !!user.password_hash,
+            userHasPassword: !!user.password,
             userKeys: Object.keys(user)
           }
         });
