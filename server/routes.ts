@@ -2773,7 +2773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`📋 [Shop Orders] Fetching orders for user ${req.shopUser.id}`);
       
-      const shop = await shopsDB.getByUserId(req.shopUser.id);
+      const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
       if (!shop) {
         console.log(`❌ [Shop Orders] Shop not found for user ${req.shopUser.id}`);
         return res.json({ orders: [], total: 0 });
@@ -2799,7 +2799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get shop stats
   app.get("/api/shop/stats", isUserAuthenticated, async (req: any, res) => {
     try {
-      const shop = await shopsDB.getByUserId(req.shopUser.id);
+      const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
       if (!shop) {
         console.log(`❌ Shop not found for user ${req.shopUser.id}`);
         return res.json({ totalOrders: 0, totalEarnings: 0, availableBalance: 0, pendingWithdrawals: 0 });

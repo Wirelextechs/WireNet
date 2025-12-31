@@ -737,7 +737,6 @@ class Storage {
         db.select({
           id: fastnetOrders.id,
           shortId: fastnetOrders.shortId,
-          serviceType: sql`'fastnet'`,
           customerPhone: fastnetOrders.customerPhone,
           packageName: fastnetOrders.packageName,
           packagePrice: fastnetOrders.packagePrice,
@@ -751,7 +750,6 @@ class Storage {
         db.select({
           id: datagodOrders.id,
           shortId: datagodOrders.shortId,
-          serviceType: sql`'datagod'`,
           customerPhone: datagodOrders.customerPhone,
           packageName: datagodOrders.packageName,
           packagePrice: datagodOrders.packagePrice,
@@ -765,7 +763,6 @@ class Storage {
         db.select({
           id: atOrders.id,
           shortId: atOrders.shortId,
-          serviceType: sql`'at'`,
           customerPhone: atOrders.customerPhone,
           packageName: atOrders.packageName,
           packagePrice: atOrders.packagePrice,
@@ -779,7 +776,6 @@ class Storage {
         db.select({
           id: telecelOrders.id,
           shortId: telecelOrders.shortId,
-          serviceType: sql`'telecel'`,
           customerPhone: telecelOrders.customerPhone,
           packageDetails: telecelOrders.packageDetails,
           packagePrice: telecelOrders.packagePrice,
@@ -793,12 +789,12 @@ class Storage {
       
       console.log(`🔍 [Storage] Query results - FastNet: ${fastnetOrds.length}, DataGod: ${datagodOrds.length}, AT: ${atOrds.length}, Telecel: ${telecelOrds.length}`);
       
-      // Combine all orders and sort by created date descending
+      // Combine all orders with service type and sort by created date descending
       const allOrders = [
-        ...fastnetOrds.map(o => ({ ...o, packageName: o.packageName })),
-        ...datagodOrds.map(o => ({ ...o, packageName: o.packageName })),
-        ...atOrds.map(o => ({ ...o, packageName: o.packageName })),
-        ...telecelOrds.map(o => ({ ...o, packageName: o.packageDetails })),
+        ...fastnetOrds.map(o => ({ ...o, serviceType: 'fastnet', packageName: o.packageName })),
+        ...datagodOrds.map(o => ({ ...o, serviceType: 'datagod', packageName: o.packageName })),
+        ...atOrds.map(o => ({ ...o, serviceType: 'at', packageName: o.packageName })),
+        ...telecelOrds.map(o => ({ ...o, serviceType: 'telecel', packageName: o.packageDetails })),
       ];
       
       const sorted = allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
