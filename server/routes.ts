@@ -2857,26 +2857,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const service = req.query.service as string;
+      console.log(`\n=== Package request for shop: ${shop.id}, service: ${service || 'all'} ===`);
 
       // Get shop's package configs from Supabase
       let configs: any[] = [];
       try {
         if (service) {
           const rawConfigs = await shopConfigDB.getByShopAndService(shop.id, service);
+          console.log(`Raw configs from DB for ${service}:`, JSON.stringify(rawConfigs, null, 2));
           configs = rawConfigs.map((c: any) => ({
             serviceType: c.service_type,
             packageId: c.package_id,
             markupAmount: parseFloat(c.markup_amount) || 0,
             isEnabled: c.is_enabled !== false
           }));
+          console.log(`Parsed configs:`, JSON.stringify(configs, null, 2));
         } else {
           const rawConfigs = await shopConfigDB.getByShopId(shop.id);
+          console.log(`Raw configs from DB for all services:`, JSON.stringify(rawConfigs, null, 2));
           configs = rawConfigs.map((c: any) => ({
             serviceType: c.service_type,
             packageId: c.package_id,
             markupAmount: parseFloat(c.markup_amount) || 0,
             isEnabled: c.is_enabled !== false
           }));
+          console.log(`Parsed configs:`, JSON.stringify(configs, null, 2));
         }
       } catch (configErr: any) {
         console.log("Shop package configs not available:", configErr);
