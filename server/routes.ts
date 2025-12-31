@@ -862,7 +862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase Data Bundle
   app.post("/api/fastnet/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -908,6 +908,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         packagePrice: roundedPrice,
         status: initialStatus,
         paymentReference: reference || null,
+        shopId: shopId || undefined,
+        shopMarkup: shopMarkup || undefined,
       });
 
       console.log(`📝 Order ${order.shortId} created for ${phoneNumber} - ${dataAmount}`);
@@ -1546,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DataGod Purchase endpoint (for storefront)
   app.post("/api/datagod/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
       
       console.log("📝 DataGod purchase request:", { phoneNumber, dataAmount, price, reference, gateway });
       
@@ -1569,6 +1571,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         packagePrice: typeof price === 'string' ? parseFloat(price) : price,
         status: initialStatus,
         paymentReference: reference || null,
+        shopId: shopId || undefined,
+        shopMarkup: shopMarkup || undefined,
       });
 
       console.log(`✅ DataGod order created via purchase (${initialStatus}):`, order);
@@ -1736,7 +1740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase AT data
   app.post("/api/at/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -1774,6 +1778,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
         status: initialStatus,
         paymentReference: reference || null,
+        shopId: shopId || undefined,
+        shopMarkup: shopMarkup || undefined,
       });
 
       console.log(`📝 AT Order ${order.shortId} created with ID ${order.id} for ${phoneNumber} - ${dataAmount}`);
@@ -2024,7 +2030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Purchase TELECEL data
   app.post("/api/telecel/purchase", async (req, res) => {
     try {
-      const { phoneNumber, dataAmount, price, reference, gateway } = req.body;
+      const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -2062,6 +2068,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         packagePrice: typeof price === 'string' ? parseInt(price) : price,
         status: initialStatus,
         paymentReference: reference || null,
+        shopId: shopId || undefined,
+        shopMarkup: shopMarkup || undefined,
       });
 
       console.log(`📝 TELECEL Order ${order.shortId} created with ID ${order.id} for ${phoneNumber} - ${dataAmount}`);

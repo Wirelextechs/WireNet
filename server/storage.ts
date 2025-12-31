@@ -376,6 +376,15 @@ class Storage {
       .leftJoin(shops, eq(fastnetOrders.shopId, shops.id))
       .orderBy(desc(fastnetOrders.createdAt));
       
+      // Log shop orders for debugging
+      const shopOrders = results.filter(r => r.shopId);
+      if (shopOrders.length > 0) {
+        console.log(`📊 FastNet: Found ${shopOrders.length} shop orders, ${results.length - shopOrders.length} direct orders`);
+        shopOrders.slice(0, 3).forEach(o => {
+          console.log(`  Order ${o.shortId}: shopId=${o.shopId}, shopName=${o.shopName}`);
+        });
+      }
+      
       return results;
     } catch (error: any) {
       // If shops table doesn't exist, fall back to simple query
