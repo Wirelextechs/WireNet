@@ -71,7 +71,7 @@ export default function ShopStorefront() {
   // Order status checker state
   const [showStatusChecker, setShowStatusChecker] = useState(false);
   const [statusSearchQuery, setStatusSearchQuery] = useState("");
-  const [statusSearchResult, setStatusSearchResult] = useState<any>(null);
+  const [statusSearchResults, setStatusSearchResults] = useState<any[]>([]);
   const [statusSearching, setStatusSearching] = useState(false);
   const [statusSearchError, setStatusSearchError] = useState("");
 
@@ -84,14 +84,14 @@ export default function ShopStorefront() {
 
   // Auto-refresh status result every 5 seconds when displayed
   useEffect(() => {
-    if (!statusSearchResult || !showStatusChecker) return;
+    if (statusSearchResults.length === 0 || !showStatusChecker) return;
 
     const interval = setInterval(() => {
       searchOrderStatus();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [statusSearchResult, showStatusChecker, statusSearchQuery, slug]);
+  }, [statusSearchResults, showStatusChecker, statusSearchQuery, slug]);
 
   const loadShop = async () => {
     try {
@@ -347,7 +347,7 @@ export default function ShopStorefront() {
 
     setStatusSearching(true);
     setStatusSearchError("");
-    setStatusSearchResult(null);
+    setStatusSearchResults([]);
 
     try {
       const response = await fetch(
@@ -356,8 +356,8 @@ export default function ShopStorefront() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.order) {
-          setStatusSearchResult(data.order);
+        if (data.orders && data.orders.length > 0) {
+          setStatusSearchResults(data.orders);
         } else {
           setStatusSearchError("Order not found");
         }
@@ -488,7 +488,7 @@ export default function ShopStorefront() {
               size="sm"
               onClick={() => {
                 setShowStatusChecker(!showStatusChecker);
-                setStatusSearchResult(null);
+                setStatusSearchResults([]);
                 setStatusSearchError("");
                 setStatusSearchQuery("");
               }}
@@ -550,53 +550,73 @@ export default function ShopStorefront() {
                 </div>
 
                 {statusSearchError && (
-                  <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-red-800 text-sm font-bold shadow-md">
+                  <div className="bg-red-100 border-2 border-red-500 rounded-lg p-3 text-red-800 text-sm font-bold shadow-md">
                     ❌ {statusSearchError}
                   </div>
                 )}
 
-                {statusSearchResult && (
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-lg p-4 space-y-3 shadow-md">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white border-2 border-blue-300 rounded p-3">
-                        <p className="text-xs font-bold text-blue-600 uppercase">Order ID</p>
-                        <p className="font-bold text-lg text-blue-900">{statusSearchResult.shortId}</p>
+                {statusSearchResults.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold text-gray-700">
+                      Showing {statusSearchResults.length} order{statusSearchResults.length > 1 ? 's' : ''}:
+                    </p>
+                    {statusSearchResults.map((order, idx) => (
+                      <div key={`${order.serviceType}-${order.id}-${idx}`} className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-lg p-3 shadow-sm">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs md:text-sm">
+                          <div className="bg-white border-2 border-blue-300 rounded p-2">
+                            <p className="text-xs font-bold text-blue-600 uppercase">ID</p>
+                            <p className="font-bold text-blue-900 truncate">{order.shortId}</p>
+                          </div>
+                          <div className="bg-white border-2 border-purple-300 rounded p-2">
+                            <p className="text-xs font-bold text-purple-600 uppercase">Service</p>
+                            <p className="font-bold capitalize text-purple-900">{order.serviceType}</p>
+                          </div>
+                          <div className="bg-white border-2 border-orange-300 rounded p-2">
+                            <p className="text-xs font-bold text-orange-600 uppercase">Package</p>
+                            <p className="font-bold text-orange-900 truncate">{order.capacity || order.packageDetails || order.packageName}</p>
+                          </div>
+                          <div className="bg-white border-2 border-green-300 rounded p-2">
+                            <p className="text-xs font-bold text-green-600 uppercase">Amount</p>
+                            <p className="font-bold text-green-900">GHS {(order.price || order.packagePrice).toFixed(2)}</p>
+                          </div>
+                          <div className="bg-white border-2 rounded p-2" style={{borderColor: getStatusColor(order.status).border}}>
+                            <p className={`text-xs font-bold uppercase ${getStatusColor(order.status).text}`}>Status</p>
+                            <p className={`font-bold ${getStatusColor(order.status).text}`}>
+                              {getStatusColor(order.status).emoji} {order.status}
+                            </p>
+                          </div>
+                          <div className="bg-white border-2 border-gray-300 rounded p-2">
+                            <p className="text-xs font-bold text-gray-600 uppercase">Date</p>
+                            <p className="font-bold text-gray-700 text-xs">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-white border-2 border-blue-300 rounded p-3">
-                        <p className="text-xs font-bold text-blue-600 uppercase">Phone</p>
-                        <p className="font-bold text-blue-900">{statusSearchResult.phoneNumber || statusSearchResult.customerPhone}</p>
-                      </div>
-                      <div className="bg-white border-2 border-purple-300 rounded p-3">
-                        <p className="text-xs font-bold text-purple-600 uppercase">Service</p>
-                        <p className="font-bold capitalize text-purple-900">{statusSearchResult.serviceType}</p>
-                      </div>
-                      <div className="bg-white border-2 border-orange-300 rounded p-3">
-                        <p className="text-xs font-bold text-orange-600 uppercase">Package</p>
-                        <p className="font-bold text-orange-900">{statusSearchResult.capacity || statusSearchResult.packageDetails || statusSearchResult.packageName}</p>
-                      </div>
-                      <div className="bg-white border-2 border-green-300 rounded p-3">
-                        <p className="text-xs font-bold text-green-600 uppercase">Amount</p>
-                        <p className="font-bold text-green-900">GHS {(statusSearchResult.price || statusSearchResult.packagePrice).toFixed(2)}</p>
-                      </div>
-                      <div className="bg-white border-2 rounded p-3" style={{borderColor: getStatusColor(statusSearchResult.status).border}}>
-                        <p className={`text-xs font-bold uppercase ${getStatusColor(statusSearchResult.status).text}`}>Status</p>
-                        <p className={`font-bold text-lg ${getStatusColor(statusSearchResult.status).text}`}>
-                          {getStatusColor(statusSearchResult.status).emoji} {statusSearchResult.status}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="pt-3 border-t border-blue-200 flex justify-between items-center">
-                      <p className="text-xs text-gray-600">
-                        Order Date: {new Date(statusSearchResult.createdAt).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-blue-600 font-bold animate-pulse">
-                        🔄 Auto-refreshing every 5 seconds...
-                      </p>
-                    </div>
+                    ))}
+                    <p className="text-xs text-blue-600 font-bold animate-pulse text-center">
+                      🔄 Auto-refreshing every 5 seconds...
+                    </p>
                   </div>
                 )}
               </CardContent>
             </Card>
+          </motion.div>
+        )}
+
+        {/* Shop Description */}
+        {shop.description && (
+          <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
+            <p className="text-gray-600">{shop.description}</p>
+          </div>
+        )}
+
+        {/* Service Selection */}
+        {!selectedService && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-4"
+          >
+            <h2 className="text-xl font-bold text-center mb-6">Select a Service</h2>
           </motion.div>
         )}
 

@@ -3166,6 +3166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const searchQuery = query.toLowerCase().trim();
+      const isPhoneSearch = /^\d+$/.test(searchQuery); // Check if it's a phone number (digits only)
 
       // Get shop by slug
       const shop = await storage.getShopBySlug(slug);
@@ -3175,80 +3176,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Search across all order tables for this shop
       try {
+        const allMatches: any[] = [];
+
         // Search in FastNet orders
         let fastnetOrders = await storage.getShopFastnetOrders(shop.id);
-        let match = fastnetOrders.find(o =>
+        let matches = fastnetOrders.filter(o =>
           o.shortId?.toLowerCase().includes(searchQuery) ||
           o.customerPhone?.toLowerCase().includes(searchQuery)
         );
-        if (match) {
-          return res.json({ 
-            order: {
-              ...match,
-              serviceType: 'fastnet',
-              phoneNumber: match.customerPhone,
-              capacity: match.packageDetails,
-              price: match.packagePrice
-            }
-          });
-        }
+        allMatches.push(...matches.map(m => ({
+          ...m,
+          serviceType: 'fastnet',
+          phoneNumber: m.customerPhone,
+          capacity: m.packageDetails,
+          price: m.packagePrice
+        })));
 
         // Search in DataGod orders
         let datagodOrders = await storage.getShopDatagodOrders(shop.id);
-        match = datagodOrders.find(o =>
+        matches = datagodOrders.filter(o =>
           o.shortId?.toLowerCase().includes(searchQuery) ||
           o.customerPhone?.toLowerCase().includes(searchQuery)
         );
-        if (match) {
-          return res.json({ 
-            order: {
-              ...match,
-              serviceType: 'datagod',
-              phoneNumber: match.customerPhone,
-              capacity: match.packageName,
-              price: match.packagePrice
-            }
-          });
-        }
+        allMatches.push(...matches.map(m => ({
+          ...m,
+          serviceType: 'datagod',
+          phoneNumber: m.customerPhone,
+          capacity: m.packageName,
+          price: m.packagePrice
+        })));
 
         // Search in AT orders
         let atOrders = await storage.getShopAtOrders(shop.id);
-        match = atOrders.find(o =>
+        matches = atOrders.filter(o =>
           o.shortId?.toLowerCase().includes(searchQuery) ||
           o.customerPhone?.toLowerCase().includes(searchQuery)
         );
-        if (match) {
-          return res.json({ 
-            order: {
-              ...match,
-              serviceType: 'at',
-              phoneNumber: match.customerPhone,
-              capacity: match.packageDetails,
-              price: match.packagePrice
-            }
-          });
-        }
+        allMatches.push(...matches.map(m => ({
+          ...m,
+          serviceType: 'at',
+          phoneNumber: m.customerPhone,
+          capacity: m.packageDetails,
+          price: m.packagePrice
+        })));
 
         // Search in Telecel orders
         let telecelOrders = await storage.getShopTelecelOrders(shop.id);
-        match = telecelOrders.find(o =>
+        matches = telecelOrders.filter(o =>
           o.shortId?.toLowerCase().includes(searchQuery) ||
           o.customerPhone?.toLowerCase().includes(searchQuery)
         );
-        if (match) {
-          return res.json({ 
-            order: {
-              ...match,
-              serviceType: 'telecel',
-              phoneNumber: match.customerPhone,
-              capacity: match.packageDetails,
-              price: match.packagePrice
-            }
-          });
-        }
+        allMatches.push(...matches.map(m => ({
+          ...m,
+          serviceType: 'telecel',
+          phoneNumber: m.customerPhone,
+          capacity: m.packageDetails,
+          price: m.packagePrice
+        })));
 
-        // Order not found
-        res.status(404).json({ error: "Order not found" });
+        if (allMatches.length === 0) {
+          return res.status(404).json({ error: "Order not found" });
+        }
+        // Sort by creation date descending (newest first)
+        allMatches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        // If phone search, return last 3 orders. If order ID search, return just the 1 match
+        const results = isPhoneSearch ? allMatches.slice(0, 3) : [allMatches[0]];
+
+        res.json({ orders: results });
       } catch (error: any) {
         console.error("Error searching orders:", error);
         res.status(500).json({ error: "Failed to search orders" });
