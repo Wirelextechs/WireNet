@@ -2790,18 +2790,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Normalize order fields to match frontend expectations
-      const normalizedOrders = allOrders.map(order => ({
-        id: order.id,
-        shortId: order.shortId,
-        phoneNumber: order.customerPhone,
-        capacity: order.packageDetails || order.packageName, // DataGod has packageName, others have packageDetails
-        price: order.packagePrice,
-        createdAt: order.createdAt,
-        serviceType: order.serviceType,
-        shopMarkup: order.shopMarkup,
-        status: order.status,
-        paymentConfirmed: order.paymentConfirmed
-      }));
+      const normalizedOrders = allOrders.map(order => {
+        const normalized = {
+          id: order.id,
+          shortId: order.shortId,
+          phoneNumber: order.customerPhone,
+          capacity: order.packageDetails || order.packageName, // DataGod has packageName, others have packageDetails
+          price: order.packagePrice,
+          createdAt: order.createdAt,
+          serviceType: order.serviceType,
+          shopMarkup: order.shopMarkup,
+          status: order.status,
+          paymentConfirmed: order.paymentConfirmed
+        };
+        
+        if (!normalized.phoneNumber || !normalized.capacity) {
+          console.log(`⚠️ [Shop Orders] Missing fields in order ${order.shortId}:`, {
+            customerPhone: order.customerPhone,
+            packageDetails: order.packageDetails,
+            packageName: order.packageName,
+            packagePrice: order.packagePrice
+          });
+        }
+        
+        return normalized;
+      });
 
       res.json({ orders: normalizedOrders, total: normalizedOrders.length });
     } catch (error: any) {
