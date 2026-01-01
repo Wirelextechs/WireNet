@@ -492,19 +492,22 @@ export default function ShopStorefront() {
                 <CardDescription>Search by Order ID or Phone Number</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 mb-4">
-                  <Input
-                    type="text"
-                    placeholder="Order ID (e.g., DG-123456) or Phone (e.g., 0542565402)"
-                    value={statusSearchQuery}
-                    onChange={(e) => setStatusSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && searchOrderStatus()}
-                    className="flex-1"
-                  />
+                <div className="flex gap-2 mb-4 items-end">
+                  <div className="flex-1">
+                    <Input
+                      type="text"
+                      placeholder="Order ID (e.g., DG-123456) or Phone (e.g., 0542565402)"
+                      value={statusSearchQuery}
+                      onChange={(e) => setStatusSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && searchOrderStatus()}
+                      className="w-full"
+                    />
+                  </div>
                   <Button
                     onClick={searchOrderStatus}
                     disabled={statusSearching}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
+                    size="sm"
                   >
                     {statusSearching ? (
                       <>
