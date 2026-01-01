@@ -1008,6 +1008,58 @@ class Storage {
     }
   }
 
+  // Create withdrawal with external (Supabase) shop ID
+  async createWithdrawalWithExternalId(data: {
+    externalShopId: string;
+    amount: number;
+    fee: number;
+    netAmount: number;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    network?: string;
+  }): Promise<any> {
+    try {
+      const result = await db.execute(sql`
+        INSERT INTO withdrawals (external_shop_id, amount, fee, net_amount, bank_name, account_number, account_name, network, status, created_at, updated_at)
+        VALUES (${data.externalShopId}, ${data.amount}, ${data.fee}, ${data.netAmount}, ${data.bankName}, ${data.accountNumber}, ${data.accountName}, ${data.network || null}, 'pending', NOW(), NOW())
+        RETURNING *
+      `);
+      return result.rows[0];
+    } catch (error: any) {
+      // If external_shop_id column doesn't exist, fall back to using shop_id as 0
+      if (error.code === "42703") {
+        console.log("⚠️ external_shop_id column not found, using fallback insert");
+        const result = await db.execute(sql`
+          INSERT INTO withdrawals (shop_id, amount, fee, net_amount, bank_name, account_number, account_name, network, status, created_at, updated_at)
+          VALUES (0, ${data.amount}, ${data.fee}, ${data.netAmount}, ${data.bankName}, ${data.accountNumber}, ${data.accountName}, ${data.network || null}, 'pending', NOW(), NOW())
+          RETURNING *
+        `);
+        return result.rows[0];
+      }
+      throw error;
+    }
+  }
+
+  // Get withdrawals by external shop ID (Supabase UUID)
+  async getWithdrawalsByExternalShopId(externalShopId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM withdrawals 
+        WHERE external_shop_id = ${externalShopId}
+        ORDER BY created_at DESC
+      `);
+      return result.rows as any[];
+    } catch (error: any) {
+      // If column doesn't exist, return empty
+      if (error.code === "42703") {
+        console.log("⚠️ external_shop_id column not found");
+        return [];
+      }
+      throw error;
+    }
+  }
+
   async getWithdrawalById(id: number): Promise<Withdrawal | null> {
     const result = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
     return result.length > 0 ? result[0] : null;

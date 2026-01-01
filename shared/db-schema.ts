@@ -54,7 +54,8 @@ export type InsertShopPackageConfig = typeof shopPackageConfig.$inferInsert;
 // Withdrawals
 export const withdrawals = pgTable("withdrawals", {
   id: serial("id").primaryKey(),
-  shopId: integer("shop_id").notNull().references(() => shops.id),
+  shopId: integer("shop_id"), // PostgreSQL shop ID (optional, for legacy)
+  externalShopId: varchar("external_shop_id", { length: 100 }), // Supabase shop UUID
   amount: real("amount").notNull(), // Requested amount
   fee: real("fee").notNull().default(0), // Withdrawal fee
   netAmount: real("net_amount").notNull(), // Amount after fee (what they receive)

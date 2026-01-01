@@ -2896,13 +2896,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request withdrawal
   app.post("/api/withdrawals/request", isUserAuthenticated, async (req: any, res) => {
     try {
-      // Use PostgreSQL storage for shop lookup (numeric IDs)
-      const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
-      if (!shop) {
+      // Get shop from Supabase (uses UUID user IDs)
+      const supabaseShop = await shopsDB.getByUserId(req.shopUser.id);
+      if (!supabaseShop) {
         return res.status(404).json({ message: "Shop not found" });
       }
 
-      if (shop.status !== "approved") {
+      if (supabaseShop.status !== "approved") {
         return res.status(403).json({ message: "Your shop must be approved to request withdrawals" });
       }
 
@@ -2922,15 +2922,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `Minimum withdrawal amount is GHS ${minWithdrawal}` });
       }
 
-      const availableBalance = shop.availableBalance || 0;
+      const availableBalance = parseFloat(supabaseShop.available_balance) || 0;
       if (amount > availableBalance) {
         return res.status(400).json({ message: "Insufficient balance" });
       }
 
       const netAmount = amount - withdrawalFee;
 
-      const withdrawal = await storage.createWithdrawal({
-        shopId: shop.id,
+      // Store withdrawal with the Supabase shop ID (use as externalShopId)
+      const withdrawal = await storage.createWithdrawalWithExternalId({
+        externalShopId: supabaseShop.id,
         amount,
         fee: withdrawalFee,
         netAmount,
@@ -2940,8 +2941,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         network: network
       });
 
-      // Deduct from available balance using PostgreSQL storage
-      await storage.deductShopBalance(shop.id, amount);
+      // Deduct from available balance using Supabase
+      await shopsDB.deductBalance(supabaseShop.id, amount);
 
       res.status(201).json({
         message: "Withdrawal request submitted",
@@ -2956,17 +2957,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get withdrawal history
   app.get("/api/withdrawals", isUserAuthenticated, async (req: any, res) => {
     try {
-      // Use PostgreSQL storage for shop lookup (numeric IDs)
-      const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
-      if (!shop) {
+      // Get shop from Supabase
+      const supabaseShop = await shopsDB.getByUserId(req.shopUser.id);
+      if (!supabaseShop) {
         return res.json({ withdrawals: [] });
       }
 
+      // Get withdrawals using the external shop ID
       let withdrawalsList: any[] = [];
       try {
-        withdrawalsList = await storage.getWithdrawalsByShop(shop.id);
+        withdrawalsList = await storage.getWithdrawalsByExternalShopId(supabaseShop.id);
       } catch (wErr: any) {
-        console.log("Error fetching withdrawals:", wErr);
+        console.log("Error fetching withdrawals:", wErr.message);
       }
       
       res.json({ withdrawals: withdrawalsList });
@@ -3420,37 +3422,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const status = req.query.status as string;
       let withdrawalsList;
       
+      // Use PostgreSQL storage for withdrawals
       if (status) {
-        withdrawalsList = await withdrawalsDB.getByStatus(status);
+        withdrawalsList = await storage.getWithdrawalsByStatus(status);
       } else {
-        withdrawalsList = await withdrawalsDB.getAll();
+        withdrawalsList = await storage.getAllWithdrawals();
       }
 
-      // Enrich with shop info
+      // Enrich with shop info from Supabase (using external_shop_id)
       const enrichedWithdrawals = await Promise.all((withdrawalsList || []).map(async (w: any) => {
         let shop = null;
-        let user = null;
         try {
-          shop = await shopsDB.getById(w.shop_id);
-          if (shop) {
-            user = await shopUsersDB.getById(shop.user_id);
+          // Try external_shop_id first (Supabase UUID)
+          if (w.externalShopId || w.external_shop_id) {
+            shop = await shopsDB.getById(w.externalShopId || w.external_shop_id);
           }
-        } catch (e) {}
+          // Fallback to PostgreSQL shopId
+          if (!shop && w.shopId) {
+            shop = await storage.getShopById(w.shopId);
+          }
+        } catch (e) {
+          console.log("Error getting shop for withdrawal:", e);
+        }
         return {
           id: w.id,
-          shopId: w.shop_id,
-          amount: parseFloat(w.amount) || 0,
-          fee: parseFloat(w.fee) || 0,
-          netAmount: parseFloat(w.net_amount) || 0,
-          bankName: w.bank_name,
-          accountNumber: w.account_number,
-          accountName: w.account_name,
+          shopId: w.shopId || w.shop_id,
+          externalShopId: w.externalShopId || w.external_shop_id,
+          amount: w.amount || 0,
+          fee: w.fee || 0,
+          netAmount: w.netAmount || w.net_amount || 0,
+          bankName: w.bankName || w.bank_name,
+          accountNumber: w.accountNumber || w.account_number,
+          accountName: w.accountName || w.account_name,
+          network: w.network,
           status: w.status,
-          processedAt: w.processed_at,
-          notes: w.notes,
-          createdAt: w.created_at,
-          shop: shop ? { id: shop.id, shopName: shop.shop_name, slug: shop.slug } : null,
-          owner: user ? { name: user.name, email: user.email, phone: user.phone } : null
+          processedAt: w.processedAt || w.processed_at,
+          adminNote: w.adminNote || w.admin_note,
+          createdAt: w.createdAt || w.created_at,
+          shop: shop ? { id: shop.id, shopName: shop.shopName || shop.shop_name, slug: shop.slug } : null
         };
       }));
 
@@ -3480,9 +3489,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If rejecting, refund the amount back to shop balance
       if (status === "rejected" && withdrawal.status === "pending") {
-        // Refund the withdrawal amount back to the shop's available balance
-        await storage.updateShopBalance(withdrawal.shopId, withdrawal.amount);
-        console.log(`💰 Refunded GHS ${withdrawal.amount} to shop ${withdrawal.shopId} for rejected withdrawal`);
+        // Use external shop ID if available (Supabase), otherwise PostgreSQL shop ID
+        const externalShopId = (withdrawal as any).externalShopId || (withdrawal as any).external_shop_id;
+        if (externalShopId) {
+          await shopsDB.updateBalance(externalShopId, withdrawal.amount);
+          console.log(`💰 Refunded GHS ${withdrawal.amount} to Supabase shop ${externalShopId} for rejected withdrawal`);
+        } else if (withdrawal.shopId) {
+          await storage.updateShopBalance(withdrawal.shopId, withdrawal.amount);
+          console.log(`💰 Refunded GHS ${withdrawal.amount} to PostgreSQL shop ${withdrawal.shopId} for rejected withdrawal`);
+        }
       }
 
       // Update withdrawal status
