@@ -36,15 +36,26 @@ interface ShopWithUser extends Shop {
 interface Withdrawal {
   id: number;
   shopId: number;
+  shop_id?: number;
   amount: number;
   fee: number;
   netAmount: number;
-  bankDetails: string;
+  net_amount?: number;
+  bankName: string;
+  bank_name?: string;
+  accountNumber: string;
+  account_number?: string;
+  accountName: string;
+  account_name?: string;
+  network?: string;
   status: string;
-  requestedAt: string;
+  createdAt: string;
+  created_at?: string;
   processedAt: string | null;
+  processed_at?: string | null;
   shop?: {
     shopName: string;
+    shop_name?: string;
   };
 }
 
@@ -449,14 +460,16 @@ export default function ShopManagement() {
                   <tbody>
                     {withdrawals.map((w) => (
                       <tr key={w.id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">{new Date(w.requestedAt).toLocaleDateString()}</td>
-                        <td className="py-3 px-4">{w.shop?.shopName || `Shop #${w.shopId}`}</td>
-                        <td className="py-3 px-4">GHS {w.amount.toFixed(2)}</td>
-                        <td className="py-3 px-4">GHS {w.fee.toFixed(2)}</td>
-                        <td className="py-3 px-4 font-medium">GHS {w.netAmount.toFixed(2)}</td>
+                        <td className="py-3 px-4">{new Date(w.createdAt || w.created_at || Date.now()).toLocaleDateString()}</td>
+                        <td className="py-3 px-4">{w.shop?.shopName || w.shop?.shop_name || `Shop #${w.shopId || w.shop_id}`}</td>
+                        <td className="py-3 px-4">GHS {(w.amount || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4">GHS {(w.fee || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4 font-medium">GHS {(w.netAmount || w.net_amount || 0).toFixed(2)}</td>
                         <td className="py-3 px-4">
-                          <div className="max-w-xs truncate text-xs" title={w.bankDetails}>
-                            {w.bankDetails}
+                          <div className="text-xs">
+                            <div className="font-medium">{w.network || 'Mobile Money'}</div>
+                            <div>{w.accountNumber || w.account_number || '-'}</div>
+                            <div className="text-gray-500">{w.accountName || w.account_name || '-'}</div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -487,7 +500,7 @@ export default function ShopManagement() {
                           )}
                           {w.status !== "pending" && (
                             <span className="text-xs text-gray-500">
-                              {w.processedAt ? new Date(w.processedAt).toLocaleDateString() : "-"}
+                              {(w.processedAt || w.processed_at) ? new Date(w.processedAt || w.processed_at!).toLocaleDateString() : "-"}
                             </span>
                           )}
                         </td>
