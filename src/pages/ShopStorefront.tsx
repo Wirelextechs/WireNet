@@ -74,6 +74,9 @@ export default function ShopStorefront() {
   const [statusSearchResults, setStatusSearchResults] = useState<any[]>([]);
   const [statusSearching, setStatusSearching] = useState(false);
   const [statusSearchError, setStatusSearchError] = useState("");
+  
+  // Description expansion
+  const [expandDescription, setExpandDescription] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -604,12 +607,24 @@ export default function ShopStorefront() {
 
         {/* Shop Description */}
         {shop.description && (
-          <div className="bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 rounded-xl p-5 mb-6 shadow-md border-2 border-purple-200">
-            <h3 className="text-lg font-bold text-purple-900 mb-2 flex items-center gap-2">
-              <Store size={20} className="text-purple-600" />
+          <div className="bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 rounded-xl p-6 mb-6 shadow-md border-2 border-purple-200 hover:shadow-lg transition-shadow">
+            <h3 className="text-lg font-bold text-purple-900 mb-3 flex items-center gap-2">
+              <Store size={22} className="text-purple-600" />
               About This Shop
             </h3>
-            <p className="text-gray-700 leading-relaxed font-medium">{shop.description}</p>
+            <p className={`text-gray-700 leading-relaxed font-medium transition-all ${
+              expandDescription ? "" : "line-clamp-2"
+            }`}>
+              {shop.description}
+            </p>
+            {shop.description.length > 100 && (
+              <button
+                onClick={() => setExpandDescription(!expandDescription)}
+                className="mt-3 text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+              >
+                {expandDescription ? "Show less" : "Read more"}
+              </button>
+            )}
           </div>
         )}
 
@@ -650,33 +665,6 @@ export default function ShopStorefront() {
             </div>
           </motion.div>
         )}
-            <p className="text-gray-600">{shop.description}</p>
-          </div>
-        )}
-
-        {/* Service Selection */}
-        {!selectedService && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <h2 className="text-xl font-bold text-center mb-6">Select a Service</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {serviceConfigs.map((service) => (
-                <motion.button
-                  key={service.id}
-                  onClick={() => handleServiceSelect(service.id)}
-                  className="text-left"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Card className="h-full hover:shadow-lg transition-shadow overflow-hidden">
-                    <div className={`h-2 bg-gradient-to-r ${service.gradient}`} />
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-r ${service.gradient}`}>
-                          <service.icon className="h-6 w-6 text-white" />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-bold text-lg">{service.name}</h3>
