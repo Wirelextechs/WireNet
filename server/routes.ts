@@ -2795,7 +2795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: order.id,
           shortId: order.shortId,
           phoneNumber: order.customerPhone,
-          capacity: order.packageDetails || order.packageName, // DataGod has packageName, others have packageDetails
+          capacity: order.packageDetails || order.packageName, // DataGod uses packageName, FastNet/AT/Telecel use packageDetails
           price: order.packagePrice,
           createdAt: order.createdAt,
           serviceType: order.serviceType,
@@ -2803,6 +2803,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: order.status,
           paymentConfirmed: order.paymentConfirmed
         };
+        
+        console.log(`🔄 [Shop Orders] Normalizing order ${order.shortId}:`, {
+          from: { customerPhone: order.customerPhone, packageDetails: order.packageDetails, packageName: order.packageName, packagePrice: order.packagePrice },
+          to: { phoneNumber: normalized.phoneNumber, capacity: normalized.capacity, price: normalized.price }
+        });
         
         if (!normalized.phoneNumber || !normalized.capacity) {
           console.log(`⚠️ [Shop Orders] Missing fields in order ${order.shortId}:`, {
@@ -2816,6 +2821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return normalized;
       });
 
+      console.log(`📤 [Shop Orders] Sending normalized response with ${normalizedOrders.length} orders`);
       res.json({ orders: normalizedOrders, total: normalizedOrders.length });
     } catch (error: any) {
       console.error("Get shop orders error:", error);
