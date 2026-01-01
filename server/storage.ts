@@ -1060,33 +1060,72 @@ class Storage {
     }
   }
 
-  async getWithdrawalById(id: number): Promise<Withdrawal | null> {
-    const result = await db.select().from(withdrawals).where(eq(withdrawals.id, id)).limit(1);
-    return result.length > 0 ? result[0] : null;
+  async getWithdrawalById(id: number): Promise<any | null> {
+    try {
+      // Use raw SQL to avoid schema mismatch issues with external_shop_id column
+      const result = await db.execute(sql`
+        SELECT * FROM withdrawals WHERE id = ${id} LIMIT 1
+      `);
+      return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error: any) {
+      console.error("getWithdrawalById error:", error.message);
+      return null;
+    }
   }
 
-  async getWithdrawalsByShop(shopId: number): Promise<Withdrawal[]> {
-    return await db.select().from(withdrawals)
-      .where(eq(withdrawals.shopId, shopId))
-      .orderBy(desc(withdrawals.createdAt));
+  async getWithdrawalsByShop(shopId: number): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM withdrawals WHERE shop_id = ${shopId} ORDER BY created_at DESC
+      `);
+      return result.rows as any[];
+    } catch (error: any) {
+      console.error("getWithdrawalsByShop error:", error.message);
+      return [];
+    }
   }
 
-  async getAllWithdrawals(): Promise<Withdrawal[]> {
-    return await db.select().from(withdrawals).orderBy(desc(withdrawals.createdAt));
+  async getAllWithdrawals(): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM withdrawals ORDER BY created_at DESC
+      `);
+      return result.rows as any[];
+    } catch (error: any) {
+      console.error("getAllWithdrawals error:", error.message);
+      return [];
+    }
   }
 
-  async getWithdrawalsByStatus(status: string): Promise<Withdrawal[]> {
-    return await db.select().from(withdrawals)
-      .where(eq(withdrawals.status, status))
-      .orderBy(desc(withdrawals.createdAt));
+  async getWithdrawalsByStatus(status: string): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM withdrawals WHERE status = ${status} ORDER BY created_at DESC
+      `);
+      return result.rows as any[];
+    } catch (error: any) {
+      console.error("getWithdrawalsByStatus error:", error.message);
+      return [];
+    }
   }
 
-  async updateWithdrawal(id: number, data: Partial<InsertWithdrawal & { processedAt?: Date }>): Promise<Withdrawal | null> {
-    const result = await db.update(withdrawals)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(withdrawals.id, id))
-      .returning();
-    return result.length > 0 ? result[0] : null;
+  async updateWithdrawal(id: number, data: Partial<InsertWithdrawal & { processedAt?: Date }>): Promise<any | null> {
+    try {
+      // Use raw SQL to avoid schema mismatch issues
+      const result = await db.execute(sql`
+        UPDATE withdrawals 
+        SET status = ${data.status || 'pending'},
+            admin_note = ${data.adminNote || null},
+            processed_at = ${data.processedAt ? data.processedAt.toISOString() : null},
+            updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `);
+      return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error: any) {
+      console.error("updateWithdrawal error:", error.message);
+      return null;
+    }
   }
 
   // Shop Orders - get orders for a specific shop
