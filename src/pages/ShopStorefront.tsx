@@ -586,8 +586,8 @@ export default function ShopStorefront() {
                             </p>
                           </div>
                           <div className="bg-white border-2 border-gray-300 rounded p-2">
-                            <p className="text-xs font-bold text-gray-600 uppercase">Date</p>
-                            <p className="font-bold text-gray-700 text-xs">{new Date(order.createdAt).toLocaleDateString()}</p>
+                            <p className="text-xs font-bold text-gray-600 uppercase">DateTime</p>
+                            <p className="font-bold text-gray-700 text-xs">{new Date(order.createdAt).toLocaleString('en-US', { month: 'short', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                           </div>
                         </div>
                       </div>
@@ -604,8 +604,12 @@ export default function ShopStorefront() {
 
         {/* Shop Description */}
         {shop.description && (
-          <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
-            <p className="text-gray-600">{shop.description}</p>
+          <div className="bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 rounded-xl p-5 mb-6 shadow-md border-2 border-purple-200">
+            <h3 className="text-lg font-bold text-purple-900 mb-2 flex items-center gap-2">
+              <Store size={20} className="text-purple-600" />
+              About This Shop
+            </h3>
+            <p className="text-gray-700 leading-relaxed font-medium">{shop.description}</p>
           </div>
         )}
 
@@ -617,12 +621,35 @@ export default function ShopStorefront() {
             className="space-y-4"
           >
             <h2 className="text-xl font-bold text-center mb-6">Select a Service</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {serviceConfigs.map((service) => (
+                <motion.button
+                  key={service.id}
+                  onClick={() => handleServiceSelect(service.id)}
+                  className="text-left"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Card className="h-full hover:shadow-lg transition-shadow overflow-hidden">
+                    <div className={`h-2 bg-gradient-to-r ${service.gradient}`} />
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl bg-gradient-to-r ${service.gradient}`}>
+                          <service.icon className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg">{service.name}</h3>
+                          <p className="text-sm text-gray-500">{service.description}</p>
+                        </div>
+                        <ChevronRight className="text-gray-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.button>
+              ))}
+            </div>
           </motion.div>
         )}
-
-        {/* Shop Description */}
-        {shop.description && (
-          <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
             <p className="text-gray-600">{shop.description}</p>
           </div>
         )}
