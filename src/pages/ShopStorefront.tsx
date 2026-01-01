@@ -492,7 +492,7 @@ export default function ShopStorefront() {
                 <CardDescription>Search by Order ID or Phone Number</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 mb-4 items-end">
+                <div className="flex gap-3 mb-4 items-end">
                   <div className="flex-1">
                     <Input
                       type="text"
@@ -500,58 +500,58 @@ export default function ShopStorefront() {
                       value={statusSearchQuery}
                       onChange={(e) => setStatusSearchQuery(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && searchOrderStatus()}
-                      className="w-full"
+                      className="w-full border-2 border-blue-400 focus:border-blue-600 focus:ring-blue-500 text-blue-900 placeholder-blue-400"
                     />
                   </div>
                   <Button
                     onClick={searchOrderStatus}
                     disabled={statusSearching}
-                    className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
-                    size="sm"
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-2 border-blue-800 whitespace-nowrap font-bold shadow-lg"
+                    size="lg"
                   >
                     {statusSearching ? (
                       <>
-                        <Loader2 size={18} className="mr-2 animate-spin" /> Searching...
+                        <Loader2 size={20} className="mr-2 animate-spin" /> Searching...
                       </>
                     ) : (
-                      "Search"
+                      "🔍 Search"
                     )}
                   </Button>
                 </div>
 
                 {statusSearchError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-                    {statusSearchError}
+                  <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-red-800 text-sm font-bold shadow-md">
+                    ❌ {statusSearchError}
                   </div>
                 )}
 
                 {statusSearchResult && (
-                  <div className="bg-white border border-blue-200 rounded-lg p-4 space-y-3">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-lg p-4 space-y-3 shadow-md">
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Order ID</p>
-                        <p className="font-bold text-lg">{statusSearchResult.shortId}</p>
+                      <div className="bg-white border-2 border-blue-300 rounded p-3">
+                        <p className="text-xs font-bold text-blue-600 uppercase">Order ID</p>
+                        <p className="font-bold text-lg text-blue-900">{statusSearchResult.shortId}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Phone Number</p>
-                        <p className="font-bold">{statusSearchResult.phoneNumber || statusSearchResult.customerPhone}</p>
+                      <div className="bg-white border-2 border-blue-300 rounded p-3">
+                        <p className="text-xs font-bold text-blue-600 uppercase">Phone</p>
+                        <p className="font-bold text-blue-900">{statusSearchResult.phoneNumber || statusSearchResult.customerPhone}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Service</p>
-                        <p className="font-bold capitalize">{statusSearchResult.serviceType}</p>
+                      <div className="bg-white border-2 border-purple-300 rounded p-3">
+                        <p className="text-xs font-bold text-purple-600 uppercase">Service</p>
+                        <p className="font-bold capitalize text-purple-900">{statusSearchResult.serviceType}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Package</p>
-                        <p className="font-bold">{statusSearchResult.capacity || statusSearchResult.packageDetails || statusSearchResult.packageName}</p>
+                      <div className="bg-white border-2 border-orange-300 rounded p-3">
+                        <p className="text-xs font-bold text-orange-600 uppercase">Package</p>
+                        <p className="font-bold text-orange-900">{statusSearchResult.capacity || statusSearchResult.packageDetails || statusSearchResult.packageName}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Amount</p>
-                        <p className="font-bold">GHS {(statusSearchResult.price || statusSearchResult.packagePrice).toFixed(2)}</p>
+                      <div className="bg-white border-2 border-green-300 rounded p-3">
+                        <p className="text-xs font-bold text-green-600 uppercase">Amount</p>
+                        <p className="font-bold text-green-900">GHS {(statusSearchResult.price || statusSearchResult.packagePrice).toFixed(2)}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Status</p>
-                        <p className={`font-bold ${statusSearchResult.status === "PAID" ? "text-green-600" : "text-yellow-600"}`}>
-                          {statusSearchResult.status}
+                      <div className="bg-white border-2 rounded p-3" style={{borderColor: statusSearchResult.status === "PAID" ? "#10b981" : "#f59e0b"}}>
+                        <p className={`text-xs font-bold uppercase ${statusSearchResult.status === "PAID" ? "text-green-600" : "text-yellow-600"}`}>Status</p>
+                        <p className={`font-bold text-lg ${statusSearchResult.status === "PAID" ? "text-green-600" : "text-yellow-600"}`}>
+                          {statusSearchResult.status === "PAID" ? "✅ PAID" : "⏳ PENDING"}
                         </p>
                       </div>
                     </div>
