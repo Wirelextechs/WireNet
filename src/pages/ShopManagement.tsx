@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   ArrowLeft, Store, Users, Wallet, CheckCircle, XCircle, 
-  Clock, ExternalLink, Search, Ban, Check, DollarSign
+  Clock, ExternalLink, Search, Ban, Check, DollarSign, UserPlus, Shield
 } from "lucide-react";
 
 interface Shop {
@@ -18,6 +18,9 @@ interface Shop {
   totalEarnings: number;
   availableBalance: number;
   createdAt: string;
+  canRegisterNewShops?: boolean;
+  registeredBy?: number | null;
+  registeredByName?: string | null;
 }
 
 interface ShopWithUser extends Shop {
@@ -63,6 +66,8 @@ interface ShopSettings {
   minWithdrawalAmount: number;
   withdrawalFee: number;
   shopRegistrationOpen: boolean;
+  shopOwnerCanRegister: boolean;
+  maxRegistrationsPerOwner: number;
 }
 
 export default function ShopManagement() {
@@ -70,14 +75,18 @@ export default function ShopManagement() {
   const [activeTab, setActiveTab] = useState<"shops" | "withdrawals" | "settings">("shops");
   const [shops, setShops] = useState<ShopWithUser[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [settings, setSettings] = useState<ShopSettings>({ minWithdrawalAmount: 10, withdrawalFee: 0, shopRegistrationOpen: true });
+  const [settings, setSettings] = useState<ShopSettings>({ minWithdrawalAmount: 10, withdrawalFee: 0, shopRegistrationOpen: true, shopOwnerCanRegister: true, maxRegistrationsPerOwner: 10 });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   
   // Settings editing
   const [editingSettings, setEditingSettings] = useState(false);
-  const [tempSettings, setTempSettings] = useState<ShopSettings>({ minWithdrawalAmount: 10, withdrawalFee: 0, shopRegistrationOpen: true });
+  const [tempSettings, setTempSettings] = useState<ShopSettings>({ minWithdrawalAmount: 10, withdrawalFee: 0, shopRegistrationOpen: true, shopOwnerCanRegister: true, maxRegistrationsPerOwner: 10 });
+  
+  // Bulk selection for registration privilege
+  const [selectedShops, setSelectedShops] = useState<Set<number>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   useEffect(() => {
     loadShops();
@@ -192,6 +201,66 @@ export default function ShopManagement() {
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
+    }
+  };
+
+  // Toggle registration privilege for a single shop
+  const toggleRegistrationPrivilege = async (shopId: number, currentValue: boolean) => {
+    try {
+      const response = await fetch(`/api/admin/shops/${shopId}/toggle-registration`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ canRegisterNewShops: !currentValue })
+      });
+      if (response.ok) {
+        // Update local state
+        setShops(prev => prev.map(s => 
+          s.id === shopId ? { ...s, canRegisterNewShops: !currentValue } : s
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to toggle registration:", error);
+    }
+  };
+
+  // Bulk toggle registration privilege
+  const bulkToggleRegistration = async (enable: boolean) => {
+    if (selectedShops.size === 0) {
+      alert("Please select at least one shop");
+      return;
+    }
+    setBulkUpdating(true);
+    try {
+      const response = await fetch("/api/admin/shops/bulk-toggle-registration", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 
+          shopIds: Array.from(selectedShops), 
+          canRegisterNewShops: enable 
+        })
+      });
+      if (response.ok) {
+        // Update local state
+        setShops(prev => prev.map(s => 
+          selectedShops.has(s.id) ? { ...s, canRegisterNewShops: enable } : s
+        ));
+        setSelectedShops(new Set());
+      }
+    } catch (error) {
+      console.error("Failed to bulk toggle:", error);
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  // Select/deselect all filtered shops
+  const toggleSelectAll = () => {
+    if (selectedShops.size === filteredShops.length) {
+      setSelectedShops(new Set());
+    } else {
+      setSelectedShops(new Set(filteredShops.map(s => s.id)));
     }
   };
 
@@ -325,8 +394,8 @@ export default function ShopManagement() {
         {/* Shops Tab */}
         {activeTab === "shops" && (
           <div className="space-y-4">
-            {/* Filters */}
-            <div className="flex gap-4 items-center">
+            {/* Filters and Bulk Actions */}
+            <div className="flex flex-wrap gap-4 items-center">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <Input
@@ -346,6 +415,38 @@ export default function ShopManagement() {
                 <option value="approved">Approved</option>
                 <option value="banned">Banned</option>
               </select>
+              
+              {/* Bulk Actions */}
+              {selectedShops.size > 0 && (
+                <div className="flex items-center gap-2 bg-violet-50 px-3 py-1 rounded-md">
+                  <span className="text-sm text-violet-700 font-medium">{selectedShops.size} selected</span>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => bulkToggleRegistration(true)}
+                    disabled={bulkUpdating}
+                    className="text-green-600 border-green-600 hover:bg-green-50"
+                  >
+                    <UserPlus size={14} className="mr-1" /> Enable Reg
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => bulkToggleRegistration(false)}
+                    disabled={bulkUpdating}
+                    className="text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    <Ban size={14} className="mr-1" /> Disable Reg
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setSelectedShops(new Set())}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Shops Table */}
@@ -355,18 +456,43 @@ export default function ShopManagement() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b">
                       <tr>
+                        <th className="py-3 px-2 w-8">
+                          <input
+                            type="checkbox"
+                            checked={selectedShops.size === filteredShops.length && filteredShops.length > 0}
+                            onChange={toggleSelectAll}
+                            className="rounded border-gray-300"
+                          />
+                        </th>
                         <th className="text-left py-3 px-4">Shop</th>
                         <th className="text-left py-3 px-4">Owner</th>
+                        <th className="text-left py-3 px-4">Registered By</th>
                         <th className="text-left py-3 px-4">Contact</th>
                         <th className="text-left py-3 px-4">Earnings</th>
-                        <th className="text-left py-3 px-4">Balance</th>
+                        <th className="text-left py-3 px-4">Can Register</th>
                         <th className="text-left py-3 px-4">Status</th>
                         <th className="text-left py-3 px-4">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredShops.map((shop) => (
-                        <tr key={shop.id} className="border-b hover:bg-gray-50">
+                        <tr key={shop.id} className={`border-b hover:bg-gray-50 ${selectedShops.has(shop.id) ? 'bg-violet-50' : ''}`}>
+                          <td className="py-3 px-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedShops.has(shop.id)}
+                              onChange={(e) => {
+                                const newSelected = new Set(selectedShops);
+                                if (e.target.checked) {
+                                  newSelected.add(shop.id);
+                                } else {
+                                  newSelected.delete(shop.id);
+                                }
+                                setSelectedShops(newSelected);
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                          </td>
                           <td className="py-3 px-4">
                             <div>
                               <p className="font-medium">{shop.shopName}</p>
@@ -375,13 +501,42 @@ export default function ShopManagement() {
                           </td>
                           <td className="py-3 px-4">{shop.owner?.name || "N/A"}</td>
                           <td className="py-3 px-4">
+                            {shop.registeredByName ? (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                {shop.registeredByName}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">Direct</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
                             <div>
                               <p className="text-xs">{shop.owner?.email || "N/A"}</p>
                               <p className="text-xs text-gray-500">{shop.owner?.phone || "N/A"}</p>
                             </div>
                           </td>
                           <td className="py-3 px-4">GHS {shop.totalEarnings.toFixed(2)}</td>
-                          <td className="py-3 px-4">GHS {shop.availableBalance.toFixed(2)}</td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => toggleRegistrationPrivilege(shop.id, shop.canRegisterNewShops !== false)}
+                              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                                shop.canRegisterNewShops !== false 
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              }`}
+                              title={shop.canRegisterNewShops !== false ? "Click to disable" : "Click to enable"}
+                            >
+                              {shop.canRegisterNewShops !== false ? (
+                                <>
+                                  <Shield size={12} /> Yes
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle size={12} /> No
+                                </>
+                              )}
+                            </button>
+                          </td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs ${getStatusBadge(shop.status)}`}>
                               {shop.status}
@@ -555,8 +710,8 @@ export default function ShopManagement() {
               <div className="space-y-2 pt-4 border-t">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium">Shop Registration</label>
-                    <p className="text-xs text-gray-500">Allow new users to register shops (changes instantly)</p>
+                    <label className="text-sm font-medium">Public Shop Registration</label>
+                    <p className="text-xs text-gray-500">Allow new users to register shops directly (changes instantly)</p>
                   </div>
                   <button
                     type="button"
@@ -605,8 +760,80 @@ export default function ShopManagement() {
                   </button>
                 </div>
                 <p className={`text-sm font-medium ${settings.shopRegistrationOpen ? 'text-green-600' : 'text-red-600'}`}>
-                  {settings.shopRegistrationOpen ? '✓ Registration is OPEN' : '✗ Registration is CLOSED'}
+                  {settings.shopRegistrationOpen ? '✓ Public registration is OPEN' : '✗ Public registration is CLOSED'}
                 </p>
+              </div>
+
+              {/* Shop Owner Registration Privilege */}
+              <div className="space-y-2 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-medium">Shop Owner Can Register Others</label>
+                    <p className="text-xs text-gray-500">Allow existing shop owners to register new vendors/agents (master switch)</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const newValue = !settings.shopOwnerCanRegister;
+                      try {
+                        const response = await fetch("/api/admin/shop-settings", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ shopOwnerCanRegister: newValue })
+                        });
+                        if (response.ok) {
+                          setSettings(prev => ({ ...prev, shopOwnerCanRegister: newValue }));
+                          setTempSettings(prev => ({ ...prev, shopOwnerCanRegister: newValue }));
+                        }
+                      } catch (error) {
+                        console.error("Failed to toggle owner registration:", error);
+                      }
+                    }}
+                    style={{
+                      width: '56px',
+                      height: '28px',
+                      borderRadius: '14px',
+                      backgroundColor: settings.shopOwnerCanRegister ? '#22c55e' : '#d1d5db',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      border: 'none',
+                      padding: 0,
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: settings.shopOwnerCanRegister ? '30px' : '2px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: 'white',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        transition: 'left 0.2s'
+                      }}
+                    />
+                  </button>
+                </div>
+                <p className={`text-sm font-medium ${settings.shopOwnerCanRegister ? 'text-green-600' : 'text-red-600'}`}>
+                  {settings.shopOwnerCanRegister ? '✓ Shop owners CAN register new vendors' : '✗ Shop owners CANNOT register new vendors'}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Max Registrations Per Shop Owner</label>
+                <p className="text-xs text-gray-500">Maximum number of new shops each owner can register</p>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={editingSettings ? tempSettings.maxRegistrationsPerOwner : settings.maxRegistrationsPerOwner}
+                  onChange={(e) => setTempSettings(prev => ({ ...prev, maxRegistrationsPerOwner: parseInt(e.target.value) || 10 }))}
+                  disabled={!editingSettings}
+                />
               </div>
               
               <div className="flex gap-2 pt-4">

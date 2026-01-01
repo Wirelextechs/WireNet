@@ -3017,6 +3017,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ SHOP OWNER REGISTRATION PRIVILEGE ROUTES ============
+
+  // Check if shop owner can register new shops
+  app.get("/api/shop/can-register", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await shopsDB.getByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.json({ canRegister: false, reason: "No shop found" });
+      }
+
+      // Check global setting
+      const ownerCanRegister = await storage.getSetting("shopOwnerCanRegister");
+      if (ownerCanRegister?.value === "false") {
+        return res.json({ canRegister: false, reason: "Shop owner registration is disabled globally" });
+      }
+
+      // Check individual shop permission (default true if column doesn't exist yet)
+      const canRegister = shop.can_register_new_shops !== false;
+      if (!canRegister) {
+        return res.json({ canRegister: false, reason: "Your shop does not have registration privileges" });
+      }
+
+      // Check max registrations limit
+      const maxRegistrations = await storage.getSetting("maxRegistrationsPerOwner");
+      const limit = parseInt(maxRegistrations?.value || "10");
+      
+      // Count how many shops this owner has registered
+      const registeredCount = await shopsDB.countByRegisteredBy(shop.id);
+      const remaining = Math.max(0, limit - registeredCount);
+
+      res.json({
+        canRegister: remaining > 0,
+        registeredCount,
+        limit,
+        remaining,
+        reason: remaining > 0 ? null : "Registration limit reached"
+      });
+    } catch (error: any) {
+      console.error("Check can-register error:", error);
+      res.status(500).json({ canRegister: false, reason: "Server error" });
+    }
+  });
+
+  // Get shops registered by current shop owner
+  app.get("/api/shop/my-registrations", isUserAuthenticated, async (req: any, res) => {
+    try {
+      const shop = await shopsDB.getByUserId(req.shopUser.id);
+      if (!shop) {
+        return res.json({ registrations: [] });
+      }
+
+      const registrations = await shopsDB.getByRegisteredBy(shop.id);
+      
+      // Enrich with owner info
+      const enriched = await Promise.all((registrations || []).map(async (s: any) => {
+        let owner = null;
+        try {
+          owner = await shopUsersDB.getById(s.user_id);
+        } catch (e) {}
+        return {
+          id: s.id,
+          shopName: s.shop_name,
+          slug: s.slug,
+          status: s.status,
+          createdAt: s.created_at,
+          owner: owner ? { name: owner.name, email: owner.email, phone: owner.phone } : null
+        };
+      }));
+
+      res.json({ registrations: enriched });
+    } catch (error: any) {
+      console.error("Get my registrations error:", error);
+      res.json({ registrations: [] });
+    }
+  });
+
+  // Register new shop owner (by existing shop owner)
+  app.post("/api/shop/register-new-owner", isUserAuthenticated, async (req: any, res) => {
+    try {
+      // Get current shop owner's shop
+      const currentShop = await shopsDB.getByUserId(req.shopUser.id);
+      if (!currentShop) {
+        return res.status(403).json({ message: "You must have a shop to register new owners" });
+      }
+
+      // Check global setting
+      const ownerCanRegister = await storage.getSetting("shopOwnerCanRegister");
+      if (ownerCanRegister?.value === "false") {
+        return res.status(403).json({ message: "Shop owner registration is currently disabled" });
+      }
+
+      // Check individual shop permission
+      if (currentShop.can_register_new_shops === false) {
+        return res.status(403).json({ message: "Your shop does not have permission to register new owners" });
+      }
+
+      // Check registration limit
+      const maxRegistrations = await storage.getSetting("maxRegistrationsPerOwner");
+      const limit = parseInt(maxRegistrations?.value || "10");
+      const registeredCount = await shopsDB.countByRegisteredBy(currentShop.id);
+      
+      if (registeredCount >= limit) {
+        return res.status(403).json({ message: `Registration limit reached (${limit} shops)` });
+      }
+
+      const { email, password, name, phone, shopName, shopSlug } = req.body;
+
+      if (!email || !password || !name || !phone) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if user already exists
+      const existingUser = await shopUsersDB.getByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Validate shop slug
+      if (!shopName || !shopSlug) {
+        return res.status(400).json({ message: "Shop name and slug are required" });
+      }
+
+      const slugRegex = /^[a-z0-9-]+$/;
+      const normalizedSlug = shopSlug.toLowerCase().trim();
+      if (!slugRegex.test(normalizedSlug)) {
+        return res.status(400).json({ message: "Shop slug can only contain lowercase letters, numbers, and hyphens" });
+      }
+
+      if (normalizedSlug.length < 3 || normalizedSlug.length > 30) {
+        return res.status(400).json({ message: "Shop slug must be 3-30 characters" });
+      }
+
+      // Check if slug already taken
+      const existingShop = await shopsDB.getBySlug(normalizedSlug);
+      if (existingShop) {
+        return res.status(400).json({ message: "Shop URL is already taken" });
+      }
+
+      // Reserved slugs
+      const reservedSlugs = ["admin", "api", "shop", "dashboard", "login", "signup", "settings", "fastnet", "datagod", "at", "telecel"];
+      if (reservedSlugs.includes(normalizedSlug)) {
+        return res.status(400).json({ message: "This shop URL is reserved" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create shop user
+      const user = await shopUsersDB.create({
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        name,
+        phone,
+      });
+
+      // Create shop with registered_by set to current shop's ID
+      const shop = await shopsDB.create({
+        user_id: user.id,
+        shop_name: shopName,
+        slug: normalizedSlug,
+        registered_by: currentShop.id,
+        can_register_new_shops: true // New shops can also register others by default
+      });
+
+      res.status(201).json({
+        message: "New vendor/agent registered successfully! Their shop is pending approval.",
+        user: { id: user.id, email: user.email, name: user.name },
+        shop: { id: shop.id, shopName: shop.shop_name, slug: shop.slug, status: shop.status },
+        registeredBy: { shopId: currentShop.id, shopName: currentShop.shop_name }
+      });
+    } catch (error: any) {
+      console.error("Register new owner error:", error);
+      res.status(500).json({ message: "Failed to register new owner" });
+    }
+  });
+
+  // Admin: Toggle shop registration privilege
+  app.put("/api/admin/shops/:id/toggle-registration", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const shopId = req.params.id;
+      const { canRegisterNewShops } = req.body;
+
+      const shop = await shopsDB.update(shopId, { can_register_new_shops: canRegisterNewShops });
+      
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      res.json({ message: `Registration privilege ${canRegisterNewShops ? 'enabled' : 'disabled'}`, shop });
+    } catch (error) {
+      console.error("Toggle registration privilege error:", error);
+      res.status(500).json({ message: "Failed to update registration privilege" });
+    }
+  });
+
+  // Admin: Bulk toggle registration privilege
+  app.put("/api/admin/shops/bulk-toggle-registration", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { shopIds, canRegisterNewShops } = req.body;
+
+      if (!Array.isArray(shopIds) || shopIds.length === 0) {
+        return res.status(400).json({ message: "No shops selected" });
+      }
+
+      const results = await Promise.all(
+        shopIds.map(async (id: string | number) => {
+          try {
+            await shopsDB.update(String(id), { can_register_new_shops: canRegisterNewShops });
+            return { id, success: true };
+          } catch (err) {
+            return { id, success: false };
+          }
+        })
+      );
+
+      const successCount = results.filter(r => r.success).length;
+      res.json({ 
+        message: `Updated ${successCount} of ${shopIds.length} shops`,
+        results 
+      });
+    } catch (error) {
+      console.error("Bulk toggle registration error:", error);
+      res.status(500).json({ message: "Failed to update shops" });
+    }
+  });
+
   // ============ PUBLIC SHOP STOREFRONT ROUTES ============
 
   // Get shop by slug (public)
@@ -3327,6 +3559,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // User might not exist
         }
         
+        // Get registrar shop name if registered_by exists
+        let registeredByName = null;
+        if (shop.registered_by) {
+          try {
+            const registrar = await shopsDB.getById(String(shop.registered_by));
+            registeredByName = registrar?.shop_name || null;
+          } catch (e) {
+            // Registrar might not exist
+          }
+        }
+        
         // Get stats from storage (PostgreSQL) instead of Supabase
         let stats = { totalOrders: 0, totalEarnings: 0 };
         try {
@@ -3347,6 +3590,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalEarnings: parseFloat(shop.total_earnings) || 0,
           availableBalance: parseFloat(shop.available_balance) || 0,
           createdAt: shop.created_at,
+          canRegisterNewShops: shop.can_register_new_shops !== false, // Default to true
+          registeredBy: shop.registered_by || null,
+          registeredByName,
           owner: user ? { id: user.id, name: user.name, email: user.email, phone: user.phone } : null,
           stats
         };
@@ -3621,7 +3867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update shop settings (admin) - min withdrawal, fees, registration status
   app.put("/api/admin/shop-settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { minWithdrawalAmount, withdrawalFee, shopRegistrationOpen } = req.body;
+      const { minWithdrawalAmount, withdrawalFee, shopRegistrationOpen, shopOwnerCanRegister, maxRegistrationsPerOwner } = req.body;
 
       if (minWithdrawalAmount !== undefined) {
         await storage.upsertSetting("minWithdrawalAmount", String(minWithdrawalAmount));
@@ -3631,6 +3877,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (shopRegistrationOpen !== undefined) {
         await storage.upsertSetting("shopRegistrationOpen", String(shopRegistrationOpen));
+      }
+      if (shopOwnerCanRegister !== undefined) {
+        await storage.upsertSetting("shopOwnerCanRegister", String(shopOwnerCanRegister));
+      }
+      if (maxRegistrationsPerOwner !== undefined) {
+        await storage.upsertSetting("maxRegistrationsPerOwner", String(maxRegistrationsPerOwner));
       }
 
       res.json({ message: "Shop settings updated" });
@@ -3646,11 +3898,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const minWithdrawal = await storage.getSetting("minWithdrawalAmount");
       const withdrawalFee = await storage.getSetting("withdrawalFee");
       const registrationOpen = await storage.getSetting("shopRegistrationOpen");
+      const ownerCanRegister = await storage.getSetting("shopOwnerCanRegister");
+      const maxRegistrations = await storage.getSetting("maxRegistrationsPerOwner");
 
       res.json({
         minWithdrawalAmount: parseFloat(minWithdrawal?.value || "10"),
         withdrawalFee: parseFloat(withdrawalFee?.value || "0"),
-        shopRegistrationOpen: registrationOpen?.value !== "false" // Default to true
+        shopRegistrationOpen: registrationOpen?.value !== "false", // Default to true
+        shopOwnerCanRegister: ownerCanRegister?.value !== "false", // Default to true
+        maxRegistrationsPerOwner: parseInt(maxRegistrations?.value || "10")
       });
     } catch (error) {
       console.error("Get shop settings error:", error);

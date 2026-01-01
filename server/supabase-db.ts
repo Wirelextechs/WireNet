@@ -85,7 +85,7 @@ export const shopUsersDB = {
 
 // Shops
 export const shopsDB = {
-  async create(shop: { user_id: string; shop_name: string; slug: string; description?: string; logo?: string }) {
+  async create(shop: { user_id: string; shop_name: string; slug: string; description?: string; logo?: string; registered_by?: string | number; can_register_new_shops?: boolean }) {
     const data = await supabaseFetch('shops', {
       method: 'POST',
       body: JSON.stringify(shop),
@@ -147,6 +147,28 @@ export const shopsDB = {
     return await this.update(shopId, {
       available_balance: newBalance,
     });
+  },
+
+  // Get shops registered by a specific shop
+  async getByRegisteredBy(registeredById: string | number) {
+    return await supabaseFetch(`shops?registered_by=eq.${registeredById}&order=created_at.desc`);
+  },
+
+  // Count shops registered by a specific shop
+  async countByRegisteredBy(registeredById: string | number): Promise<number> {
+    try {
+      const shops = await supabaseFetch(`shops?registered_by=eq.${registeredById}&select=id`);
+      return shops?.length || 0;
+    } catch (err) {
+      return 0;
+    }
+  },
+
+  // Get the shop that registered this shop (registered_by)
+  async getRegistrar(shopId: string | number) {
+    const shop = await this.getById(String(shopId));
+    if (!shop || !shop.registered_by) return null;
+    return await this.getById(String(shop.registered_by));
   },
 };
 

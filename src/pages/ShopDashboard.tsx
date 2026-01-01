@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Store, LogOut, DollarSign, Package, ShoppingCart, TrendingUp,
-  Settings, Wallet, Copy, CheckCircle, ExternalLink, Save
+  Settings, Wallet, Copy, CheckCircle, ExternalLink, Save, UserPlus, Users
 } from "lucide-react";
 
 interface Shop {
@@ -90,7 +90,7 @@ export default function ShopDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "packages" | "orders" | "withdrawals" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "packages" | "orders" | "withdrawals" | "register" | "settings">("overview");
   
   // Filters for orders
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +98,15 @@ export default function ShopDashboard() {
   
   // Withdrawal form
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  
+  // Register Vendor/Agent state
+  const [canRegister, setCanRegister] = useState(false);
+  const [registrationInfo, setRegistrationInfo] = useState<{ registeredCount: number; limit: number; remaining: number; reason: string | null }>({ registeredCount: 0, limit: 10, remaining: 10, reason: null });
+  const [myRegistrations, setMyRegistrations] = useState<any[]>([]);
+  const [registerForm, setRegisterForm] = useState({ email: "", password: "", name: "", phone: "", shopName: "", shopSlug: "" });
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState("");
+  const [registerSuccess, setRegisterSuccess] = useState("");
   const [withdrawalNetwork, setWithdrawalNetwork] = useState("MTN");
   const [withdrawalAccountName, setWithdrawalAccountName] = useState("");
   const [withdrawalMobileNumber, setWithdrawalMobileNumber] = useState("");
@@ -170,6 +179,14 @@ export default function ShopDashboard() {
             }),
             loadShopSettings().catch(err => {
               console.error("Error loading shop settings:", err);
+              return null;
+            }),
+            loadRegistrationStatus().catch(err => {
+              console.error("Error loading registration status:", err);
+              return null;
+            }),
+            loadMyRegistrations().catch(err => {
+              console.error("Error loading my registrations:", err);
               return null;
             })
           ]).finally(() => {
@@ -307,6 +324,70 @@ export default function ShopDashboard() {
       }
     } catch (error) {
       console.error("Failed to load shop settings:", error);
+    }
+  };
+
+  // Load registration privilege status
+  const loadRegistrationStatus = async () => {
+    try {
+      const response = await fetch("/api/shop/can-register", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setCanRegister(data.canRegister);
+        setRegistrationInfo({
+          registeredCount: data.registeredCount || 0,
+          limit: data.limit || 10,
+          remaining: data.remaining || 0,
+          reason: data.reason || null
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load registration status:", error);
+    }
+  };
+
+  // Load shops registered by this owner
+  const loadMyRegistrations = async () => {
+    try {
+      const response = await fetch("/api/shop/my-registrations", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setMyRegistrations(data.registrations || []);
+      }
+    } catch (error) {
+      console.error("Failed to load my registrations:", error);
+    }
+  };
+
+  // Register a new vendor/agent
+  const handleRegisterNewOwner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError("");
+    setRegisterSuccess("");
+    setRegisterLoading(true);
+    
+    try {
+      const response = await fetch("/api/shop/register-new-owner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(registerForm)
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setRegisterSuccess(data.message || "New vendor/agent registered successfully!");
+        setRegisterForm({ email: "", password: "", name: "", phone: "", shopName: "", shopSlug: "" });
+        // Reload registration status and list
+        await Promise.all([loadRegistrationStatus(), loadMyRegistrations()]);
+      } else {
+        setRegisterError(data.message || "Failed to register");
+      }
+    } catch (error) {
+      setRegisterError("Network error. Please try again.");
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -585,18 +666,19 @@ export default function ShopDashboard() {
       {/* Navigation Tabs and Content */}
       {shop && user ? (
       <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="flex gap-2 border-b mb-6">
+        <div className="flex gap-2 border-b mb-6 overflow-x-auto">
           {[
             { id: "overview", label: "Overview", icon: TrendingUp },
             { id: "packages", label: "Packages & Pricing", icon: Package },
             { id: "orders", label: "Orders", icon: ShoppingCart },
             { id: "withdrawals", label: "Withdrawals", icon: Wallet },
+            { id: "register", label: "Register Agent", icon: UserPlus },
             { id: "settings", label: "Settings", icon: Settings },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-violet-600 text-violet-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
@@ -1038,6 +1120,194 @@ export default function ShopDashboard() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Register Agent Tab */}
+        {activeTab === "register" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Registration Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Register New Vendor/Agent
+                </CardTitle>
+                <CardDescription>
+                  Register a new independent shop owner. They will have their own login credentials and shop.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Status Banner */}
+                {!canRegister ? (
+                  <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-red-700 font-medium">
+                      {registrationInfo.reason || "You cannot register new vendors at this time"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-green-700">
+                      <span className="font-medium">Registrations remaining:</span> {registrationInfo.remaining} of {registrationInfo.limit}
+                    </p>
+                  </div>
+                )}
+
+                {registerSuccess && (
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-green-700">{registerSuccess}</p>
+                  </div>
+                )}
+
+                {registerError && (
+                  <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-red-700">{registerError}</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleRegisterNewOwner} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Full Name *</label>
+                      <Input
+                        value={registerForm.name}
+                        onChange={(e) => setRegisterForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="John Doe"
+                        required
+                        disabled={!canRegister || registerLoading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Phone Number *</label>
+                      <Input
+                        value={registerForm.phone}
+                        onChange={(e) => setRegisterForm(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="0241234567"
+                        required
+                        disabled={!canRegister || registerLoading}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Email Address *</label>
+                    <Input
+                      type="email"
+                      value={registerForm.email}
+                      onChange={(e) => setRegisterForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="agent@example.com"
+                      required
+                      disabled={!canRegister || registerLoading}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Password *</label>
+                    <Input
+                      type="password"
+                      value={registerForm.password}
+                      onChange={(e) => setRegisterForm(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Create a strong password"
+                      required
+                      minLength={6}
+                      disabled={!canRegister || registerLoading}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <h4 className="font-medium mb-3">Shop Details</h4>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Shop Name *</label>
+                        <Input
+                          value={registerForm.shopName}
+                          onChange={(e) => setRegisterForm(prev => ({ ...prev, shopName: e.target.value }))}
+                          placeholder="My Data Shop"
+                          required
+                          disabled={!canRegister || registerLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Shop URL Slug *</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">wirenet.top/shop/</span>
+                          <Input
+                            value={registerForm.shopSlug}
+                            onChange={(e) => setRegisterForm(prev => ({ ...prev, shopSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                            placeholder="my-data-shop"
+                            required
+                            disabled={!canRegister || registerLoading}
+                            className="flex-1"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">Only lowercase letters, numbers, and hyphens</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={!canRegister || registerLoading}
+                  >
+                    {registerLoading ? "Registering..." : "Register New Vendor/Agent"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Registered Shops List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Vendors You've Registered ({myRegistrations.length})
+                </CardTitle>
+                <CardDescription>
+                  List of shops registered by you
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {myRegistrations.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>No vendors registered yet</p>
+                    <p className="text-sm mt-1">Use the form to register your first vendor/agent</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myRegistrations.map((reg) => (
+                      <div 
+                        key={reg.id} 
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium">{reg.shopName}</p>
+                          <p className="text-xs text-gray-500">/shop/{reg.slug}</p>
+                          {reg.owner && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {reg.owner.name} • {reg.owner.phone}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            reg.status === 'approved' ? 'bg-green-100 text-green-700' :
+                            reg.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {reg.status}
+                          </span>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(reg.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>

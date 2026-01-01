@@ -67,6 +67,50 @@ export async function runPendingMigrations() {
       }
     }
 
+    // Migration 4: Add shop registration privilege columns to shops table (Supabase)
+    try {
+      // Check if shops table exists in Supabase (we need to use a separate connection for Supabase)
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseKey) {
+        // Note: Supabase shops table columns need to be added manually or via Supabase dashboard
+        // The following columns should be added to the shops table:
+        console.log("ℹ️ Shop registration privilege columns should be added to Supabase shops table:");
+        console.log("   - can_register_new_shops BOOLEAN DEFAULT true");
+        console.log("   - registered_by INTEGER (nullable, references shops.id)");
+        console.log("   Run: supabase/shop_registration_privilege.sql");
+      }
+    } catch (err: any) {
+      console.log("ℹ️ Supabase migration note:", err.message);
+    }
+
+    // Migration 5: Add shop owner registration settings
+    try {
+      // Add default settings for shop owner registration privilege
+      const shopOwnerCanRegisterSetting = await pool.query(
+        `SELECT value FROM settings WHERE key = 'shopOwnerCanRegister'`
+      );
+      if (shopOwnerCanRegisterSetting.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO settings (key, value) VALUES ('shopOwnerCanRegister', 'true') ON CONFLICT (key) DO NOTHING`
+        );
+        console.log("✅ Added shopOwnerCanRegister setting (default: true)");
+      }
+      
+      const maxRegistrationsSetting = await pool.query(
+        `SELECT value FROM settings WHERE key = 'maxRegistrationsPerOwner'`
+      );
+      if (maxRegistrationsSetting.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO settings (key, value) VALUES ('maxRegistrationsPerOwner', '10') ON CONFLICT (key) DO NOTHING`
+        );
+        console.log("✅ Added maxRegistrationsPerOwner setting (default: 10)");
+      }
+    } catch (err: any) {
+      console.log("ℹ️ Settings migration note:", err.message);
+    }
+
     console.log("✅ All migrations completed");
   } catch (error) {
     console.error("❌ Migration error:", error);

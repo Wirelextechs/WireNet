@@ -29,6 +29,8 @@ export const shops = pgTable("shops", {
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, approved, banned
   totalEarnings: real("total_earnings").notNull().default(0),
   availableBalance: real("available_balance").notNull().default(0),
+  canRegisterNewShops: boolean("can_register_new_shops").notNull().default(true), // Registration privilege
+  registeredBy: integer("registered_by"), // shop_user ID who registered this shop (null = direct registration)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
