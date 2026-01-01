@@ -52,10 +52,19 @@ interface Withdrawal {
   amount: number;
   fee: number;
   netAmount: number;
-  bankDetails: string;
+  net_amount?: number;
+  bankName: string;
+  bank_name?: string;
+  accountNumber: string;
+  account_number?: string;
+  accountName: string;
+  account_name?: string;
+  network?: string;
   status: string;
-  requestedAt: string;
+  createdAt: string;
+  created_at?: string;
   processedAt: string | null;
+  processed_at?: string | null;
 }
 
 interface ShopStats {
@@ -997,6 +1006,7 @@ export default function ShopDashboard() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-2 px-2">Date</th>
+                          <th className="text-left py-2 px-2">Account</th>
                           <th className="text-left py-2 px-2">Amount</th>
                           <th className="text-left py-2 px-2">Fee</th>
                           <th className="text-left py-2 px-2">Net</th>
@@ -1006,10 +1016,19 @@ export default function ShopDashboard() {
                       <tbody>
                         {withdrawals.map((w) => (
                           <tr key={w.id} className="border-b">
-                            <td className="py-2 px-2">{new Date(w.requestedAt).toLocaleDateString()}</td>
+                            <td className="py-2 px-2">{new Date(w.createdAt || w.created_at || Date.now()).toLocaleDateString()}</td>
+                            <td className="py-2 px-2">
+                              <div className="text-xs">
+                                <span className="font-medium">{w.network || ''}</span>
+                                {(w.accountNumber || w.account_number) && (
+                                  <span className="text-gray-500 ml-1">• {w.accountNumber || w.account_number}</span>
+                                )}
+                              </div>
+                              <div className="text-gray-500 text-xs">{w.accountName || w.account_name}</div>
+                            </td>
                             <td className="py-2 px-2">GHS {(typeof w.amount === 'number' ? w.amount : 0).toFixed(2)}</td>
                             <td className="py-2 px-2">GHS {(typeof w.fee === 'number' ? w.fee : 0).toFixed(2)}</td>
-                            <td className="py-2 px-2 font-semibold">GHS {(typeof w.netAmount === 'number' ? w.netAmount : 0).toFixed(2)}</td>
+                            <td className="py-2 px-2 font-semibold">GHS {(typeof (w.netAmount ?? w.net_amount) === 'number' ? (w.netAmount ?? w.net_amount) : 0).toFixed(2)}</td>
                             <td className="py-2 px-2">
                               <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(w.status)}`}>
                                 {w.status}
