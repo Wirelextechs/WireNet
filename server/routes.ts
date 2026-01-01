@@ -2905,9 +2905,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Your shop must be approved to request withdrawals" });
       }
 
-      const { amount, bankName, accountNumber, accountName } = req.body;
+      const { amount, network, accountName, mobileNumber, method } = req.body;
 
-      if (!amount || !bankName || !accountNumber || !accountName) {
+      if (!amount || !network || !accountName || !mobileNumber) {
         return res.status(400).json({ message: "All fields are required" });
       }
 
@@ -2932,9 +2932,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount,
         fee: withdrawalFee,
         net_amount: netAmount,
-        bank_name: bankName,
-        account_number: accountNumber,
-        account_name: accountName
+        bank_name: method || "Mobile Money",
+        account_number: mobileNumber,
+        account_name: accountName,
+        network: network
       });
 
       // Deduct from available balance

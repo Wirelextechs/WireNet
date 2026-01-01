@@ -89,7 +89,9 @@ export default function ShopDashboard() {
   
   // Withdrawal form
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [bankDetails, setBankDetails] = useState("");
+  const [withdrawalNetwork, setWithdrawalNetwork] = useState("MTN");
+  const [withdrawalAccountName, setWithdrawalAccountName] = useState("");
+  const [withdrawalMobileNumber, setWithdrawalMobileNumber] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
   const [withdrawSuccess, setWithdrawSuccess] = useState("");
@@ -393,8 +395,16 @@ export default function ShopDashboard() {
       setWithdrawError("Insufficient balance");
       return;
     }
-    if (!bankDetails.trim()) {
-      setWithdrawError("Please provide bank/MoMo details");
+    if (!withdrawalAccountName.trim()) {
+      setWithdrawError("Please provide account name");
+      return;
+    }
+    if (!withdrawalMobileNumber.trim()) {
+      setWithdrawError("Please provide mobile number");
+      return;
+    }
+    if (!withdrawalNetwork) {
+      setWithdrawError("Please select network");
       return;
     }
 
@@ -404,13 +414,21 @@ export default function ShopDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ amount, bankDetails })
+        body: JSON.stringify({ 
+          amount, 
+          network: withdrawalNetwork,
+          accountName: withdrawalAccountName,
+          mobileNumber: withdrawalMobileNumber,
+          method: "Mobile Money"
+        })
       });
 
       if (response.ok) {
         setWithdrawSuccess(`Withdrawal request submitted! You will receive GHS ${(amount - withdrawalFee).toFixed(2)} after processing.`);
         setWithdrawAmount("");
-        setBankDetails("");
+        setWithdrawalAccountName("");
+        setWithdrawalMobileNumber("");
+        setWithdrawalNetwork("MTN");
         await Promise.all([loadStats(), loadWithdrawals()]);
       } else {
         const data = await response.json();
@@ -867,7 +885,7 @@ export default function ShopDashboard() {
               <CardHeader>
                 <CardTitle>Request Withdrawal</CardTitle>
                 <CardDescription>
-                  Min: GHS {minWithdrawal} | Fee: GHS {withdrawalFee}
+                  Withdraw your available profits
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -884,52 +902,83 @@ export default function ShopDashboard() {
                   )}
                   
                   <div>
-                    <label className="text-sm font-medium">Available Balance</label>
+                    <label className="text-sm font-medium block mb-1">Available Balance</label>
                     <p className="text-2xl font-bold text-green-600">GHS {((stats?.availableBalance ?? 0) as number).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Minimum: GHS {minWithdrawal}</p>
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Amount (GHS)</label>
+                    <label className="text-sm font-medium">Amount (GHS) *</label>
                     <Input
                       type="number"
                       min={minWithdrawal}
                       step="0.01"
                       value={withdrawAmount}
                       onChange={(e) => setWithdrawAmount(e.target.value)}
-                      placeholder={`Min: ${minWithdrawal}`}
+                      placeholder="0.00"
+                      required
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Withdrawal Method *</label>
+                    <select
+                      value="Mobile Money"
+                      disabled
+                      className="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                    >
+                      <option>Mobile Money</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Network *</label>
+                    <select
+                      value={withdrawalNetwork}
+                      onChange={(e) => setWithdrawalNetwork(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md"
+                      required
+                    >
+                      <option value="">Select Network</option>
+                      <option value="MTN">MTN</option>
+                      <option value="Vodafone">Vodafone</option>
+                      <option value="AirtelTigo">AirtelTigo</option>
+                    </select>
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Bank/MoMo Details</label>
-                    <textarea
-                      value={bankDetails}
-                      onChange={(e) => setBankDetails(e.target.value)}
-                      placeholder="e.g., MTN MoMo - 0244123456 - John Doe"
-                      className="w-full px-3 py-2 border rounded-md text-sm"
-                      rows={3}
+                    <label className="text-sm font-medium">Account Name (Full Name) *</label>
+                    <Input
+                      type="text"
+                      value={withdrawalAccountName}
+                      onChange={(e) => setWithdrawalAccountName(e.target.value)}
+                      placeholder="John Doe"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Mobile Number *</label>
+                    <Input
+                      type="tel"
+                      value={withdrawalMobileNumber}
+                      onChange={(e) => setWithdrawalMobileNumber(e.target.value)}
+                      placeholder="0201234567"
+                      required
                     />
                   </div>
                   
                   {withdrawAmount && parseFloat(withdrawAmount) >= minWithdrawal && (
-                    <div className="bg-gray-50 p-3 rounded text-sm">
-                      <div className="flex justify-between">
-                        <span>Amount:</span>
-                        <span>GHS {parseFloat(withdrawAmount).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Fee:</span>
-                        <span>-GHS {withdrawalFee.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold border-t pt-1 mt-1">
-                        <span>You'll receive:</span>
-                        <span>GHS {(parseFloat(withdrawAmount) - withdrawalFee).toFixed(2)}</span>
+                    <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm space-y-1">
+                      <div className="text-xs text-blue-600 flex items-start gap-2">
+                        <span className="text-blue-500 mt-0.5">ℹ️</span>
+                        <span>Withdrawal requests are processed within 1-2 business days after approval.</span>
                       </div>
                     </div>
                   )}
                   
-                  <Button type="submit" className="w-full" disabled={withdrawing}>
-                    {withdrawing ? "Processing..." : "Request Withdrawal"}
+                  <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700" disabled={withdrawing}>
+                    {withdrawing ? "Processing..." : "Submit Request"}
                   </Button>
                 </form>
               </CardContent>
