@@ -2896,7 +2896,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request withdrawal
   app.post("/api/withdrawals/request", isUserAuthenticated, async (req: any, res) => {
     try {
-      const shop = await shopsDB.getByUserId(req.shopUser.id);
+      // Use PostgreSQL storage for shop lookup (numeric IDs)
+      const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
       if (!shop) {
         return res.status(404).json({ message: "Shop not found" });
       }
@@ -2921,7 +2922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `Minimum withdrawal amount is GHS ${minWithdrawal}` });
       }
 
-      const availableBalance = parseFloat(shop.available_balance) || 0;
+      const availableBalance = shop.availableBalance || 0;
       if (amount > availableBalance) {
         return res.status(400).json({ message: "Insufficient balance" });
       }
@@ -2939,8 +2940,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         network: network
       });
 
-      // Deduct from available balance
-      await shopsDB.deductBalance(shop.id, amount);
+      // Deduct from available balance using PostgreSQL storage
+      await storage.deductShopBalance(shop.id, amount);
 
       res.status(201).json({
         message: "Withdrawal request submitted",
@@ -2955,7 +2956,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get withdrawal history
   app.get("/api/withdrawals", isUserAuthenticated, async (req: any, res) => {
     try {
-      const shop = await shopsDB.getByUserId(req.shopUser.id);
+      // Use PostgreSQL storage for shop lookup (numeric IDs)
+      const shop = await storage.getShopByUserId(parseInt(req.shopUser.id));
       if (!shop) {
         return res.json({ withdrawals: [] });
       }
