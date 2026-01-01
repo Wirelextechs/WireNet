@@ -2789,7 +2789,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`   First order:`, allOrders[0]);
       }
 
-      res.json({ orders: allOrders, total: allOrders.length });
+      // Normalize order fields to match frontend expectations
+      const normalizedOrders = allOrders.map(order => ({
+        id: order.id,
+        shortId: order.shortId,
+        phoneNumber: order.customerPhone,
+        capacity: order.packageDetails || order.packageName, // DataGod has packageName, others have packageDetails
+        price: order.packagePrice,
+        createdAt: order.createdAt,
+        serviceType: order.serviceType,
+        shopMarkup: order.shopMarkup,
+        status: order.status,
+        paymentConfirmed: order.paymentConfirmed
+      }));
+
+      res.json({ orders: normalizedOrders, total: normalizedOrders.length });
     } catch (error: any) {
       console.error("Get shop orders error:", error);
       res.json({ orders: [], total: 0 });
