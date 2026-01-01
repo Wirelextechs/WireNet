@@ -2963,13 +2963,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ withdrawals: [] });
       }
 
-      // Get withdrawals using the external shop ID
+      // Get withdrawals from BOTH PostgreSQL (new) and Supabase (old)
       let withdrawalsList: any[] = [];
+      
+      // Try PostgreSQL first (new records with external_shop_id)
       try {
-        withdrawalsList = await storage.getWithdrawalsByExternalShopId(supabaseShop.id);
-      } catch (wErr: any) {
-        console.log("Error fetching withdrawals:", wErr.message);
+        const pgWithdrawals = await storage.getWithdrawalsByExternalShopId(supabaseShop.id);
+        withdrawalsList = [...pgWithdrawals];
+      } catch (pgErr: any) {
+        console.log("PostgreSQL withdrawals error:", pgErr.message);
       }
+      
+      // Also get from Supabase (old records)
+      try {
+        const sbWithdrawals = await withdrawalsDB.getByShopId(supabaseShop.id) || [];
+        // Add Supabase records that aren't already in the list
+        for (const sbW of sbWithdrawals) {
+          // Check if this withdrawal ID exists in pgWithdrawals (avoid duplicates)
+          const exists = withdrawalsList.some(pgW => pgW.id === sbW.id);
+          if (!exists) {
+            withdrawalsList.push({
+              id: sbW.id,
+              shopId: sbW.shop_id,
+              amount: parseFloat(sbW.amount) || 0,
+              fee: parseFloat(sbW.fee) || 0,
+              netAmount: parseFloat(sbW.net_amount) || 0,
+              bankName: sbW.bank_name,
+              accountNumber: sbW.account_number,
+              accountName: sbW.account_name,
+              network: sbW.network,
+              status: sbW.status,
+              createdAt: sbW.created_at,
+              processedAt: sbW.processed_at,
+              source: 'supabase'
+            });
+          }
+        }
+      } catch (sbErr: any) {
+        console.log("Supabase withdrawals error:", sbErr.message);
+      }
+      
+      // Sort by createdAt descending
+      withdrawalsList.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
       
       res.json({ withdrawals: withdrawalsList });
     } catch (error: any) {
@@ -3420,25 +3459,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/withdrawals", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const status = req.query.status as string;
-      let withdrawalsList;
       
-      // Use PostgreSQL storage for withdrawals
-      if (status) {
-        withdrawalsList = await storage.getWithdrawalsByStatus(status);
-      } else {
-        withdrawalsList = await storage.getAllWithdrawals();
+      // Fetch from BOTH PostgreSQL and Supabase to get all withdrawals
+      let pgWithdrawals: any[] = [];
+      let supabaseWithdrawals: any[] = [];
+      
+      // Get from PostgreSQL
+      try {
+        if (status) {
+          pgWithdrawals = await storage.getWithdrawalsByStatus(status);
+        } else {
+          pgWithdrawals = await storage.getAllWithdrawals();
+        }
+      } catch (pgErr: any) {
+        console.log("PostgreSQL withdrawals fetch error:", pgErr.message);
+      }
+      
+      // Get from Supabase (for older records)
+      try {
+        if (status) {
+          supabaseWithdrawals = await withdrawalsDB.getByStatus(status) || [];
+        } else {
+          supabaseWithdrawals = await withdrawalsDB.getAll() || [];
+        }
+      } catch (sbErr: any) {
+        console.log("Supabase withdrawals fetch error:", sbErr.message);
       }
 
-      // Enrich with shop info from Supabase (using external_shop_id)
-      const enrichedWithdrawals = await Promise.all((withdrawalsList || []).map(async (w: any) => {
+      // Combine and deduplicate (use external_shop_id to identify Supabase records)
+      const allWithdrawals = [
+        ...pgWithdrawals.map(w => ({ ...w, source: 'postgresql' })),
+        ...supabaseWithdrawals.map(w => ({ ...w, source: 'supabase' }))
+      ];
+
+      // Enrich with shop info
+      const enrichedWithdrawals = await Promise.all(allWithdrawals.map(async (w: any) => {
         let shop = null;
         try {
-          // Try external_shop_id first (Supabase UUID)
-          if (w.externalShopId || w.external_shop_id) {
-            shop = await shopsDB.getById(w.externalShopId || w.external_shop_id);
+          // Try external_shop_id or shop_id for Supabase records
+          const shopId = w.externalShopId || w.external_shop_id || w.shop_id;
+          if (shopId) {
+            shop = await shopsDB.getById(shopId);
           }
-          // Fallback to PostgreSQL shopId
-          if (!shop && w.shopId) {
+          // Fallback to PostgreSQL shopId if numeric
+          if (!shop && w.shopId && typeof w.shopId === 'number') {
             shop = await storage.getShopById(w.shopId);
           }
         } catch (e) {
@@ -3447,21 +3511,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           id: w.id,
           shopId: w.shopId || w.shop_id,
-          externalShopId: w.externalShopId || w.external_shop_id,
-          amount: w.amount || 0,
-          fee: w.fee || 0,
-          netAmount: w.netAmount || w.net_amount || 0,
+          externalShopId: w.externalShopId || w.external_shop_id || w.shop_id,
+          amount: parseFloat(w.amount) || 0,
+          fee: parseFloat(w.fee) || 0,
+          netAmount: parseFloat(w.netAmount || w.net_amount) || 0,
           bankName: w.bankName || w.bank_name,
           accountNumber: w.accountNumber || w.account_number,
           accountName: w.accountName || w.account_name,
           network: w.network,
           status: w.status,
           processedAt: w.processedAt || w.processed_at,
-          adminNote: w.adminNote || w.admin_note,
+          adminNote: w.adminNote || w.admin_note || w.notes,
           createdAt: w.createdAt || w.created_at,
+          source: w.source,
           shop: shop ? { id: shop.id, shopName: shop.shopName || shop.shop_name, slug: shop.slug } : null
         };
       }));
+
+      // Sort by createdAt descending
+      enrichedWithdrawals.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
 
       res.json({ withdrawals: enrichedWithdrawals });
     } catch (error: any) {
