@@ -974,24 +974,25 @@ class Storage {
       const result = await db.insert(withdrawals).values(data).returning();
       return result[0];
     } catch (error: any) {
-      // If network column doesn't exist yet (column "network" does not exist error), retry without it
+      // If network column doesn't exist yet (column "network" does not exist error), use raw SQL
       if (
         error.message?.includes('column "network"') ||
         error.code === "42703" ||
         error.detail?.includes('"network"')
       ) {
         console.log(
-          "⚠️ Network column not found in withdrawals table, creating withdrawal without it"
+          "⚠️ Network column not found in withdrawals table, using raw SQL insert without it"
         );
-        const { network, ...dataWithoutNetwork } = data;
         try {
-          const result = await db
-            .insert(withdrawals)
-            .values(dataWithoutNetwork)
-            .returning();
-          return result[0];
+          // Use raw SQL to bypass Drizzle schema which includes the network column
+          const result = await db.execute(sql`
+            INSERT INTO withdrawals (shop_id, amount, fee, net_amount, bank_name, account_number, account_name, status, created_at, updated_at)
+            VALUES (${data.shopId}, ${data.amount}, ${data.fee}, ${data.netAmount}, ${data.bankName}, ${data.accountNumber}, ${data.accountName}, ${data.status || 'pending'}, NOW(), NOW())
+            RETURNING *
+          `);
+          return result.rows[0] as Withdrawal;
         } catch (retryError: any) {
-          console.error("❌ Retry failed even after removing network field:", {
+          console.error("❌ Raw SQL insert also failed:", {
             message: retryError.message,
             code: retryError.code,
           });
