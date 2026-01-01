@@ -2816,7 +2816,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const shopOrders = await storage.getShopOrdersByShopId(shop.id);
         
         // Only count orders with confirmed payments
-        const confirmedOrders = shopOrders.filter(o => o.paymentConfirmed === true);
+        // An order is confirmed if: paymentConfirmed = true OR status = 'PAID' (for Moolre orders)
+        const confirmedOrders = shopOrders.filter(o => o.paymentConfirmed === true || o.status === 'PAID');
         const totalOrders = confirmedOrders.length;
         
         console.log(`📊 [Shop Stats] Shop ${shop.id} has ${totalOrders} confirmed orders (out of ${shopOrders.length} total)`);
