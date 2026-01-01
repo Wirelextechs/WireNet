@@ -82,6 +82,17 @@ export default function ShopStorefront() {
     }
   }, [slug]);
 
+  // Auto-refresh status result every 5 seconds when displayed
+  useEffect(() => {
+    if (!statusSearchResult || !showStatusChecker) return;
+
+    const interval = setInterval(() => {
+      searchOrderStatus();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [statusSearchResult, showStatusChecker, statusSearchQuery, slug]);
+
   const loadShop = async () => {
     try {
       const response = await fetch(`/api/shop/${slug}`);
@@ -363,6 +374,25 @@ export default function ShopStorefront() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "PAID":
+        return { border: "#10b981", text: "text-green-600", bgBorder: "border-green-300", emoji: "✅" };
+      case "PENDING":
+        return { border: "#f59e0b", text: "text-yellow-600", bgBorder: "border-yellow-300", emoji: "⏳" };
+      case "PROCESSING":
+        return { border: "#3b82f6", text: "text-blue-600", bgBorder: "border-blue-300", emoji: "⚙️" };
+      case "FULFILLED":
+        return { border: "#06b6d4", text: "text-cyan-600", bgBorder: "border-cyan-300", emoji: "✔️" };
+      case "CANCELLED":
+        return { border: "#ef4444", text: "text-red-600", bgBorder: "border-red-300", emoji: "❌" };
+      case "FAILED":
+        return { border: "#dc2626", text: "text-red-700", bgBorder: "border-red-400", emoji: "❌" };
+      default:
+        return { border: "#6b7280", text: "text-gray-600", bgBorder: "border-gray-300", emoji: "❓" };
+    }
+  };
+
   const handleMoolreSuccess = (orderId: string) => {
     setShowMoolreModal(false);
     setSelectedPackage(null);
@@ -548,16 +578,19 @@ export default function ShopStorefront() {
                         <p className="text-xs font-bold text-green-600 uppercase">Amount</p>
                         <p className="font-bold text-green-900">GHS {(statusSearchResult.price || statusSearchResult.packagePrice).toFixed(2)}</p>
                       </div>
-                      <div className="bg-white border-2 rounded p-3" style={{borderColor: statusSearchResult.status === "PAID" ? "#10b981" : "#f59e0b"}}>
-                        <p className={`text-xs font-bold uppercase ${statusSearchResult.status === "PAID" ? "text-green-600" : "text-yellow-600"}`}>Status</p>
-                        <p className={`font-bold text-lg ${statusSearchResult.status === "PAID" ? "text-green-600" : "text-yellow-600"}`}>
-                          {statusSearchResult.status === "PAID" ? "✅ PAID" : "⏳ PENDING"}
+                      <div className="bg-white border-2 rounded p-3" style={{borderColor: getStatusColor(statusSearchResult.status).border}}>
+                        <p className={`text-xs font-bold uppercase ${getStatusColor(statusSearchResult.status).text}`}>Status</p>
+                        <p className={`font-bold text-lg ${getStatusColor(statusSearchResult.status).text}`}>
+                          {getStatusColor(statusSearchResult.status).emoji} {statusSearchResult.status}
                         </p>
                       </div>
                     </div>
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-gray-500">
+                    <div className="pt-3 border-t border-blue-200 flex justify-between items-center">
+                      <p className="text-xs text-gray-600">
                         Order Date: {new Date(statusSearchResult.createdAt).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-blue-600 font-bold animate-pulse">
+                        🔄 Auto-refreshing every 5 seconds...
                       </p>
                     </div>
                   </div>
