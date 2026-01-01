@@ -3465,31 +3465,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update withdrawal status (admin)
   app.put("/api/admin/withdrawals/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const withdrawalId = req.params.id;
+      const withdrawalId = parseInt(req.params.id);
       const { status, adminNote } = req.body;
 
       if (!["pending", "processing", "completed", "rejected"].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
 
-      const updates: any = { status };
-      if (adminNote !== undefined) updates.notes = adminNote;
-      if (status === "completed") updates.processed_at = new Date().toISOString();
-
-      // If rejecting, refund the amount back to shop balance
-      if (status === "rejected") {
-        const withdrawalsList = await withdrawalsDB.getByShopId(withdrawalId);
-        // Find the specific withdrawal
-        // For now, just update the withdrawal
-      }
-
-      const withdrawal = await withdrawalsDB.update(withdrawalId, updates);
-      
+      // Get the withdrawal first to know the amount and shop
+      const withdrawal = await storage.getWithdrawalById(withdrawalId);
       if (!withdrawal) {
         return res.status(404).json({ message: "Withdrawal not found" });
       }
 
-      res.json({ message: `Withdrawal ${status}`, withdrawal });
+      // If rejecting, refund the amount back to shop balance
+      if (status === "rejected" && withdrawal.status === "pending") {
+        // Refund the withdrawal amount back to the shop's available balance
+        await storage.updateShopBalance(withdrawal.shopId, withdrawal.amount);
+        console.log(`💰 Refunded GHS ${withdrawal.amount} to shop ${withdrawal.shopId} for rejected withdrawal`);
+      }
+
+      // Update withdrawal status
+      const updatedWithdrawal = await storage.updateWithdrawal(withdrawalId, {
+        status,
+        adminNote: adminNote || null,
+        processedAt: (status === "completed" || status === "rejected") ? new Date() : null
+      });
+
+      res.json({ message: `Withdrawal ${status}`, withdrawal: updatedWithdrawal });
     } catch (error) {
       console.error("Update withdrawal error:", error);
       res.status(500).json({ message: "Failed to update withdrawal" });
