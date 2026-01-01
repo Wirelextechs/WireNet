@@ -2986,12 +2986,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Shop not available" });
       }
 
+      // Get shop owner info
+      const owner = await shopUsersDB.getById(shop.user_id);
+
       res.json({
         id: shop.id,
         shopName: shop.shop_name,
         slug: shop.slug,
         description: shop.description,
-        logo: shop.logo
+        logo: shop.logo,
+        ownerName: owner?.name || "Shop Owner",
+        ownerPhone: owner?.phone || null
       });
     } catch (error) {
       console.error("Get shop error:", error);
