@@ -2928,14 +2928,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const netAmount = amount - withdrawalFee;
 
-      const withdrawal = await withdrawalsDB.create({
-        shop_id: shop.id,
+      const withdrawal = await storage.createWithdrawal({
+        shopId: shop.id,
         amount,
         fee: withdrawalFee,
-        net_amount: netAmount,
-        bank_name: method || "Mobile Money",
-        account_number: mobileNumber,
-        account_name: accountName,
+        netAmount,
+        bankName: method || "Mobile Money",
+        accountNumber: mobileNumber,
+        accountName: accountName,
         network: network
       });
 
@@ -2962,7 +2962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let withdrawalsList: any[] = [];
       try {
-        withdrawalsList = await withdrawalsDB.getByShopId(shop.id);
+        withdrawalsList = await storage.getWithdrawalsByShop(shop.id);
       } catch (wErr: any) {
         console.log("Error fetching withdrawals:", wErr);
       }

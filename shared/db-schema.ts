@@ -61,6 +61,7 @@ export const withdrawals = pgTable("withdrawals", {
   bankName: varchar("bank_name", { length: 100 }).notNull(),
   accountNumber: varchar("account_number", { length: 50 }).notNull(),
   accountName: varchar("account_name", { length: 255 }).notNull(),
+  network: varchar("network", { length: 50 }), // Mobile money network (MTN, Vodafone, AirtelTigo)
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, processing, completed, rejected
   adminNote: text("admin_note"), // Optional note from admin
   processedAt: timestamp("processed_at"),
