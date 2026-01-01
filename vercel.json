@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build && npm run migrate",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
