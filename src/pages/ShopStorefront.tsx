@@ -665,20 +665,6 @@ export default function ShopStorefront() {
             </div>
           </motion.div>
         )}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg">{service.name}</h3>
-                          <p className="text-sm text-gray-500">{service.description}</p>
-                        </div>
-                        <ChevronRight className="text-gray-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
 
         {/* Package Selection */}
         {selectedService && !selectedPackage && (
