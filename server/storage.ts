@@ -975,12 +975,34 @@ class Storage {
       return result[0];
     } catch (error: any) {
       // If network column doesn't exist yet (column "network" does not exist error), retry without it
-      if (error.message?.includes('column "network"') || error.code === '42703') {
-        console.log("⚠️ Network column not found, creating withdrawal without it");
+      if (
+        error.message?.includes('column "network"') ||
+        error.code === "42703" ||
+        error.detail?.includes('"network"')
+      ) {
+        console.log(
+          "⚠️ Network column not found in withdrawals table, creating withdrawal without it"
+        );
         const { network, ...dataWithoutNetwork } = data;
-        const result = await db.insert(withdrawals).values(dataWithoutNetwork).returning();
-        return result[0];
+        try {
+          const result = await db
+            .insert(withdrawals)
+            .values(dataWithoutNetwork)
+            .returning();
+          return result[0];
+        } catch (retryError: any) {
+          console.error("❌ Retry failed even after removing network field:", {
+            message: retryError.message,
+            code: retryError.code,
+          });
+          throw retryError;
+        }
       }
+      console.error("❌ Withdrawal creation error:", {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+      });
       throw error;
     }
   }
