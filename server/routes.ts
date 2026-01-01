@@ -3282,7 +3282,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {
           // User might not exist
         }
-        const stats = await shopOrdersDB.getStats(shop.id);
+        
+        // Get stats from storage (PostgreSQL) instead of Supabase
+        let stats = { totalOrders: 0, totalEarnings: 0 };
+        try {
+          const orders = await storage.getShopOrdersByShopId(shop.id);
+          stats.totalOrders = orders?.length || 0;
+          stats.totalEarnings = orders?.reduce((sum: number, order: any) => sum + (parseFloat(order.shopMarkup) || 0), 0) || 0;
+        } catch (err) {
+          console.error(`Error fetching stats for shop ${shop.id}:`, err);
+        }
+
         return {
           id: shop.id,
           shopName: shop.shop_name,
