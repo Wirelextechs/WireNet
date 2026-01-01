@@ -970,8 +970,19 @@ class Storage {
 
   // Withdrawals
   async createWithdrawal(data: InsertWithdrawal): Promise<Withdrawal> {
-    const result = await db.insert(withdrawals).values(data).returning();
-    return result[0];
+    try {
+      const result = await db.insert(withdrawals).values(data).returning();
+      return result[0];
+    } catch (error: any) {
+      // If network column doesn't exist yet (column "network" does not exist error), retry without it
+      if (error.message?.includes('column "network"') || error.code === '42703') {
+        console.log("⚠️ Network column not found, creating withdrawal without it");
+        const { network, ...dataWithoutNetwork } = data;
+        const result = await db.insert(withdrawals).values(dataWithoutNetwork).returning();
+        return result[0];
+      }
+      throw error;
+    }
   }
 
   async getWithdrawalById(id: number): Promise<Withdrawal | null> {

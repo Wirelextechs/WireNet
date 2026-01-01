@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startStatusPolling } from "./polling.js";
+import { runPendingMigrations } from "./migrations.js";
 
 const app = express();
 app.use(
@@ -44,6 +45,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Run migrations first
+  await runPendingMigrations();
+
   const server = await registerRoutes(app);
 
   // Start background order status polling
