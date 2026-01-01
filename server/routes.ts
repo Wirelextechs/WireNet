@@ -3546,38 +3546,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update withdrawal status (admin)
   app.put("/api/admin/withdrawals/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const withdrawalId = parseInt(req.params.id);
+      const withdrawalIdParam = req.params.id;
       const { status, adminNote } = req.body;
 
       if (!["pending", "processing", "completed", "rejected"].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
 
-      // Get the withdrawal first to know the amount and shop
-      const withdrawal = await storage.getWithdrawalById(withdrawalId);
+      // Determine if this is a PostgreSQL (numeric) or Supabase (UUID) withdrawal
+      const isNumericId = /^\d+$/.test(withdrawalIdParam);
+      let withdrawal: any = null;
+      let isSupabaseWithdrawal = false;
+
+      if (isNumericId) {
+        // Try PostgreSQL first
+        withdrawal = await storage.getWithdrawalById(parseInt(withdrawalIdParam));
+      }
+      
+      // If not found in PostgreSQL or ID is UUID, try Supabase
+      if (!withdrawal) {
+        try {
+          const supabaseWithdrawals = await withdrawalsDB.getAll();
+          withdrawal = supabaseWithdrawals?.find((w: any) => w.id === withdrawalIdParam || w.id === parseInt(withdrawalIdParam));
+          if (withdrawal) {
+            isSupabaseWithdrawal = true;
+          }
+        } catch (sbErr) {
+          console.log("Supabase withdrawal lookup error:", sbErr);
+        }
+      }
+
       if (!withdrawal) {
         return res.status(404).json({ message: "Withdrawal not found" });
       }
 
+      // Get the shop ID (could be shop_id for Supabase or externalShopId for PostgreSQL)
+      const shopId = withdrawal.shop_id || withdrawal.externalShopId || withdrawal.external_shop_id;
+
       // If rejecting, refund the amount back to shop balance
       if (status === "rejected" && withdrawal.status === "pending") {
-        // Use external shop ID if available (Supabase), otherwise PostgreSQL shop ID
-        const externalShopId = (withdrawal as any).externalShopId || (withdrawal as any).external_shop_id;
-        if (externalShopId) {
-          await shopsDB.updateBalance(externalShopId, withdrawal.amount);
-          console.log(`💰 Refunded GHS ${withdrawal.amount} to Supabase shop ${externalShopId} for rejected withdrawal`);
-        } else if (withdrawal.shopId) {
-          await storage.updateShopBalance(withdrawal.shopId, withdrawal.amount);
-          console.log(`💰 Refunded GHS ${withdrawal.amount} to PostgreSQL shop ${withdrawal.shopId} for rejected withdrawal`);
+        if (shopId) {
+          await shopsDB.updateBalance(shopId, parseFloat(withdrawal.amount));
+          console.log(`💰 Refunded GHS ${withdrawal.amount} to shop ${shopId} for rejected withdrawal`);
         }
       }
 
-      // Update withdrawal status
-      const updatedWithdrawal = await storage.updateWithdrawal(withdrawalId, {
-        status,
-        adminNote: adminNote || null,
-        processedAt: (status === "completed" || status === "rejected") ? new Date() : null
-      });
+      // Update withdrawal in the appropriate database
+      let updatedWithdrawal;
+      if (isSupabaseWithdrawal) {
+        // Update in Supabase
+        updatedWithdrawal = await withdrawalsDB.update(withdrawalIdParam, {
+          status,
+          notes: adminNote || null,
+          processed_at: (status === "completed" || status === "rejected") ? new Date().toISOString() : null
+        });
+        console.log(`✅ Updated Supabase withdrawal ${withdrawalIdParam} to status: ${status}`);
+      } else {
+        // Update in PostgreSQL
+        updatedWithdrawal = await storage.updateWithdrawal(parseInt(withdrawalIdParam), {
+          status,
+          adminNote: adminNote || null,
+          processedAt: (status === "completed" || status === "rejected") ? new Date() : null
+        });
+        console.log(`✅ Updated PostgreSQL withdrawal ${withdrawalIdParam} to status: ${status}`);
+      }
 
       res.json({ message: `Withdrawal ${status}`, withdrawal: updatedWithdrawal });
     } catch (error) {
