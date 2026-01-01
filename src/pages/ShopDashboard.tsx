@@ -83,6 +83,10 @@ export default function ShopDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "packages" | "orders" | "withdrawals" | "settings">("overview");
   
+  // Filters for orders
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  
   // Withdrawal form
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [bankDetails, setBankDetails] = useState("");
@@ -470,8 +474,32 @@ export default function ShopDashboard() {
       banned: "bg-red-100 text-red-800",
       rejected: "bg-red-100 text-red-800",
       failed: "bg-red-100 text-red-800",
+      PAID: "bg-green-100 text-green-800",
+      PENDING: "bg-yellow-100 text-yellow-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  // Filter orders by status and search query
+  const getFilteredOrders = () => {
+    let filtered = orders;
+    
+    // Apply status filter
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter(o => o.status === filterStatus);
+    }
+    
+    // Apply search filter (by Order ID, Phone Number, or Package)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(o => 
+        o.shortId?.toLowerCase().includes(query) || 
+        o.phoneNumber?.toLowerCase().includes(query) ||
+        o.capacity?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
   };
 
   // Group packages by service type
@@ -758,37 +786,74 @@ export default function ShopDashboard() {
               {orders.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No orders yet</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-2">Date</th>
-                        <th className="text-left py-2 px-2">Service</th>
-                        <th className="text-left py-2 px-2">Phone</th>
-                        <th className="text-left py-2 px-2">Package</th>
-                        <th className="text-left py-2 px-2">Price</th>
-                        <th className="text-left py-2 px-2">Your Markup</th>
-                        <th className="text-left py-2 px-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.map((order) => (
-                        <tr key={`${order.serviceType}-${order.id}`} className="border-b">
-                          <td className="py-2 px-2">{new Date(order.createdAt).toLocaleString()}</td>
-                          <td className="py-2 px-2 capitalize">{order.serviceType}</td>
-                          <td className="py-2 px-2">{order.phoneNumber}</td>
-                          <td className="py-2 px-2">{order.capacity}</td>
-                          <td className="py-2 px-2">GHS {typeof order.price === 'number' ? order.price.toFixed(2) : '0.00'}</td>
-                          <td className="py-2 px-2 text-green-600">+GHS {(typeof order.shopMarkup === 'number' ? order.shopMarkup : 0).toFixed(2)}</td>
-                          <td className="py-2 px-2">
-                            <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(order.status)}`}>
-                              {order.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div>
+                  {/* Filters */}
+                  <div className="flex gap-4 mb-6 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="block text-sm font-medium mb-2">Search</label>
+                      <Input
+                        type="text"
+                        placeholder="Search by Order ID, Phone, or Package"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-sm font-medium mb-2">Filter by Status</label>
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="ALL">All Orders</option>
+                        <option value="PAID">Paid</option>
+                        <option value="PENDING">Pending</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Results count */}
+                  <div className="mb-4 text-sm text-gray-600">
+                    Showing {getFilteredOrders().length} of {orders.length} orders
+                  </div>
+
+                  {getFilteredOrders().length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No orders match your filters</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 px-2">Date</th>
+                            <th className="text-left py-2 px-2">Service</th>
+                            <th className="text-left py-2 px-2">Phone</th>
+                            <th className="text-left py-2 px-2">Package</th>
+                            <th className="text-left py-2 px-2">Price</th>
+                            <th className="text-left py-2 px-2">Your Markup</th>
+                            <th className="text-left py-2 px-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredOrders().map((order) => (
+                            <tr key={`${order.serviceType}-${order.id}`} className="border-b">
+                              <td className="py-2 px-2">{new Date(order.createdAt).toLocaleString()}</td>
+                              <td className="py-2 px-2 capitalize">{order.serviceType}</td>
+                              <td className="py-2 px-2">{order.phoneNumber}</td>
+                              <td className="py-2 px-2">{order.capacity}</td>
+                              <td className="py-2 px-2">GHS {typeof order.price === 'number' ? order.price.toFixed(2) : '0.00'}</td>
+                              <td className="py-2 px-2 text-green-600">+GHS {(typeof order.shopMarkup === 'number' ? order.shopMarkup : 0).toFixed(2)}</td>
+                              <td className="py-2 px-2">
+                                <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(order.status)}`}>
+                                  {order.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
