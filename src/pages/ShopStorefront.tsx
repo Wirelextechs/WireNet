@@ -67,6 +67,13 @@ export default function ShopStorefront() {
   const [showMoolreModal, setShowMoolreModal] = useState(false);
   const [moolreTotalAmount, setMoolreTotalAmount] = useState(0);
   const [moolreOrderRef, setMoolreOrderRef] = useState("");
+  
+  // Order status checker state
+  const [showStatusChecker, setShowStatusChecker] = useState(false);
+  const [statusSearchQuery, setStatusSearchQuery] = useState("");
+  const [statusSearchResult, setStatusSearchResult] = useState<any>(null);
+  const [statusSearching, setStatusSearching] = useState(false);
+  const [statusSearchError, setStatusSearchError] = useState("");
 
   useEffect(() => {
     if (slug) {
@@ -321,6 +328,41 @@ export default function ShopStorefront() {
     }
   };
 
+  const searchOrderStatus = async () => {
+    if (!statusSearchQuery.trim()) {
+      setStatusSearchError("Please enter an Order ID or Phone Number");
+      return;
+    }
+
+    setStatusSearching(true);
+    setStatusSearchError("");
+    setStatusSearchResult(null);
+
+    try {
+      const response = await fetch(
+        `/api/shop/${slug}/order-status?query=${encodeURIComponent(statusSearchQuery)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.order) {
+          setStatusSearchResult(data.order);
+        } else {
+          setStatusSearchError("Order not found");
+        }
+      } else if (response.status === 404) {
+        setStatusSearchError("Order not found");
+      } else {
+        setStatusSearchError("Failed to search order");
+      }
+    } catch (error) {
+      setStatusSearchError("Error searching for order");
+      console.error(error);
+    } finally {
+      setStatusSearching(false);
+    }
+  };
+
   const handleMoolreSuccess = (orderId: string) => {
     setShowMoolreModal(false);
     setSelectedPackage(null);
@@ -411,6 +453,18 @@ export default function ShopStorefront() {
           </div>
           
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowStatusChecker(!showStatusChecker);
+                setStatusSearchResult(null);
+                setStatusSearchError("");
+                setStatusSearchQuery("");
+              }}
+            >
+              Check Status
+            </Button>
             {settings.whatsappLink && (
               <Button
                 variant="ghost"
@@ -425,6 +479,91 @@ export default function ShopStorefront() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8">
+        {/* Status Checker Section */}
+        {showStatusChecker && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardHeader>
+                <CardTitle>Check Order Status</CardTitle>
+                <CardDescription>Search by Order ID or Phone Number</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    type="text"
+                    placeholder="Order ID (e.g., DG-123456) or Phone (e.g., 0542565402)"
+                    value={statusSearchQuery}
+                    onChange={(e) => setStatusSearchQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && searchOrderStatus()}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={searchOrderStatus}
+                    disabled={statusSearching}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {statusSearching ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" /> Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
+                  </Button>
+                </div>
+
+                {statusSearchError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+                    {statusSearchError}
+                  </div>
+                )}
+
+                {statusSearchResult && (
+                  <div className="bg-white border border-blue-200 rounded-lg p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Order ID</p>
+                        <p className="font-bold text-lg">{statusSearchResult.shortId}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Phone Number</p>
+                        <p className="font-bold">{statusSearchResult.phoneNumber || statusSearchResult.customerPhone}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Service</p>
+                        <p className="font-bold capitalize">{statusSearchResult.serviceType}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Package</p>
+                        <p className="font-bold">{statusSearchResult.capacity || statusSearchResult.packageDetails || statusSearchResult.packageName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Amount</p>
+                        <p className="font-bold">GHS {(statusSearchResult.price || statusSearchResult.packagePrice).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Status</p>
+                        <p className={`font-bold ${statusSearchResult.status === "PAID" ? "text-green-600" : "text-yellow-600"}`}>
+                          {statusSearchResult.status}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-gray-500">
+                        Order Date: {new Date(statusSearchResult.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Shop Description */}
         {shop.description && (
           <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">

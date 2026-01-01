@@ -3155,6 +3155,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get order status by Order ID or Phone Number (public endpoint for shop storefronts)
+  app.get("/api/shop/:slug/order-status", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const query = req.query.query as string;
+
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter required" });
+      }
+
+      const searchQuery = query.toLowerCase().trim();
+
+      // Get shop by slug
+      const shop = await storage.getShopBySlug(slug);
+      if (!shop) {
+        return res.status(404).json({ error: "Shop not found" });
+      }
+
+      // Search across all order tables for this shop
+      try {
+        // Search in FastNet orders
+        let fastnetOrders = await storage.getShopFastnetOrders(shop.id);
+        let match = fastnetOrders.find(o =>
+          o.shortId?.toLowerCase().includes(searchQuery) ||
+          o.customerPhone?.toLowerCase().includes(searchQuery)
+        );
+        if (match) {
+          return res.json({ 
+            order: {
+              ...match,
+              serviceType: 'fastnet',
+              phoneNumber: match.customerPhone,
+              capacity: match.packageDetails,
+              price: match.packagePrice
+            }
+          });
+        }
+
+        // Search in DataGod orders
+        let datagodOrders = await storage.getShopDatagodOrders(shop.id);
+        match = datagodOrders.find(o =>
+          o.shortId?.toLowerCase().includes(searchQuery) ||
+          o.customerPhone?.toLowerCase().includes(searchQuery)
+        );
+        if (match) {
+          return res.json({ 
+            order: {
+              ...match,
+              serviceType: 'datagod',
+              phoneNumber: match.customerPhone,
+              capacity: match.packageName,
+              price: match.packagePrice
+            }
+          });
+        }
+
+        // Search in AT orders
+        let atOrders = await storage.getShopAtOrders(shop.id);
+        match = atOrders.find(o =>
+          o.shortId?.toLowerCase().includes(searchQuery) ||
+          o.customerPhone?.toLowerCase().includes(searchQuery)
+        );
+        if (match) {
+          return res.json({ 
+            order: {
+              ...match,
+              serviceType: 'at',
+              phoneNumber: match.customerPhone,
+              capacity: match.packageDetails,
+              price: match.packagePrice
+            }
+          });
+        }
+
+        // Search in Telecel orders
+        let telecelOrders = await storage.getShopTelecelOrders(shop.id);
+        match = telecelOrders.find(o =>
+          o.shortId?.toLowerCase().includes(searchQuery) ||
+          o.customerPhone?.toLowerCase().includes(searchQuery)
+        );
+        if (match) {
+          return res.json({ 
+            order: {
+              ...match,
+              serviceType: 'telecel',
+              phoneNumber: match.customerPhone,
+              capacity: match.packageDetails,
+              price: match.packagePrice
+            }
+          });
+        }
+
+        // Order not found
+        res.status(404).json({ error: "Order not found" });
+      } catch (error: any) {
+        console.error("Error searching orders:", error);
+        res.status(500).json({ error: "Failed to search orders" });
+      }
+    } catch (error: any) {
+      console.error("Order status search error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ ADMIN SHOP MANAGEMENT ROUTES ============
 
   // Get all shops (admin)
