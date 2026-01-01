@@ -2912,9 +2912,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get withdrawal settings
-      const settings = await storage.getSettings();
-      const minWithdrawal = parseFloat((settings as any).minWithdrawalAmount || "10");
-      const withdrawalFee = parseFloat((settings as any).withdrawalFee || "0");
+      const minWithdrawalSetting = await storage.getSetting("minWithdrawalAmount");
+      const withdrawalFeeSetting = await storage.getSetting("withdrawalFee");
+      const minWithdrawal = parseFloat(minWithdrawalSetting?.value || "10");
+      const withdrawalFee = parseFloat(withdrawalFeeSetting?.value || "0");
 
       if (amount < minWithdrawal) {
         return res.status(400).json({ message: `Minimum withdrawal amount is GHS ${minWithdrawal}` });
