@@ -873,6 +873,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shopMarkup: shopMarkup || "none"
       });
       
+      // Check if FastNet category is enabled
+      const settings = await storage.getSettings();
+      if (!settings || settings.fastnetEnabled === false) {
+        console.log(`⛔ FastNet Purchase blocked - category is disabled`);
+        return res.status(403).json({ success: false, message: "FastNet is currently disabled" });
+      }
+      
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
       }
@@ -1563,6 +1570,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("📝 DataGod purchase request:", { phoneNumber, dataAmount, price, reference, gateway });
       
+      // Check if DataGod category is enabled
+      const settings = await storage.getSettings();
+      if (!settings || settings.datagodEnabled === false) {
+        console.log(`⛔ DataGod Purchase blocked - category is disabled`);
+        return res.status(403).json({ success: false, message: "DataGod is currently disabled" });
+      }
+      
       if (!phoneNumber || !dataAmount || !price) {
         console.error("❌ Missing required fields:", { phoneNumber, dataAmount, price });
         return res.status(400).json({ message: "Missing required fields" });
@@ -1752,6 +1766,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/at/purchase", async (req, res) => {
     try {
       const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
+      
+      // Check if AT iShare category is enabled
+      const settings = await storage.getSettings();
+      if (!settings || settings.atEnabled === false) {
+        console.log(`⛔ AT iShare Purchase blocked - category is disabled`);
+        return res.status(403).json({ success: false, message: "AT iShare is currently disabled" });
+      }
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -2042,6 +2063,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/telecel/purchase", async (req, res) => {
     try {
       const { phoneNumber, dataAmount, price, reference, gateway, shopId, shopMarkup } = req.body;
+      
+      // Check if Telecel category is enabled
+      const settings = await storage.getSettings();
+      if (!settings || settings.telecelEnabled === false) {
+        console.log(`⛔ Telecel Purchase blocked - category is disabled`);
+        return res.status(403).json({ success: false, message: "Telecel is currently disabled" });
+      }
       
       if (!phoneNumber || !dataAmount || !price) {
         return res.status(400).json({ message: "Missing required fields" });

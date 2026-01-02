@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { MessageCircle, Zap, Smartphone, Radio, Sparkles, ChevronRight, Store, ArrowLeft, ShoppingCart, Loader2 } from "lucide-react";
+import { MessageCircle, Zap, Smartphone, Radio, Sparkles, ChevronRight, Store, ArrowLeft, ShoppingCart, Loader2, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,10 @@ interface PackagesByService {
 
 interface Settings {
   whatsappLink?: string;
+  datagodEnabled?: boolean;
+  fastnetEnabled?: boolean;
+  atEnabled?: boolean;
+  telecelEnabled?: boolean;
 }
 
 export default function ShopStorefront() {
@@ -638,33 +642,59 @@ export default function ShopStorefront() {
             className="space-y-4"
           >
             <h2 className="text-xl font-bold text-center mb-6">Select a Service</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {serviceConfigs.map((service) => (
-                <motion.button
-                  key={service.id}
-                  onClick={() => handleServiceSelect(service.id)}
-                  className="text-left"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+            
+            {/* Filter services based on enabled settings */}
+            {(() => {
+              const enabledServices = serviceConfigs.filter(service => {
+                const settingKey = service.id === "fastnet" ? "fastnetEnabled" :
+                                   service.id === "datagod" ? "datagodEnabled" :
+                                   service.id === "at" ? "atEnabled" :
+                                   service.id === "telecel" ? "telecelEnabled" : null;
+                return settingKey ? settings[settingKey as keyof Settings] !== false : true;
+              });
+              
+              return enabledServices.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center py-20"
                 >
-                  <Card className="h-full hover:shadow-lg transition-shadow overflow-hidden">
-                    <div className={`h-2 bg-gradient-to-r ${service.gradient}`} />
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-r ${service.gradient}`}>
-                          <service.icon className="h-6 w-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg">{service.name}</h3>
-                          <p className="text-sm text-gray-500">{service.description}</p>
-                        </div>
-                        <ChevronRight className="text-gray-400" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.button>
-              ))}
-            </div>
+                  <div className="inline-flex p-4 rounded-full bg-muted mb-4">
+                    <Clock className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
+                  <p className="text-muted-foreground">No services available at the moment. Check back soon!</p>
+                </motion.div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {enabledServices.map((service) => (
+                    <motion.button
+                      key={service.id}
+                      onClick={() => handleServiceSelect(service.id)}
+                      className="text-left"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Card className="h-full hover:shadow-lg transition-shadow overflow-hidden">
+                        <div className={`h-2 bg-gradient-to-r ${service.gradient}`} />
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-4">
+                            <div className={`p-3 rounded-xl bg-gradient-to-r ${service.gradient}`}>
+                              <service.icon className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-bold text-lg">{service.name}</h3>
+                              <p className="text-sm text-gray-500">{service.description}</p>
+                            </div>
+                            <ChevronRight className="text-gray-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.button>
+                  ))}
+                </div>
+              );
+            })()}
           </motion.div>
         )}
 
