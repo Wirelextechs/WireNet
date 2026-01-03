@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { MessageCircle, ArrowLeft, ShoppingCart, Trash2, Search, Radio, Zap, Package, Mail, Phone, CheckCircle } from "lucide-react";
+import { MessageCircle, ArrowLeft, ShoppingCart, Trash2, Search, Radio, Zap, Package, Mail, Phone, CheckCircle, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ export default function TelecelPage() {
     severity: "info",
     active: false,
   });
+  const [purchaseWarningNotice, setPurchaseWarningNotice] = useState("DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
 
   useEffect(() => {
     loadPackages();
@@ -66,6 +67,7 @@ export default function TelecelPage() {
           severity: (data.announcementSeverity as AnnouncementSeverity) || "info",
           active: data.announcementActive === true,
         });
+        setPurchaseWarningNotice(data.purchaseWarningNotice || "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -685,6 +687,12 @@ export default function TelecelPage() {
                   <span>Total</span>
                   <span className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">GH₵{cartTotal.toFixed(2)}</span>
                 </div>
+              </div>
+
+              {/* Purchase Warning Notice */}
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2 mt-6">
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>{purchaseWarningNotice}</span>
               </div>
 
               <Button

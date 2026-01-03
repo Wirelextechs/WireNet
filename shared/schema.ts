@@ -14,6 +14,7 @@ export const settingsSchema = z.object({
   announcementLink: z.string().url().optional(),
   announcementSeverity: z.enum(["info", "success", "warning", "error"]).default("info"),
   announcementActive: z.boolean().default(false),
+  purchaseWarningNotice: z.string().default("DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE"),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });

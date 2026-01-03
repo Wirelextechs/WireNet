@@ -742,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
       console.log("📥 Settings update request body:", JSON.stringify(req.body, null, 2));
-      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhones, activePaymentGateway, christmasThemeEnabled } = req.body;
+      const { whatsappLink, datagodEnabled, fastnetEnabled, atEnabled, telecelEnabled, afaEnabled, afaLink, announcementText, announcementLink, announcementSeverity, announcementActive, datagodTransactionCharge, fastnetTransactionCharge, atTransactionCharge, telecelTransactionCharge, fastnetActiveSupplier, atActiveSupplier, telecelActiveSupplier, smsEnabled, smsNotificationPhones, activePaymentGateway, christmasThemeEnabled, purchaseWarningNotice } = req.body;
       
       console.log("📱 smsNotificationPhones received:", smsNotificationPhones, "Type:", typeof smsNotificationPhones, "IsArray:", Array.isArray(smsNotificationPhones));
 
@@ -769,6 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         smsNotificationPhones,
         activePaymentGateway,
         christmasThemeEnabled,
+        purchaseWarningNotice,
       });
 
       res.json(updated);

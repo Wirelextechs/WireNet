@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { MessageCircle, ArrowLeft, ShoppingCart, Trash2, Search, Smartphone, Zap, Package, Mail, Phone, CheckCircle } from "lucide-react";
+import { MessageCircle, ArrowLeft, ShoppingCart, Trash2, Search, Smartphone, Zap, Package, Mail, Phone, CheckCircle, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ export default function AtPage() {
     severity: "info",
     active: false,
   });
+  const [purchaseWarningNotice, setPurchaseWarningNotice] = useState("DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
   
   // Moolre payment modal state
   const [showMoolreModal, setShowMoolreModal] = useState(false);
@@ -74,6 +75,7 @@ export default function AtPage() {
           severity: (data.announcementSeverity as AnnouncementSeverity) || "info",
           active: data.announcementActive === true,
         });
+        setPurchaseWarningNotice(data.purchaseWarningNotice || "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -688,6 +690,12 @@ export default function AtPage() {
                   <span>Total</span>
                   <span className="text-gradient">GH₵{cartTotal.toFixed(2)}</span>
                 </div>
+              </div>
+
+              {/* Purchase Warning Notice */}
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2 mt-6">
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>{purchaseWarningNotice}</span>
               </div>
 
               <Button

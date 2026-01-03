@@ -176,6 +176,7 @@ class Storage {
       })(),
       activePaymentGateway: (settingsMap["activePaymentGateway"] as "paystack" | "moolre") || "paystack",
       christmasThemeEnabled: settingsMap["christmasThemeEnabled"] === "true",
+      purchaseWarningNotice: settingsMap["purchaseWarningNotice"] || "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -250,6 +251,9 @@ class Storage {
     if (data.christmasThemeEnabled !== undefined) {
       console.log("🎄 Saving christmasThemeEnabled:", data.christmasThemeEnabled);
       await this.upsertSetting("christmasThemeEnabled", String(data.christmasThemeEnabled));
+    }
+    if (data.purchaseWarningNotice !== undefined) {
+      await this.upsertSetting("purchaseWarningNotice", data.purchaseWarningNotice);
     }
 
     return (await this.getSettings())!;

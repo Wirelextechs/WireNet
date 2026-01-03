@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { MessageCircle, Zap, Smartphone, Radio, Sparkles, ChevronRight, Store, ArrowLeft, ShoppingCart, Loader2, Clock } from "lucide-react";
+import { MessageCircle, Zap, Smartphone, Radio, Sparkles, ChevronRight, Store, ArrowLeft, ShoppingCart, Loader2, Clock, Info } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ interface Settings {
   fastnetEnabled?: boolean;
   atEnabled?: boolean;
   telecelEnabled?: boolean;
+  purchaseWarningNotice?: string;
 }
 
 export default function ShopStorefront() {
@@ -68,6 +69,7 @@ export default function ShopStorefront() {
   const [orderError, setOrderError] = useState("");
   const [purchasing, setPurchasing] = useState(false);
   const [transactionCharge, setTransactionCharge] = useState(0);
+  const [purchaseWarningNotice, setPurchaseWarningNotice] = useState("DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
   
   // Payment modal state
   const [showMoolreModal, setShowMoolreModal] = useState(false);
@@ -156,6 +158,7 @@ export default function ShopStorefront() {
         const data = await response.json();
         setSettings(data);
         setTransactionCharge(data.transactionCharge ?? 0);
+        setPurchaseWarningNotice(data.purchaseWarningNotice || "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
       }
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -813,6 +816,12 @@ export default function ShopStorefront() {
                     <span>Total:</span>
                     <span className="text-violet-600">GHS {selectedPackage.finalPrice.toFixed(2)}</span>
                   </div>
+                </div>
+                
+                {/* Purchase Warning Notice */}
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-4">
+                  <Info className="h-4 w-4 flex-shrink-0" />
+                  <span>{purchaseWarningNotice}</span>
                 </div>
                 
                 <Button
