@@ -17,6 +17,7 @@ interface Settings {
   announcementLink?: string;
   announcementSeverity?: "info" | "success" | "warning" | "error";
   announcementActive?: boolean;
+  purchaseWarningNotice?: string;
   smsEnabled?: boolean;
   smsNotificationPhones?: string[];
   activePaymentGateway?: "paystack" | "moolre";
@@ -38,6 +39,7 @@ export default function AdminDashboard() {
     announcementLink: "",
     announcementSeverity: "info",
     announcementActive: false,
+    purchaseWarningNotice: "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE",
     smsEnabled: false,
     smsNotificationPhones: [],
     activePaymentGateway: "paystack",
@@ -50,6 +52,7 @@ export default function AdminDashboard() {
   const [announcementLink, setAnnouncementLink] = useState("");
   const [announcementSeverity, setAnnouncementSeverity] = useState<"info" | "success" | "warning" | "error">("info");
   const [announcementActive, setAnnouncementActive] = useState(false);
+  const [purchaseWarningNotice, setPurchaseWarningNotice] = useState("DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
   const [smsEnabled, setSmsEnabled] = useState(false);
   const [smsNotificationPhones, setSmsNotificationPhones] = useState<string[]>([]);
   const [activePaymentGateway, setActivePaymentGateway] = useState<"paystack" | "moolre">("paystack");
@@ -111,6 +114,7 @@ export default function AdminDashboard() {
         setAnnouncementLink(data.announcementLink || "");
         setAnnouncementSeverity(data.announcementSeverity || "info");
         setAnnouncementActive(data.announcementActive === true);
+        setPurchaseWarningNotice(data.purchaseWarningNotice || "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
         setSmsEnabled(data.smsEnabled === true);
         setSmsNotificationPhones(data.smsNotificationPhones || []);
         setActivePaymentGateway(data.activePaymentGateway || "paystack");
@@ -336,6 +340,7 @@ export default function AdminDashboard() {
           announcementLink,
           announcementSeverity,
           announcementActive,
+          purchaseWarningNotice,
           datagodEnabled: settings.datagodEnabled,
           fastnetEnabled: settings.fastnetEnabled,
           atEnabled: settings.atEnabled,
@@ -369,6 +374,7 @@ export default function AdminDashboard() {
         setAnnouncementLink(updated.announcementLink || "");
         setAnnouncementSeverity(updated.announcementSeverity || "info");
         setAnnouncementActive(updated.announcementActive === true);
+        setPurchaseWarningNotice(updated.purchaseWarningNotice || "DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE");
         setActivePaymentGateway(updated.activePaymentGateway || "paystack");
         setMessage("Settings saved successfully!");
         setTimeout(() => setMessage(""), 3000);
@@ -1061,6 +1067,33 @@ export default function AdminDashboard() {
 
               <Button onClick={handleSaveSettings} disabled={loading} className="w-full">
                 {loading ? "Saving..." : "Save Announcement"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Purchase Warning Notice Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Purchase Warning Notice</CardTitle>
+              <CardDescription>
+                Displayed as a hint above checkout buttons on storefront pages
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Warning Notice Text</label>
+                <textarea
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={3}
+                  placeholder="e.g., DATA TO WRONG NETWORKS/NUMBERS ARE IRREVERSIBLE"
+                  value={purchaseWarningNotice}
+                  onChange={(e) => setPurchaseWarningNotice(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">This warning appears above all purchase buttons with an info icon.</p>
+              </div>
+
+              <Button onClick={handleSaveSettings} disabled={loading} className="w-full">
+                {loading ? "Saving..." : "Save Purchase Warning"}
               </Button>
             </CardContent>
           </Card>
