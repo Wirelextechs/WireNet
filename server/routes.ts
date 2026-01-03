@@ -12,6 +12,7 @@ import * as supplierManager from "./supplier-manager.js";
 import * as polling from "./polling.js";
 import * as codecraft from "./codecraft.js";
 import * as moolre from "./moolre.js";
+import * as sykesofficial from "./sykesofficial.js";
 import { sendOrderNotification, checkSMSBalance } from "./sms.js";
 
 const PgStore = pgSession(session);
@@ -343,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (existing) continue;
 
           const shortId = `${reference}-${index + 1}`;
-          await storage.createDatagodOrder({
+          const newOrder = await storage.createDatagodOrder({
             shortId,
             customerPhone: phoneNumber,
             packageName,
@@ -354,6 +355,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
             shopMarkup,
           });
           created++;
+
+          // Check if DataGod auto-fulfillment is enabled
+          const autoFulfillEnabled = await storage.getSetting("datagodAutoFulfillEnabled");
+          if (autoFulfillEnabled?.value === "true") {
+            // Run auto-fulfillment asynchronously (non-blocking)
+            (async () => {
+              try {
+                console.log(`🚀 [DATAGOD AUTO-FULFILL] Starting auto-fulfillment for order ${shortId}`);
+                
+                // Get package info to find dataValueGB
+                const packages = await storage.getDatagodPackages();
+                const pkg = packages.find(p => p.packageName === packageName);
+                
+                if (!pkg) {
+                  console.error(`❌ [DATAGOD AUTO-FULFILL] Package not found: ${packageName}`);
+                  await storage.updateDatagodOrderStatus(newOrder.id, "PAID", true, {
+                    failureReason: `Package not found: ${packageName}`,
+                  });
+                  return;
+                }
+
+                // Call SykesOfficial API
+                const result = await sykesofficial.purchaseDataBundle(
+                  phoneNumber,
+                  `${pkg.dataValueGB}GB`,
+                  price,
+                  shortId,
+                  pkg.dataValueGB
+                );
+
+                if (result.success) {
+                  console.log(`✅ [DATAGOD AUTO-FULFILL] Order ${shortId} sent to SykesOfficial successfully`);
+                  await storage.updateDatagodOrderStatus(newOrder.id, "PROCESSING", true, {
+                    supplierUsed: "sykesofficial",
+                    supplierReference: result.data?.supplier_reference || result.data?.order_id?.toString(),
+                  });
+                } else {
+                  console.error(`❌ [DATAGOD AUTO-FULFILL] Order ${shortId} failed: ${result.message}`);
+                  await storage.updateDatagodOrderStatus(newOrder.id, "PAID", true, {
+                    supplierUsed: "sykesofficial",
+                    failureReason: result.message,
+                  });
+                }
+              } catch (err) {
+                console.error(`❌ [DATAGOD AUTO-FULFILL] Error for order ${shortId}:`, err);
+                await storage.updateDatagodOrderStatus(newOrder.id, "PAID", true, {
+                  supplierUsed: "sykesofficial",
+                  failureReason: err instanceof Error ? err.message : "Unknown error",
+                });
+              }
+            })();
+          }
         }
       }
 
@@ -619,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updated = true;
       }
 
-      // Check DataGod orders - find ALL matching orders (manual fulfillment - just update status)
+      // Check DataGod orders - find ALL matching orders
       const datagodOrders = await storage.getDatagodOrders();
       const matchingDatagodOrders = datagodOrders.filter(o => 
         (o.shortId === externalref || o.paymentReference === externalref) && o.status === "PENDING"
@@ -629,6 +682,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`✅ [MOOLRE WEBHOOK] Updating DataGod order ${datagodOrder.shortId} to PAID`);
         await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID", true);
         updated = true;
+
+        // Check if DataGod auto-fulfillment is enabled
+        const autoFulfillEnabled = await storage.getSetting("datagodAutoFulfillEnabled");
+        if (autoFulfillEnabled?.value === "true") {
+          // Run auto-fulfillment asynchronously (non-blocking)
+          (async () => {
+            try {
+              console.log(`🚀 [DATAGOD AUTO-FULFILL] Starting auto-fulfillment for Moolre order ${datagodOrder.shortId}`);
+              
+              // Get package info to find dataValueGB
+              const packages = await storage.getDatagodPackages();
+              const pkg = packages.find(p => p.packageName === datagodOrder.packageName);
+              
+              if (!pkg) {
+                console.error(`❌ [DATAGOD AUTO-FULFILL] Package not found: ${datagodOrder.packageName}`);
+                await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID", true, {
+                  failureReason: `Package not found: ${datagodOrder.packageName}`,
+                });
+                return;
+              }
+
+              // Call SykesOfficial API
+              const result = await sykesofficial.purchaseDataBundle(
+                datagodOrder.customerPhone,
+                `${pkg.dataValueGB}GB`,
+                datagodOrder.packagePrice,
+                datagodOrder.shortId,
+                pkg.dataValueGB
+              );
+
+              if (result.success) {
+                console.log(`✅ [DATAGOD AUTO-FULFILL] Order ${datagodOrder.shortId} sent to SykesOfficial successfully`);
+                await storage.updateDatagodOrderStatus(datagodOrder.id, "PROCESSING", true, {
+                  supplierUsed: "sykesofficial",
+                  supplierReference: result.data?.supplier_reference || result.data?.order_id?.toString(),
+                });
+              } else {
+                console.error(`❌ [DATAGOD AUTO-FULFILL] Order ${datagodOrder.shortId} failed: ${result.message}`);
+                await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID", true, {
+                  supplierUsed: "sykesofficial",
+                  failureReason: result.message,
+                });
+              }
+            } catch (err) {
+              console.error(`❌ [DATAGOD AUTO-FULFILL] Error for order ${datagodOrder.shortId}:`, err);
+              await storage.updateDatagodOrderStatus(datagodOrder.id, "PAID", true, {
+                supplierUsed: "sykesofficial",
+                failureReason: err instanceof Error ? err.message : "Unknown error",
+              });
+            }
+          })();
+        }
       }
 
       if (updated) {
@@ -1296,16 +1401,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get Wallet Balances (Admin only)
   app.get("/api/fastnet/balances", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const [dataxpress, hubnet, dakazina] = await Promise.all([
+      const [dataxpress, hubnet, dakazina, sykesofficial] = await Promise.all([
         supplierManager.getWalletBalance("dataxpress"),
         supplierManager.getWalletBalance("hubnet"),
-        supplierManager.getWalletBalance("dakazina")
+        supplierManager.getWalletBalance("dakazina"),
+        supplierManager.getWalletBalance("sykesofficial")
       ]);
 
       res.json({
         dataxpress,
         hubnet,
-        dakazina
+        dakazina,
+        sykesofficial
       });
     } catch (error) {
       console.error("Error fetching balances:", error);
@@ -1328,7 +1435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/fastnet/supplier", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { supplier } = req.body;
-      if (supplier !== "dataxpress" && supplier !== "hubnet" && supplier !== "dakazina") {
+      if (supplier !== "dataxpress" && supplier !== "hubnet" && supplier !== "dakazina" && supplier !== "sykesofficial") {
         return res.status(400).json({ message: "Invalid supplier" });
       }
       
@@ -1522,6 +1629,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DataGod API Endpoints
   // ============================================
 
+  // Get DataGod Auto-Fulfillment Settings (Admin only)
+  app.get("/api/datagod/autofulfill", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const enabled = await storage.getSetting("datagodAutoFulfillEnabled");
+      const balance = await sykesofficial.getWalletBalance();
+      
+      res.json({
+        enabled: enabled?.value === "true",
+        supplier: "sykesofficial",
+        balance: balance.success ? balance.balance : "N/A",
+        balanceError: balance.success ? null : balance.message,
+      });
+    } catch (error) {
+      console.error("Error fetching DataGod auto-fulfill settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  // Toggle DataGod Auto-Fulfillment (Admin only)
+  app.post("/api/datagod/autofulfill", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled must be a boolean" });
+      }
+
+      await storage.upsertSetting("datagodAutoFulfillEnabled", enabled ? "true" : "false");
+      
+      console.log(`✅ [DATAGOD] Auto-fulfillment ${enabled ? "enabled" : "disabled"}`);
+      
+      res.json({ success: true, enabled, message: `Auto-fulfillment ${enabled ? "enabled" : "disabled"}` });
+    } catch (error) {
+      console.error("Error setting DataGod auto-fulfill:", error);
+      res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
   // Get DataGod Orders (Admin only)
   app.get("/api/datagod/orders", isAuthenticated, isAdmin, async (_req, res) => {
     try {
@@ -1670,6 +1815,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating DataGod order:", error);
       res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  // Retry DataGod Order Fulfillment via SykesOfficial (Admin only)
+  app.post("/api/datagod/orders/:id/retry", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Get the order
+      const order = await storage.getDatagodOrderById(id);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Only allow retry for PAID orders (failed auto-fulfillment)
+      if (order.status !== "PAID") {
+        return res.status(400).json({ message: `Cannot retry order with status: ${order.status}. Only PAID orders can be retried.` });
+      }
+
+      console.log(`🔄 [DATAGOD RETRY] Retrying fulfillment for order ${order.shortId}`);
+
+      // Get package info to find dataValueGB
+      const packages = await storage.getDatagodPackages();
+      const pkg = packages.find(p => p.packageName === order.packageName);
+      
+      if (!pkg) {
+        return res.status(400).json({ message: `Package not found: ${order.packageName}` });
+      }
+
+      // Call SykesOfficial API
+      const result = await sykesofficial.purchaseDataBundle(
+        order.customerPhone,
+        `${pkg.dataValueGB}GB`,
+        order.packagePrice,
+        order.shortId,
+        pkg.dataValueGB
+      );
+
+      if (result.success) {
+        console.log(`✅ [DATAGOD RETRY] Order ${order.shortId} sent to SykesOfficial successfully`);
+        const updated = await storage.updateDatagodOrderStatus(order.id, "PROCESSING", order.paymentConfirmed, {
+          supplierUsed: "sykesofficial",
+          supplierReference: result.data?.supplier_reference || result.data?.order_id?.toString(),
+          failureReason: undefined, // Clear previous failure reason
+        });
+        return res.json({ success: true, message: "Order sent to supplier successfully", order: updated });
+      } else {
+        console.error(`❌ [DATAGOD RETRY] Order ${order.shortId} failed: ${result.message}`);
+        const updated = await storage.updateDatagodOrderStatus(order.id, "PAID", order.paymentConfirmed, {
+          supplierUsed: "sykesofficial",
+          failureReason: result.message,
+        });
+        return res.status(400).json({ success: false, message: result.message, order: updated });
+      }
+    } catch (error) {
+      console.error("Error retrying DataGod order:", error);
+      res.status(500).json({ message: "Failed to retry order fulfillment" });
     }
   });
 

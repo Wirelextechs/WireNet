@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Trash2, Edit2, Download, Upload, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Download, Upload, RefreshCw, AlertCircle, RotateCcw } from "lucide-react";
 
 interface Order {
   id: number;
@@ -18,6 +18,9 @@ interface Order {
   shopId?: number;
   shopName?: string;
   shopMarkup?: number;
+  supplierUsed?: string;
+  supplierReference?: string;
+  failureReason?: string;
 }
 
 interface Package {
@@ -28,12 +31,20 @@ interface Package {
   isEnabled: boolean;
 }
 
+interface AutoFulfillSettings {
+  enabled: boolean;
+  supplier: string;
+  balance: string;
+  balanceError?: string;
+}
+
 export default function DataGodAdmin() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"orders" | "packages" | "settings">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [settings, setSettings] = useState({ whatsAppLink: "", transactionCharge: "1.3" });
+  const [autoFulfill, setAutoFulfill] = useState<AutoFulfillSettings>({ enabled: false, supplier: "sykesofficial", balance: "N/A" });
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState(""); // Add search state
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
@@ -42,12 +53,70 @@ export default function DataGodAdmin() {
   const [newPackage, setNewPackage] = useState({ name: "", gb: "", price: "" });
   const [editingPackage, setEditingPackage] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [retryingOrder, setRetryingOrder] = useState<number | null>(null);
 
   useEffect(() => {
     loadOrders();
     loadPackages();
     loadSettings();
+    loadAutoFulfillSettings();
   }, []);
+
+  const loadAutoFulfillSettings = async () => {
+    try {
+      const response = await fetch("/api/datagod/autofulfill", { credentials: "include" });
+      if (response.ok) {
+        const data = await response.json();
+        setAutoFulfill(data);
+      }
+    } catch (error) {
+      console.error("Error loading auto-fulfill settings:", error);
+    }
+  };
+
+  const toggleAutoFulfill = async () => {
+    try {
+      const response = await fetch("/api/datagod/autofulfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ enabled: !autoFulfill.enabled }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAutoFulfill(prev => ({ ...prev, enabled: data.enabled }));
+        setMessage(`Auto-fulfillment ${data.enabled ? "enabled" : "disabled"}`);
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error toggling auto-fulfill:", error);
+      setMessage("Failed to update auto-fulfillment setting");
+    }
+  };
+
+  const handleRetryOrder = async (orderId: number) => {
+    setRetryingOrder(orderId);
+    try {
+      const response = await fetch(`/api/datagod/orders/${orderId}/retry`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setMessage(`Order sent to supplier successfully`);
+        await loadOrders();
+      } else {
+        setMessage(`Retry failed: ${data.message}`);
+      }
+      setTimeout(() => setMessage(""), 5000);
+    } catch (error) {
+      console.error("Error retrying order:", error);
+      setMessage("Failed to retry order");
+    } finally {
+      setRetryingOrder(null);
+    }
+  };
 
   const loadOrders = async () => {
     setLoading(true);
@@ -535,28 +604,64 @@ export default function DataGodAdmin() {
                               </span>
                             </td>
                             <td style={styles.tableCell}>
-                              <select
-                                value={order.status}
-                                onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                                style={{
-                                  ...styles.statusSelect,
-                                  backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "PAID" ? "#007bff" : "#dc3545",
-                                }}
-                              >
-                                <option value="PAID">Paid</option>
-                                <option value="PROCESSING">Processing</option>
-                                <option value="FULFILLED">Fulfilled</option>
-                                <option value="CANCELLED">Cancelled</option>
-                              </select>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                <select
+                                  value={order.status}
+                                  onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                                  style={{
+                                    ...styles.statusSelect,
+                                    backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "PAID" ? "#007bff" : "#dc3545",
+                                  }}
+                                >
+                                  <option value="PAID">Paid</option>
+                                  <option value="PROCESSING">Processing</option>
+                                  <option value="FULFILLED">Fulfilled</option>
+                                  <option value="CANCELLED">Cancelled</option>
+                                </select>
+                                {order.failureReason && order.status === "PAID" && (
+                                  <span style={{ 
+                                    fontSize: "11px", 
+                                    color: "#dc3545", 
+                                    backgroundColor: "#fff5f5",
+                                    padding: "2px 6px",
+                                    borderRadius: "4px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}>
+                                    <AlertCircle size={12} />
+                                    {order.failureReason.length > 30 
+                                      ? order.failureReason.substring(0, 30) + "..." 
+                                      : order.failureReason}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td style={styles.tableCell}>{new Date(order.createdAt).toLocaleString()}</td>
                             <td style={styles.tableCell}>
-                              <button
-                                onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")}
-                                style={styles.actionButton}
-                              >
-                                ✓
-                              </button>
+                              <div style={{ display: "flex", gap: "4px" }}>
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(order.id, "FULFILLED")}
+                                  style={styles.actionButton}
+                                  title="Mark as Fulfilled"
+                                >
+                                  ✓
+                                </button>
+                                {order.status === "PAID" && (
+                                  <button
+                                    onClick={() => handleRetryOrder(order.id)}
+                                    disabled={retryingOrder === order.id}
+                                    style={{
+                                      ...styles.actionButton,
+                                      backgroundColor: retryingOrder === order.id ? "#6c757d" : "#17a2b8",
+                                      cursor: retryingOrder === order.id ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Retry Fulfillment via SykesOfficial"
+                                  >
+                                    {retryingOrder === order.id ? "..." : <RotateCcw size={14} />}
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -725,63 +830,148 @@ export default function DataGodAdmin() {
         )}
 
         {activeTab === "settings" && (
-          <Card style={styles.card}>
-            <CardHeader>
-              <CardTitle>Platform Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={styles.settingsForm}>
-                <div>
-                  <label style={styles.label}>WhatsApp Link</label>
-                  <Input
-                    type="url"
-                    placeholder="https://wa.link/..."
-                    value={settings.whatsAppLink}
-                    onChange={(e) => setSettings({ ...settings, whatsAppLink: e.target.value })}
-                  />
+          <>
+            {/* Auto-Fulfillment Settings Card */}
+            <Card style={{ ...styles.card, marginBottom: "24px" }}>
+              <CardHeader>
+                <CardTitle>Auto-Fulfillment via SykesOfficial</CardTitle>
+                <CardDescription>
+                  Automatically send DataGod orders to SykesOfficial for fulfillment when payment is confirmed
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: "bold" }}>Auto-Fulfillment Status</p>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.9em", color: "#666" }}>
+                        {autoFulfill.enabled 
+                          ? "Orders will be automatically sent to SykesOfficial" 
+                          : "Orders require manual fulfillment"}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={toggleAutoFulfill}
+                      style={{
+                        backgroundColor: autoFulfill.enabled ? "#dc3545" : "#28a745",
+                        color: "white",
+                        border: "none",
+                        minWidth: "120px",
+                      }}
+                    >
+                      {autoFulfill.enabled ? "Disable" : "Enable"}
+                    </Button>
+                  </div>
+                  <div style={{ 
+                    padding: "12px", 
+                    backgroundColor: autoFulfill.enabled ? "#d4edda" : "#f8f9fa", 
+                    borderRadius: "8px",
+                    border: `1px solid ${autoFulfill.enabled ? "#c3e6cb" : "#dee2e6"}`,
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: "500" }}>SykesOfficial Wallet Balance</p>
+                        <p style={{ margin: "4px 0 0", fontSize: "1.2em", fontWeight: "bold", color: "#28a745" }}>
+                          GHS {autoFulfill.balance}
+                        </p>
+                        {autoFulfill.balanceError && (
+                          <p style={{ margin: "4px 0 0", fontSize: "0.85em", color: "#dc3545" }}>
+                            {autoFulfill.balanceError}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        onClick={loadAutoFulfillSettings}
+                        variant="outline"
+                        style={{ padding: "8px" }}
+                      >
+                        <RefreshCw size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                  {autoFulfill.enabled && (
+                    <div style={{ 
+                      padding: "12px", 
+                      backgroundColor: "#fff3cd", 
+                      borderRadius: "8px",
+                      border: "1px solid #ffc107",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "8px",
+                    }}>
+                      <AlertCircle size={18} color="#856404" style={{ marginTop: "2px" }} />
+                      <div>
+                        <p style={{ margin: 0, fontWeight: "500", color: "#856404" }}>Important Note</p>
+                        <p style={{ margin: "4px 0 0", fontSize: "0.9em", color: "#856404" }}>
+                          If auto-fulfillment fails (e.g., insufficient balance), orders will remain in "PAID" status 
+                          with the failure reason displayed. You can manually retry failed orders from the Orders tab.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label style={styles.label}>Transaction Charge (%)</label>
-                  <Input
-                    type="number"
-                    placeholder="1.3"
-                    value={settings.transactionCharge}
-                    onChange={(e) => setSettings({ ...settings, transactionCharge: e.target.value })}
-                  />
-                  <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>
-                    Percentage charge added to each transaction
-                  </p>
-                </div>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const response = await fetch("/api/settings", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        credentials: "include",
-                        body: JSON.stringify({
-                          whatsappLink: settings.whatsAppLink,
-                          datagodTransactionCharge: settings.transactionCharge,
-                        }),
-                      });
-                      if (response.ok) {
-                        setMessage("Settings saved");
-                      } else {
+              </CardContent>
+            </Card>
+
+            {/* Platform Settings Card */}
+            <Card style={styles.card}>
+              <CardHeader>
+                <CardTitle>Platform Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div style={styles.settingsForm}>
+                  <div>
+                    <label style={styles.label}>WhatsApp Link</label>
+                    <Input
+                      type="url"
+                      placeholder="https://wa.link/..."
+                      value={settings.whatsAppLink}
+                      onChange={(e) => setSettings({ ...settings, whatsAppLink: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={styles.label}>Transaction Charge (%)</label>
+                    <Input
+                      type="number"
+                      placeholder="1.3"
+                      value={settings.transactionCharge}
+                      onChange={(e) => setSettings({ ...settings, transactionCharge: e.target.value })}
+                    />
+                    <p style={{ fontSize: "0.8em", color: "#666", marginTop: "5px" }}>
+                      Percentage charge added to each transaction
+                    </p>
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch("/api/settings", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({
+                            whatsappLink: settings.whatsAppLink,
+                            datagodTransactionCharge: settings.transactionCharge,
+                          }),
+                        });
+                        if (response.ok) {
+                          setMessage("Settings saved");
+                        } else {
+                          setMessage("Failed to save settings");
+                        }
+                      } catch (error) {
+                        console.error("Error saving settings:", error);
                         setMessage("Failed to save settings");
                       }
-                    } catch (error) {
-                      console.error("Error saving settings:", error);
-                      setMessage("Failed to save settings");
-                    }
-                    setTimeout(() => setMessage(""), 2000);
-                  }}
-                  style={styles.saveButton}
-                >
-                  Save Settings
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                      setTimeout(() => setMessage(""), 2000);
+                    }}
+                    style={styles.saveButton}
+                  >
+                    Save Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
       </main>
     </div>

@@ -1,15 +1,16 @@
 /**
  * Supplier Manager - Central routing for multi-supplier fulfillment
- * Routes orders to the active supplier (DataXpress, Hubnet, DataKazina, or Code Craft)
+ * Routes orders to the active supplier (DataXpress, Hubnet, DataKazina, Code Craft, or SykesOfficial)
  */
 
 import * as dataxpress from "./dataxpress.js";
 import * as hubnet from "./hubnet.js";
 import * as dakazina from "./dakazina.js";
 import * as codecraft from "./codecraft.js";
+import * as sykesofficial from "./sykesofficial.js";
 import { storage } from "./storage.js";
 
-export type SupplierName = "dataxpress" | "hubnet" | "dakazina" | "codecraft";
+export type SupplierName = "dataxpress" | "hubnet" | "dakazina" | "codecraft" | "sykesofficial";
 
 /**
  * Get the currently active supplier from settings
@@ -18,12 +19,12 @@ async function getActiveSupplier(): Promise<SupplierName> {
   try {
     // Check fastnetActiveSupplier first (used by admin settings)
     const setting = await storage.getSetting("fastnetActiveSupplier");
-    if (setting && (setting.value === "dataxpress" || setting.value === "hubnet" || setting.value === "dakazina")) {
+    if (setting && (setting.value === "dataxpress" || setting.value === "hubnet" || setting.value === "dakazina" || setting.value === "sykesofficial")) {
       return setting.value as SupplierName;
     }
     // Fallback to legacy activeSupplier key
     const legacySetting = await storage.getSetting("activeSupplier");
-    if (legacySetting && (legacySetting.value === "dataxpress" || legacySetting.value === "hubnet" || legacySetting.value === "dakazina")) {
+    if (legacySetting && (legacySetting.value === "dataxpress" || legacySetting.value === "hubnet" || legacySetting.value === "dakazina" || legacySetting.value === "sykesofficial")) {
       return legacySetting.value as SupplierName;
     }
     // Default to dataxpress if no setting found
@@ -62,6 +63,8 @@ export async function purchaseDataBundle(
     result = await dakazina.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference);
   } else if (targetSupplier === "codecraft") {
     result = await codecraft.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference, network || "mtn");
+  } else if (targetSupplier === "sykesofficial") {
+    result = await sykesofficial.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference);
   } else {
     result = await dataxpress.purchaseDataBundle(phoneNumber, dataAmount, price, orderReference);
   }
@@ -89,6 +92,8 @@ export async function getWalletBalance(
     return await dakazina.getWalletBalance();
   } else if (supplier === "codecraft") {
     return await codecraft.getWalletBalance();
+  } else if (supplier === "sykesofficial") {
+    return await sykesofficial.getWalletBalance();
   } else {
     return await dataxpress.getWalletBalance();
   }
@@ -107,6 +112,8 @@ export async function getCostPrice(
     return await dakazina.getCostPrice(dataAmount);
   } else if (supplier === "codecraft") {
     return await codecraft.getCostPrice(dataAmount);
+  } else if (supplier === "sykesofficial") {
+    return await sykesofficial.getCostPrice(dataAmount);
   } else {
     return await dataxpress.getCostPrice(dataAmount);
   }

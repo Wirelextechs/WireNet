@@ -28,7 +28,7 @@ interface Package {
   isEnabled: boolean;
 }
 
-type Supplier = "dataxpress" | "hubnet" | "dakazina";
+type Supplier = "dataxpress" | "hubnet" | "dakazina" | "sykesofficial";
 
 interface WalletBalance {
   balance: string;
@@ -55,10 +55,12 @@ export default function FastNetAdmin() {
     dataxpress: WalletBalance;
     hubnet: WalletBalance;
     dakazina: WalletBalance;
+    sykesofficial: WalletBalance;
   }>({
     dataxpress: { balance: "...", currency: "" },
     hubnet: { balance: "...", currency: "" },
     dakazina: { balance: "...", currency: "" },
+    sykesofficial: { balance: "...", currency: "" },
   });
   const [settings, setSettings] = useState({ transactionCharge: "1.3" });
 
@@ -726,7 +728,7 @@ export default function FastNetAdmin() {
               </CardHeader>
               <CardContent>
                 <div style={styles.supplierGrid}>
-                  {["dataxpress", "hubnet", "dakazina"].map((supplier) => (
+                  {["dataxpress", "hubnet", "dakazina", "sykesofficial"].map((supplier) => (
                     <div 
                       key={supplier}
                       onClick={() => handleSupplierChange(supplier as Supplier)}

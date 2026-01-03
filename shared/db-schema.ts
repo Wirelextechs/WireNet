@@ -134,6 +134,9 @@ export const datagodOrders = pgTable("datagod_orders", {
   shopId: integer("shop_id"), // NULL for direct orders, shop ID for shop orders
   shopMarkup: real("shop_markup"), // Markup amount earned by shop
   paymentConfirmed: boolean("payment_confirmed").notNull().default(false), // Payment confirmed by gateway (Paystack/Moolre P01)
+  supplierUsed: varchar("supplier_used", { length: 50 }), // Supplier used for auto-fulfillment (e.g., "sykesofficial")
+  supplierReference: varchar("supplier_reference", { length: 100 }), // Supplier's order ID/reference
+  failureReason: text("failure_reason"), // Error message if auto-fulfillment failed
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

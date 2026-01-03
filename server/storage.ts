@@ -476,18 +476,42 @@ class Storage {
     }
   }
 
-  async updateDatagodOrderStatus(id: number, status: string, paymentConfirmed?: boolean): Promise<DatagodOrder | null> {
-    const updateData: { status: string; updatedAt: Date; paymentConfirmed?: boolean } = {
+  async updateDatagodOrderStatus(
+    id: number, 
+    status: string, 
+    paymentConfirmed?: boolean,
+    supplierData?: {
+      supplierUsed?: string;
+      supplierReference?: string;
+      failureReason?: string;
+    }
+  ): Promise<DatagodOrder | null> {
+    const updateData: { 
+      status: string; 
+      updatedAt: Date; 
+      paymentConfirmed?: boolean;
+      supplierUsed?: string;
+      supplierReference?: string;
+      failureReason?: string;
+    } = {
       status,
       updatedAt: new Date(),
     };
     
     if (paymentConfirmed !== undefined) updateData.paymentConfirmed = paymentConfirmed;
+    if (supplierData?.supplierUsed !== undefined) updateData.supplierUsed = supplierData.supplierUsed;
+    if (supplierData?.supplierReference !== undefined) updateData.supplierReference = supplierData.supplierReference;
+    if (supplierData?.failureReason !== undefined) updateData.failureReason = supplierData.failureReason;
 
     const result = await db.update(datagodOrders)
       .set(updateData)
       .where(eq(datagodOrders.id, id))
       .returning();
+    return result.length > 0 ? result[0] : null;
+  }
+
+  async getDatagodOrderById(id: number): Promise<DatagodOrder | null> {
+    const result = await db.select().from(datagodOrders).where(eq(datagodOrders.id, id)).limit(1);
     return result.length > 0 ? result[0] : null;
   }
 
