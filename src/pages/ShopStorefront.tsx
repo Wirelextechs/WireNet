@@ -571,10 +571,14 @@ export default function ShopStorefront() {
                     </p>
                     {statusSearchResults.map((order, idx) => (
                       <div key={`${order.serviceType}-${order.id}-${idx}`} className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-lg p-3 shadow-sm">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs md:text-sm">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs md:text-sm">
                           <div className="bg-white border-2 border-blue-300 rounded p-2">
                             <p className="text-xs font-bold text-blue-600 uppercase">ID</p>
                             <p className="font-bold text-blue-900 truncate">{order.shortId}</p>
+                          </div>
+                          <div className="bg-white border-2 border-pink-300 rounded p-2">
+                            <p className="text-xs font-bold text-pink-600 uppercase">Phone</p>
+                            <p className="font-bold text-pink-900">{order.phoneNumber}</p>
                           </div>
                           <div className="bg-white border-2 border-purple-300 rounded p-2">
                             <p className="text-xs font-bold text-purple-600 uppercase">Service</p>
