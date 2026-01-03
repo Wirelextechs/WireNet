@@ -728,28 +728,31 @@ export default function FastNetAdmin() {
               </CardHeader>
               <CardContent>
                 <div style={styles.supplierGrid}>
-                  {["dataxpress", "hubnet", "dakazina", "sykesofficial"].map((supplier) => (
-                    <div 
-                      key={supplier}
-                      onClick={() => handleSupplierChange(supplier as Supplier)}
-                      style={{
-                        ...styles.supplierCard,
-                        borderColor: activeSupplier === supplier ? "#007bff" : "#ddd",
-                        backgroundColor: activeSupplier === supplier ? "#f0f7ff" : "white",
-                      }}
-                    >
-                      <div style={styles.supplierHeader}>
-                        <span style={styles.supplierName}>{supplier.charAt(0).toUpperCase() + supplier.slice(1)}</span>
-                        {activeSupplier === supplier && <span style={styles.activeBadge}>ACTIVE</span>}
+                  {["dataxpress", "hubnet", "dakazina", "sykesofficial"].map((supplier) => {
+                    const balance = walletBalances[supplier as Supplier];
+                    return (
+                      <div 
+                        key={supplier}
+                        onClick={() => handleSupplierChange(supplier as Supplier)}
+                        style={{
+                          ...styles.supplierCard,
+                          borderColor: activeSupplier === supplier ? "#007bff" : "#ddd",
+                          backgroundColor: activeSupplier === supplier ? "#f0f7ff" : "white",
+                        }}
+                      >
+                        <div style={styles.supplierHeader}>
+                          <span style={styles.supplierName}>{supplier.charAt(0).toUpperCase() + supplier.slice(1)}</span>
+                          {activeSupplier === supplier && <span style={styles.activeBadge}>ACTIVE</span>}
+                        </div>
+                        <div style={styles.balanceInfo}>
+                          <span>Balance:</span>
+                          <span style={styles.balanceValue}>
+                            {balance ? `${balance.currency} ${balance.balance}` : "Loading..."}
+                          </span>
+                        </div>
                       </div>
-                      <div style={styles.balanceInfo}>
-                        <span>Balance:</span>
-                        <span style={styles.balanceValue}>
-                          {walletBalances[supplier as Supplier].currency} {walletBalances[supplier as Supplier].balance}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
