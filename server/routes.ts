@@ -2810,10 +2810,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (shopName) updates.shop_name = shopName;
       if (description !== undefined) updates.description = description;
       if (logo !== undefined) updates.logo = logo;
-      if (whatsappLink !== undefined) updates.whatsapp_link = whatsappLink;
+      
+      // Try to update whatsapp_link separately to handle missing column gracefully
+      let whatsappLinkError = false;
+      if (whatsappLink !== undefined) {
+        try {
+          await shopsDB.update(shop.id, { whatsapp_link: whatsappLink });
+        } catch (err: any) {
+          // Column might not exist yet - log and continue
+          if (err.message?.includes('whatsapp_link')) {
+            console.log("⚠️ whatsapp_link column not found in shops table - skipping");
+            whatsappLinkError = true;
+          } else {
+            throw err;
+          }
+        }
+      }
 
-      const updated = await shopsDB.update(shop.id, updates);
-      res.json({ message: "Shop updated", shop: updated });
+      // Update other fields if any
+      let updated = shop;
+      if (Object.keys(updates).length > 0) {
+        updated = await shopsDB.update(shop.id, updates);
+      }
+      
+      res.json({ 
+        message: whatsappLinkError ? "Shop updated (WhatsApp link column not available yet)" : "Shop updated", 
+        shop: updated 
+      });
     } catch (error) {
       console.error("Update shop error:", error);
       res.status(500).json({ message: "Failed to update shop" });
@@ -3506,7 +3529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         logo: shop.logo,
         ownerName: owner?.name || "Shop Owner",
         ownerPhone: owner?.phone || null,
-        whatsappLink: shop.whatsapp_link || null
+        whatsappLink: shop.whatsapp_link ?? null  // Use nullish coalescing - column may not exist
       });
     } catch (error) {
       console.error("Get shop error:", error);
