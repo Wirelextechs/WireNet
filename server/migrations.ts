@@ -85,7 +85,44 @@ export async function runPendingMigrations() {
       console.log("ℹ️ Supabase migration note:", err.message);
     }
 
-    // Migration 5: Add shop owner registration settings
+    // Migration 5: Add supplier tracking columns to fastnet_orders
+    try {
+      const fastnetTableCheck = await pool.query(
+        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'fastnet_orders');`
+      );
+
+      if (fastnetTableCheck.rows[0]?.exists) {
+        const supplierUsedCheck = await pool.query(
+          `SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'fastnet_orders' AND column_name = 'supplier_used');`
+        );
+
+        if (!supplierUsedCheck.rows[0]?.exists) {
+          await pool.query(
+            `ALTER TABLE "fastnet_orders" ADD COLUMN "supplier_used" VARCHAR(50);`
+          );
+          console.log("✅ Added supplier_used column to fastnet_orders");
+        } else {
+          console.log("ℹ️ supplier_used column already exists in fastnet_orders");
+        }
+
+        const supplierResponseCheck = await pool.query(
+          `SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'fastnet_orders' AND column_name = 'supplier_response');`
+        );
+
+        if (!supplierResponseCheck.rows[0]?.exists) {
+          await pool.query(
+            `ALTER TABLE "fastnet_orders" ADD COLUMN "supplier_response" TEXT;`
+          );
+          console.log("✅ Added supplier_response column to fastnet_orders");
+        } else {
+          console.log("ℹ️ supplier_response column already exists in fastnet_orders");
+        }
+      }
+    } catch (err: any) {
+      console.error("❌ FastNet supplier columns migration error:", err.message);
+    }
+
+    // Migration 6: Add shop owner registration settings
     try {
       // Add default settings for shop owner registration privilege
       const shopOwnerCanRegisterSetting = await pool.query(
