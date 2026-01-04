@@ -37,11 +37,13 @@ interface PackageConfig {
 
 interface Order {
   id: number;
+  shortId?: string;
   phoneNumber: string;
   network: string;
   capacity: string;
   price: number;
   status: string;
+  paymentConfirmed?: boolean;
   createdAt: string;
   shopMarkup: number | null;
   serviceType: string;
@@ -594,6 +596,13 @@ export default function ShopDashboard() {
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
+  const getPaymentBadge = (paymentConfirmed?: boolean) => {
+    if (paymentConfirmed === true) {
+      return { class: "bg-green-100 text-green-800", text: "Paid ✓" };
+    }
+    return { class: "bg-yellow-100 text-yellow-800", text: "Pending" };
+  };
+
   // Filter orders by status and search query
   const getFilteredOrders = () => {
     let filtered = orders;
@@ -783,8 +792,9 @@ export default function ShopDashboard() {
                           <th className="text-left py-2 px-2">Phone</th>
                           <th className="text-left py-2 px-2">Package</th>
                           <th className="text-left py-2 px-2">Price</th>
-                          <th className="text-left py-2 px-2">Your Markup</th>
-                          <th className="text-left py-2 px-2">Status</th>
+                          <th className="text-left py-2 px-2">Markup</th>
+                          <th className="text-left py-2 px-2">Payment</th>
+                          <th className="text-left py-2 px-2">Fulfillment</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -795,6 +805,11 @@ export default function ShopDashboard() {
                             <td className="py-2 px-2">{order.capacity} ({order.network})</td>
                             <td className="py-2 px-2">GHS {typeof order.price === 'number' ? order.price.toFixed(2) : '0.00'}</td>
                             <td className="py-2 px-2 text-green-600">+GHS {(typeof order.shopMarkup === 'number' ? order.shopMarkup : 0).toFixed(2)}</td>
+                            <td className="py-2 px-2">
+                              <span className={`px-2 py-0.5 rounded text-xs ${getPaymentBadge(order.paymentConfirmed).class}`}>
+                                {getPaymentBadge(order.paymentConfirmed).text}
+                              </span>
+                            </td>
                             <td className="py-2 px-2">
                               <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(order.status)}`}>
                                 {order.status}
@@ -945,8 +960,9 @@ export default function ShopDashboard() {
                             <th className="text-left py-2 px-2">Phone</th>
                             <th className="text-left py-2 px-2">Package</th>
                             <th className="text-left py-2 px-2">Price</th>
-                            <th className="text-left py-2 px-2">Your Markup</th>
-                            <th className="text-left py-2 px-2">Status</th>
+                            <th className="text-left py-2 px-2">Markup</th>
+                            <th className="text-left py-2 px-2">Payment</th>
+                            <th className="text-left py-2 px-2">Fulfillment</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -958,6 +974,11 @@ export default function ShopDashboard() {
                               <td className="py-2 px-2">{order.capacity}</td>
                               <td className="py-2 px-2">GHS {typeof order.price === 'number' ? order.price.toFixed(2) : '0.00'}</td>
                               <td className="py-2 px-2 text-green-600">+GHS {(typeof order.shopMarkup === 'number' ? order.shopMarkup : 0).toFixed(2)}</td>
+                              <td className="py-2 px-2">
+                                <span className={`px-2 py-0.5 rounded text-xs ${getPaymentBadge(order.paymentConfirmed).class}`}>
+                                  {getPaymentBadge(order.paymentConfirmed).text}
+                                </span>
+                              </td>
                               <td className="py-2 px-2">
                                 <span className={`px-2 py-0.5 rounded text-xs ${getStatusBadge(order.status)}`}>
                                   {order.status}

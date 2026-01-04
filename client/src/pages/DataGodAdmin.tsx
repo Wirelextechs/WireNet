@@ -12,6 +12,7 @@ interface Order {
   packageName: string;
   packagePrice: number;
   status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED";
+  paymentConfirmed?: boolean;
   paymentReference?: string;
   createdAt: string;
   updatedAt?: string;
@@ -486,7 +487,8 @@ export default function DataGodAdmin() {
                         <th style={styles.tableCell}>Phone</th>
                         <th style={styles.tableCell}>Package</th>
                         <th style={styles.tableCell}>Price</th>
-                        <th style={styles.tableCell}>Status</th>
+                        <th style={styles.tableCell}>Payment</th>
+                        <th style={styles.tableCell}>Fulfillment</th>
                         <th style={styles.tableCell}>Date</th>
                         <th style={styles.tableCell}>Action</th>
                       </tr>
@@ -518,6 +520,17 @@ export default function DataGodAdmin() {
                             <td style={styles.tableCell}>{order.customerPhone}</td>
                             <td style={styles.tableCell}>{order.packageName}</td>
                             <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
+                            <td style={styles.tableCell}>
+                              <span style={{
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                backgroundColor: order.paymentConfirmed ? "#d4edda" : "#fff3cd",
+                                color: order.paymentConfirmed ? "#155724" : "#856404"
+                              }}>
+                                {order.paymentConfirmed ? "Paid ✓" : "Pending"}
+                              </span>
+                            </td>
                             <td style={styles.tableCell}>
                               <select
                                 value={order.status}

@@ -12,6 +12,7 @@ interface Order {
   packageDetails: string;
   packagePrice: number;
   status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED" | "FAILED";
+  paymentConfirmed?: boolean;
   supplierUsed?: string;
   createdAt: Date;
 }
@@ -403,7 +404,8 @@ export default function TelecelAdmin() {
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Phone</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Package</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Price</div>
-                  <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Status</div>
+                  <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Payment</div>
+                  <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Fulfillment</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Date</div>
                   <div style={{ ...styles.tableCell, fontWeight: "bold" }}>Action</div>
                 </div>
@@ -413,6 +415,17 @@ export default function TelecelAdmin() {
                     <div style={styles.tableCell}>{order.customerPhone}</div>
                     <div style={styles.tableCell}>{order.packageDetails}</div>
                     <div style={styles.tableCell}>GH₵{order.packagePrice}</div>
+                    <div style={styles.tableCell}>
+                      <span style={{
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        backgroundColor: order.paymentConfirmed ? "#d4edda" : "#fff3cd",
+                        color: order.paymentConfirmed ? "#155724" : "#856404"
+                      }}>
+                        {order.paymentConfirmed ? "Paid ✓" : "Pending"}
+                      </span>
+                    </div>
                     <div style={styles.tableCell}>
                       <select
                         value={order.status}

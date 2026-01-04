@@ -13,6 +13,7 @@ interface Order {
   packageDetails: string;
   packagePrice: number;
   status: "PAID" | "PROCESSING" | "FULFILLED" | "CANCELLED" | "FAILED";
+  paymentConfirmed?: boolean;
   supplierUsed?: string;
   createdAt: Date;
 }
@@ -594,7 +595,8 @@ export default function FastNetAdmin() {
                         <th style={styles.tableCell}>Phone</th>
                         <th style={styles.tableCell}>Package</th>
                         <th style={styles.tableCell}>Price</th>
-                        <th style={styles.tableCell}>Status</th>
+                        <th style={styles.tableCell}>Payment</th>
+                        <th style={styles.tableCell}>Fulfillment</th>
                         <th style={styles.tableCell}>Supplier</th>
                         <th style={styles.tableCell}>Date</th>
                         <th style={styles.tableCell}>Actions</th>
@@ -608,6 +610,17 @@ export default function FastNetAdmin() {
                           <td style={styles.tableCell}>{order.customerPhone}</td>
                           <td style={styles.tableCell}>{order.packageDetails}</td>
                           <td style={styles.tableCell}>GH₵{order.packagePrice}</td>
+                          <td style={styles.tableCell}>
+                            <span style={{
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              backgroundColor: order.paymentConfirmed ? "#d4edda" : "#fff3cd",
+                              color: order.paymentConfirmed ? "#155724" : "#856404"
+                            }}>
+                              {order.paymentConfirmed ? "Paid ✓" : "Pending"}
+                            </span>
+                          </td>
                           <td style={styles.tableCell}>
                             <select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} style={{ ...styles.statusSelect, backgroundColor: order.status === "FULFILLED" ? "#28a745" : order.status === "PROCESSING" ? "#ffc107" : order.status === "FAILED" ? "#dc3545" : "#007bff" }}>
                               <option value="PAID">Paid</option>
