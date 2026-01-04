@@ -496,13 +496,13 @@ export default function DataGodAdmin() {
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                          <td colSpan={9} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
                             Loading...
                           </td>
                         </tr>
                       ) : filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                          <td colSpan={9} style={{ textAlign: "center", padding: "20px", color: "#999" }}>
                             No orders found
                           </td>
                         </tr>
