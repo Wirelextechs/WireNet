@@ -2805,11 +2805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Shop not found" });
       }
 
-      const { shopName, description, logo } = req.body;
+      const { shopName, description, logo, whatsappLink } = req.body;
       const updates: any = {};
       if (shopName) updates.shop_name = shopName;
       if (description !== undefined) updates.description = description;
       if (logo !== undefined) updates.logo = logo;
+      if (whatsappLink !== undefined) updates.whatsapp_link = whatsappLink;
 
       const updated = await shopsDB.update(shop.id, updates);
       res.json({ message: "Shop updated", shop: updated });
@@ -3504,7 +3505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: shop.description,
         logo: shop.logo,
         ownerName: owner?.name || "Shop Owner",
-        ownerPhone: owner?.phone || null
+        ownerPhone: owner?.phone || null,
+        whatsappLink: shop.whatsapp_link || null
       });
     } catch (error) {
       console.error("Get shop error:", error);

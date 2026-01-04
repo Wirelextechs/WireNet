@@ -120,6 +120,7 @@ export default function ShopDashboard() {
   
   // Settings
   const [shopDescription, setShopDescription] = useState("");
+  const [shopWhatsappLink, setShopWhatsappLink] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Shop settings from admin
@@ -158,6 +159,7 @@ export default function ShopDashboard() {
           console.log("Setting shop:", data.shop);
           setShop(data.shop);
           setShopDescription(data.shop.description || "");
+          setShopWhatsappLink(data.shop.whatsappLink || data.shop.whatsapp_link || "");
           
           // Load all data but don't block on errors - set loading to false even if they fail
           Promise.all([
@@ -457,12 +459,16 @@ export default function ShopDashboard() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ description: shopDescription })
+        body: JSON.stringify({ 
+          description: shopDescription,
+          whatsappLink: shopWhatsappLink 
+        })
       });
 
       if (response.ok) {
         const data = await response.json();
         setShop(data.shop);
+        setShopWhatsappLink(data.shop.whatsapp_link || "");
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
@@ -1342,6 +1348,19 @@ export default function ShopDashboard() {
                   rows={4}
                   placeholder="Describe your shop..."
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">WhatsApp Contact Link</label>
+                <Input
+                  value={shopWhatsappLink}
+                  onChange={(e) => setShopWhatsappLink(e.target.value)}
+                  placeholder="https://wa.me/233xxxxxxxxx or https://wa.link/..."
+                />
+                <p className="text-xs text-gray-500">
+                  This link will be used for the "Contact" button on your shop storefront. 
+                  Leave empty to hide the contact button.
+                </p>
               </div>
               
               <Button onClick={saveSettings} disabled={savingSettings}>

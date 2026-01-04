@@ -15,6 +15,7 @@ interface Shop {
   logo: string | null;
   ownerName?: string;
   ownerPhone?: string | null;
+  whatsappLink?: string | null;
 }
 
 interface ShopPackage {
@@ -507,11 +508,11 @@ export default function ShopStorefront() {
             >
               Check Status
             </Button>
-            {settings.whatsappLink && (
+            {shop?.whatsappLink && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.open(settings.whatsappLink, "_blank")}
+                onClick={() => window.open(shop.whatsappLink!, "_blank")}
               >
                 <MessageCircle size={18} className="mr-1" /> Contact
               </Button>
