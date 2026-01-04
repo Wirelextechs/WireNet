@@ -576,6 +576,9 @@ class Storage {
       shopId: datagodOrders.shopId,
       shopMarkup: datagodOrders.shopMarkup,
       paymentConfirmed: datagodOrders.paymentConfirmed,
+      supplierUsed: datagodOrders.supplierUsed,
+      supplierReference: datagodOrders.supplierReference,
+      failureReason: datagodOrders.failureReason,
       createdAt: datagodOrders.createdAt,
       updatedAt: datagodOrders.updatedAt,
     }).from(datagodOrders).where(eq(datagodOrders.id, id)).limit(1);
@@ -594,6 +597,9 @@ class Storage {
       shopId: datagodOrders.shopId,
       shopMarkup: datagodOrders.shopMarkup,
       paymentConfirmed: datagodOrders.paymentConfirmed,
+      supplierUsed: datagodOrders.supplierUsed,
+      supplierReference: datagodOrders.supplierReference,
+      failureReason: datagodOrders.failureReason,
       createdAt: datagodOrders.createdAt,
       updatedAt: datagodOrders.updatedAt,
     }).from(datagodOrders).where(eq(datagodOrders.shortId, shortId)).limit(1);
@@ -612,6 +618,9 @@ class Storage {
       shopId: datagodOrders.shopId,
       shopMarkup: datagodOrders.shopMarkup,
       paymentConfirmed: datagodOrders.paymentConfirmed,
+      supplierUsed: datagodOrders.supplierUsed,
+      supplierReference: datagodOrders.supplierReference,
+      failureReason: datagodOrders.failureReason,
       createdAt: datagodOrders.createdAt,
       updatedAt: datagodOrders.updatedAt,
     }).from(datagodOrders).where(eq(datagodOrders.paymentReference, paymentReference)).limit(1);
