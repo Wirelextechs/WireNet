@@ -375,7 +375,20 @@ class Storage {
       // If shops table doesn't exist, fall back to simple query
       if (error.code === '42P01' || error.code === '42703') {
         console.log("Shops table not found, using simple order query");
-        const results = await db.select().from(fastnetOrders).orderBy(desc(fastnetOrders.createdAt));
+        const results = await db.select({
+          id: fastnetOrders.id,
+          shortId: fastnetOrders.shortId,
+          customerPhone: fastnetOrders.customerPhone,
+          packageDetails: fastnetOrders.packageDetails,
+          packagePrice: fastnetOrders.packagePrice,
+          status: fastnetOrders.status,
+          paymentReference: fastnetOrders.paymentReference,
+          shopId: fastnetOrders.shopId,
+          shopMarkup: fastnetOrders.shopMarkup,
+          paymentConfirmed: fastnetOrders.paymentConfirmed,
+          createdAt: fastnetOrders.createdAt,
+          updatedAt: fastnetOrders.updatedAt,
+        }).from(fastnetOrders).orderBy(desc(fastnetOrders.createdAt));
         return results.map(r => ({ ...r, shopName: null }));
       }
       throw error;
@@ -401,13 +414,39 @@ class Storage {
   }
 
   async getFastnetOrderByShortId(shortId: string): Promise<FastnetOrder | null> {
-    const result = await db.select().from(fastnetOrders).where(eq(fastnetOrders.shortId, shortId)).limit(1);
-    return result.length > 0 ? result[0] : null;
+    const result = await db.select({
+      id: fastnetOrders.id,
+      shortId: fastnetOrders.shortId,
+      customerPhone: fastnetOrders.customerPhone,
+      packageDetails: fastnetOrders.packageDetails,
+      packagePrice: fastnetOrders.packagePrice,
+      status: fastnetOrders.status,
+      paymentReference: fastnetOrders.paymentReference,
+      shopId: fastnetOrders.shopId,
+      shopMarkup: fastnetOrders.shopMarkup,
+      paymentConfirmed: fastnetOrders.paymentConfirmed,
+      createdAt: fastnetOrders.createdAt,
+      updatedAt: fastnetOrders.updatedAt,
+    }).from(fastnetOrders).where(eq(fastnetOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] as FastnetOrder : null;
   }
 
   async getFastnetOrderByPaymentReference(paymentReference: string): Promise<FastnetOrder | null> {
-    const result = await db.select().from(fastnetOrders).where(eq(fastnetOrders.paymentReference, paymentReference)).limit(1);
-    return result.length > 0 ? result[0] : null;
+    const result = await db.select({
+      id: fastnetOrders.id,
+      shortId: fastnetOrders.shortId,
+      customerPhone: fastnetOrders.customerPhone,
+      packageDetails: fastnetOrders.packageDetails,
+      packagePrice: fastnetOrders.packagePrice,
+      status: fastnetOrders.status,
+      paymentReference: fastnetOrders.paymentReference,
+      shopId: fastnetOrders.shopId,
+      shopMarkup: fastnetOrders.shopMarkup,
+      paymentConfirmed: fastnetOrders.paymentConfirmed,
+      createdAt: fastnetOrders.createdAt,
+      updatedAt: fastnetOrders.updatedAt,
+    }).from(fastnetOrders).where(eq(fastnetOrders.paymentReference, paymentReference)).limit(1);
+    return result.length > 0 ? result[0] as FastnetOrder : null;
   }
 
   // DataGod Orders
@@ -469,7 +508,20 @@ class Storage {
       // If shops table doesn't exist, fall back to simple query
       if (error.code === '42P01' || error.code === '42703') {
         console.log("Shops table not found, using simple order query");
-        const results = await db.select().from(datagodOrders).orderBy(desc(datagodOrders.createdAt));
+        const results = await db.select({
+          id: datagodOrders.id,
+          shortId: datagodOrders.shortId,
+          customerPhone: datagodOrders.customerPhone,
+          packageName: datagodOrders.packageName,
+          packagePrice: datagodOrders.packagePrice,
+          status: datagodOrders.status,
+          paymentReference: datagodOrders.paymentReference,
+          shopId: datagodOrders.shopId,
+          shopMarkup: datagodOrders.shopMarkup,
+          paymentConfirmed: datagodOrders.paymentConfirmed,
+          createdAt: datagodOrders.createdAt,
+          updatedAt: datagodOrders.updatedAt,
+        }).from(datagodOrders).orderBy(desc(datagodOrders.createdAt));
         return results.map(r => ({ ...r, shopName: null }));
       }
       throw error;
@@ -511,18 +563,57 @@ class Storage {
   }
 
   async getDatagodOrderById(id: number): Promise<DatagodOrder | null> {
-    const result = await db.select().from(datagodOrders).where(eq(datagodOrders.id, id)).limit(1);
-    return result.length > 0 ? result[0] : null;
+    const result = await db.select({
+      id: datagodOrders.id,
+      shortId: datagodOrders.shortId,
+      customerPhone: datagodOrders.customerPhone,
+      packageName: datagodOrders.packageName,
+      packagePrice: datagodOrders.packagePrice,
+      status: datagodOrders.status,
+      paymentReference: datagodOrders.paymentReference,
+      shopId: datagodOrders.shopId,
+      shopMarkup: datagodOrders.shopMarkup,
+      paymentConfirmed: datagodOrders.paymentConfirmed,
+      createdAt: datagodOrders.createdAt,
+      updatedAt: datagodOrders.updatedAt,
+    }).from(datagodOrders).where(eq(datagodOrders.id, id)).limit(1);
+    return result.length > 0 ? result[0] as DatagodOrder : null;
   }
 
   async getDatagodOrderByShortId(shortId: string): Promise<DatagodOrder | null> {
-    const result = await db.select().from(datagodOrders).where(eq(datagodOrders.shortId, shortId)).limit(1);
-    return result.length > 0 ? result[0] : null;
+    const result = await db.select({
+      id: datagodOrders.id,
+      shortId: datagodOrders.shortId,
+      customerPhone: datagodOrders.customerPhone,
+      packageName: datagodOrders.packageName,
+      packagePrice: datagodOrders.packagePrice,
+      status: datagodOrders.status,
+      paymentReference: datagodOrders.paymentReference,
+      shopId: datagodOrders.shopId,
+      shopMarkup: datagodOrders.shopMarkup,
+      paymentConfirmed: datagodOrders.paymentConfirmed,
+      createdAt: datagodOrders.createdAt,
+      updatedAt: datagodOrders.updatedAt,
+    }).from(datagodOrders).where(eq(datagodOrders.shortId, shortId)).limit(1);
+    return result.length > 0 ? result[0] as DatagodOrder : null;
   }
 
   async getDatagodOrderByPaymentReference(paymentReference: string): Promise<DatagodOrder | null> {
-    const result = await db.select().from(datagodOrders).where(eq(datagodOrders.paymentReference, paymentReference)).limit(1);
-    return result.length > 0 ? result[0] : null;
+    const result = await db.select({
+      id: datagodOrders.id,
+      shortId: datagodOrders.shortId,
+      customerPhone: datagodOrders.customerPhone,
+      packageName: datagodOrders.packageName,
+      packagePrice: datagodOrders.packagePrice,
+      status: datagodOrders.status,
+      paymentReference: datagodOrders.paymentReference,
+      shopId: datagodOrders.shopId,
+      shopMarkup: datagodOrders.shopMarkup,
+      paymentConfirmed: datagodOrders.paymentConfirmed,
+      createdAt: datagodOrders.createdAt,
+      updatedAt: datagodOrders.updatedAt,
+    }).from(datagodOrders).where(eq(datagodOrders.paymentReference, paymentReference)).limit(1);
+    return result.length > 0 ? result[0] as DatagodOrder : null;
   }
 
   // DataGod Packages
@@ -777,9 +868,37 @@ class Storage {
     try {
       console.log(`🔍 [Storage] Querying orders for shop ${shopId}...`);
       
+      // Use explicit column selection to avoid issues with missing columns in production DB
+      // This ensures backward compatibility even if migration hasn't run yet
       const [fastnetOrds, datagodOrds, atOrds, telecelOrds] = await Promise.all([
-        db.select().from(fastnetOrders).where(eq(fastnetOrders.shopId, shopId)),
-        db.select().from(datagodOrders).where(eq(datagodOrders.shopId, shopId)),
+        db.select({
+          id: fastnetOrders.id,
+          shortId: fastnetOrders.shortId,
+          customerPhone: fastnetOrders.customerPhone,
+          packageDetails: fastnetOrders.packageDetails,
+          packagePrice: fastnetOrders.packagePrice,
+          status: fastnetOrders.status,
+          paymentReference: fastnetOrders.paymentReference,
+          shopId: fastnetOrders.shopId,
+          shopMarkup: fastnetOrders.shopMarkup,
+          paymentConfirmed: fastnetOrders.paymentConfirmed,
+          createdAt: fastnetOrders.createdAt,
+          updatedAt: fastnetOrders.updatedAt,
+        }).from(fastnetOrders).where(eq(fastnetOrders.shopId, shopId)),
+        db.select({
+          id: datagodOrders.id,
+          shortId: datagodOrders.shortId,
+          customerPhone: datagodOrders.customerPhone,
+          packageName: datagodOrders.packageName,
+          packagePrice: datagodOrders.packagePrice,
+          status: datagodOrders.status,
+          paymentReference: datagodOrders.paymentReference,
+          shopId: datagodOrders.shopId,
+          shopMarkup: datagodOrders.shopMarkup,
+          paymentConfirmed: datagodOrders.paymentConfirmed,
+          createdAt: datagodOrders.createdAt,
+          updatedAt: datagodOrders.updatedAt,
+        }).from(datagodOrders).where(eq(datagodOrders.shopId, shopId)),
         db.select().from(atOrders).where(eq(atOrders.shopId, shopId)),
         db.select().from(telecelOrders).where(eq(telecelOrders.shopId, shopId)),
       ]);
@@ -1158,15 +1277,41 @@ class Storage {
 
   // Shop Orders - get orders for a specific shop
   async getShopFastnetOrders(shopId: number): Promise<FastnetOrder[]> {
-    return await db.select().from(fastnetOrders)
+    return await db.select({
+      id: fastnetOrders.id,
+      shortId: fastnetOrders.shortId,
+      customerPhone: fastnetOrders.customerPhone,
+      packageDetails: fastnetOrders.packageDetails,
+      packagePrice: fastnetOrders.packagePrice,
+      status: fastnetOrders.status,
+      paymentReference: fastnetOrders.paymentReference,
+      shopId: fastnetOrders.shopId,
+      shopMarkup: fastnetOrders.shopMarkup,
+      paymentConfirmed: fastnetOrders.paymentConfirmed,
+      createdAt: fastnetOrders.createdAt,
+      updatedAt: fastnetOrders.updatedAt,
+    }).from(fastnetOrders)
       .where(eq(fastnetOrders.shopId, shopId))
-      .orderBy(desc(fastnetOrders.createdAt));
+      .orderBy(desc(fastnetOrders.createdAt)) as unknown as FastnetOrder[];
   }
 
   async getShopDatagodOrders(shopId: number): Promise<DatagodOrder[]> {
-    return await db.select().from(datagodOrders)
+    return await db.select({
+      id: datagodOrders.id,
+      shortId: datagodOrders.shortId,
+      customerPhone: datagodOrders.customerPhone,
+      packageName: datagodOrders.packageName,
+      packagePrice: datagodOrders.packagePrice,
+      status: datagodOrders.status,
+      paymentReference: datagodOrders.paymentReference,
+      shopId: datagodOrders.shopId,
+      shopMarkup: datagodOrders.shopMarkup,
+      paymentConfirmed: datagodOrders.paymentConfirmed,
+      createdAt: datagodOrders.createdAt,
+      updatedAt: datagodOrders.updatedAt,
+    }).from(datagodOrders)
       .where(eq(datagodOrders.shopId, shopId))
-      .orderBy(desc(datagodOrders.createdAt));
+      .orderBy(desc(datagodOrders.createdAt)) as unknown as DatagodOrder[];
   }
 
   async getShopAtOrders(shopId: number): Promise<AtOrder[]> {
