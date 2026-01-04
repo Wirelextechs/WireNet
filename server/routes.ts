@@ -120,12 +120,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Extract payment phone number from Paystack webhook
-      // Try multiple locations: metadata.wirenet.items[].phoneNumber (our custom field) first, then customer.phone
+      // Try multiple locations: metadata.wirenet.items[].phoneNumber (new format) or metadata.wirenet.phoneNumber (old format)
       let paymentPhone = "";
       
       const metadata = req.body?.data?.metadata;
       const wirenetMeta = metadata?.wirenet;
-      const items: any[] | undefined = wirenetMeta?.items;
+      let items: any[] | undefined = wirenetMeta?.items;
+      
+      // Support both old and new metadata formats
+      // New format: wirenet: { service, items: [{phoneNumber, packageName, ...}] }
+      // Old format: wirenet: { service, phoneNumber, dataAmount, ... }
+      if (!items) {
+        // Convert old flat format to new items array format
+        if (wirenetMeta?.phoneNumber) {
+          items = [{
+            phoneNumber: wirenetMeta.phoneNumber,
+            packageName: wirenetMeta.dataAmount || wirenetMeta.packageName,
+            dataAmount: wirenetMeta.dataAmount,
+            price: wirenetMeta.price,
+            shopId: wirenetMeta.shopId,
+            shopMarkup: wirenetMeta.shopMarkup,
+            email: wirenetMeta.email,
+          }];
+        }
+      }
       
       // First try to get phone from our custom metadata
       if (Array.isArray(items) && items.length > 0 && items[0].phoneNumber) {
@@ -154,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const service: string | undefined = wirenetMeta?.service;
 
       if (!service || !Array.isArray(items) || items.length === 0) {
-        console.warn("Paystack webhook missing wirenet metadata; cannot recover orders", { reference, service });
+        console.warn("Paystack webhook missing wirenet metadata; cannot recover orders", { reference, service, hasWirenetMeta: !!wirenetMeta });
         return res.status(200).json({ ok: true, ignored: true, reason: "missing_metadata" });
       }
 

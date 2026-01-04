@@ -239,19 +239,21 @@ export default function ShopStorefront() {
         metadata: {
           wirenet: {
             service: selectedService,
-            phoneNumber: cleanPhone,
-            dataAmount: selectedPackage.packageName,
-            price: selectedPackage.finalPrice,
-            shopId: shop?.id,
-            shopName: shop?.shopName,
-            shopMarkup: selectedPackage.markupAmount,
+            items: [{
+              phoneNumber: cleanPhone,
+              packageName: selectedPackage.packageName,
+              price: selectedPackage.finalPrice,
+              shopId: shop?.id,
+              shopName: shop?.shopName,
+              shopMarkup: selectedPackage.markupAmount,
+            }],
           },
         },
         callback: async function(response: any) {
           // Create order with shop context
           try {
             const purchaseEndpoint = getPurchaseEndpoint(selectedService);
-            await fetch(purchaseEndpoint, {
+            const orderResponse = await fetch(purchaseEndpoint, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -264,11 +266,25 @@ export default function ShopStorefront() {
                 shopName: shop?.shopName,
               }),
             });
+
+            if (!orderResponse.ok) {
+              const error = await orderResponse.json();
+              console.error("Failed to create order:", error);
+              setOrderError(`Order creation failed: ${error.message || "Unknown error"}`);
+              setPurchasing(false);
+              return;
+            }
+
+            const orderData = await orderResponse.json();
+            console.log("✅ Order created successfully:", orderData);
           } catch (error) {
             console.error("Error creating order:", error);
+            setOrderError("Failed to process order. Please contact support with reference: " + response.reference);
+            setPurchasing(false);
+            return;
           }
           
-          // Navigate to success page
+          // Navigate to success page only if order creation succeeded
           setSelectedPackage(null);
           setPhoneNumber("");
           setPurchasing(false);
